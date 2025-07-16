@@ -20,4 +20,7 @@ app.get('/hello', async (c) => {
   return c.json(data, { status: 200 })
 })
 
+// Export WorkflowParser for use in other modules
+export { WorkflowParser } from './parser/WorkflowParser'
+
 export default app
