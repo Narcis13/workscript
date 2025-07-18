@@ -15,22 +15,28 @@ interface GenerationStep {
 
 const GENERATION_STEPS: GenerationStep[] = [
   {
+    name: 'Specification Enhancement',
+    promptFile: 'spec-enhancement-prompt.md',
+    outputFile: 'spec-enhanced.md',
+    previousArtifacts: []
+  },
+  {
     name: 'Requirements',
     promptFile: 'requirements-prompt.md',
     outputFile: 'requirements.md',
-    previousArtifacts: []
+    previousArtifacts: ['spec-enhanced.md']
   },
   {
     name: 'Design',
     promptFile: 'design-prompt.md',
     outputFile: 'design.md',
-    previousArtifacts: ['requirements.md']
+    previousArtifacts: ['spec-enhanced.md', 'requirements.md']
   },
   {
     name: 'Tasks',
     promptFile: 'tasks-prompt.md',
     outputFile: 'tasks.md',
-    previousArtifacts: ['requirements.md', 'design.md']
+    previousArtifacts: ['spec-enhanced.md', 'requirements.md', 'design.md']
   }
 ];
 
@@ -139,6 +145,7 @@ Example:
   bun run generate-artifacts.ts ./specs/my-app.md my-app
 
 This will generate:
+  - .kiro/specs/my-app/spec-enhanced.md
   - .kiro/specs/my-app/requirements.md
   - .kiro/specs/my-app/design.md
   - .kiro/specs/my-app/tasks.md
@@ -197,10 +204,11 @@ Generated on: ${new Date().toISOString()}
 
 ## Artifacts Generated:
 
-1. **Specification**: spec.md (original input)
-2. **Requirements**: requirements.md
-3. **Design**: design.md
-4. **Tasks**: tasks.md
+1. **Original Specification**: spec.md (original input)
+2. **Enhanced Specification**: spec-enhanced.md (analyzed and improved)
+3. **Requirements**: requirements.md
+4. **Design**: design.md
+5. **Tasks**: tasks.md
 
 ## Next Steps:
 
@@ -215,7 +223,8 @@ Add to your CLAUDE.md or similar AI agent configuration:
 
 \`\`\`markdown
 ## Development Artifacts
-- Specification: .kiro/specs/${projectName}/spec.md
+- Original Specification: .kiro/specs/${projectName}/spec.md
+- Enhanced Specification: .kiro/specs/${projectName}/spec-enhanced.md
 - Requirements: .kiro/specs/${projectName}/requirements.md
 - Design: .kiro/specs/${projectName}/design.md
 - Tasks: .kiro/specs/${projectName}/tasks.md
@@ -231,6 +240,7 @@ Always reference these documents when implementing features.
     console.log(`\n📁 Artifacts saved to: ${outputDir}`);
     console.log('\nGenerated files:');
     console.log('  - spec.md (original specification)');
+    console.log('  - spec-enhanced.md (analyzed and improved specification)');
     console.log('  - requirements.md');
     console.log('  - design.md');
     console.log('  - tasks.md');
