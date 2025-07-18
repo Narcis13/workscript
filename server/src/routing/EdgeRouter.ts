@@ -1,4 +1,5 @@
 import type { EdgeMap, WorkflowDefinition } from 'shared/dist';
+import { ErrorHandler, ErrorCategory, ErrorSeverity, WorkflowError } from '../error/ErrorHandler';
 
 /**
  * Edge routing result containing the next nodes to execute
@@ -35,10 +36,12 @@ export interface EdgeConfig {
 export class EdgeRouter {
   private workflow: WorkflowDefinition;
   private nodeSequence: string[];
+  private errorHandler?: ErrorHandler;
 
-  constructor(workflow: WorkflowDefinition) {
+  constructor(workflow: WorkflowDefinition, errorHandler?: ErrorHandler) {
     this.workflow = workflow;
     this.nodeSequence = Object.keys(workflow.workflow);
+    this.errorHandler = errorHandler;
   }
 
   /**
@@ -134,7 +137,18 @@ export class EdgeRouter {
       };
     }
 
-    throw new Error(`Node reference '${nodeId}' not found in workflow`);
+    if (this.errorHandler) {
+      const error = this.errorHandler.createError(
+        ErrorCategory.FLOW_CONTROL,
+        'invalid_node_reference',
+        `Node reference '${nodeId}' not found in workflow`,
+        ErrorSeverity.ERROR,
+        { data: { nodeId, workflowId: this.workflow.id } }
+      );
+      throw error;
+    } else {
+      throw new Error(`Node reference '${nodeId}' not found in workflow`);
+    }
   }
 
   /**
@@ -153,7 +167,18 @@ export class EdgeRouter {
         if (this.nodeExists(item)) {
           nextNodes.push(item);
         } else if (!isOptional) {
-          throw new Error(`Node reference '${item}' not found in workflow`);
+          if (this.errorHandler) {
+            const error = this.errorHandler.createError(
+              ErrorCategory.FLOW_CONTROL,
+              'invalid_node_reference',
+              `Node reference '${item}' not found in workflow`,
+              ErrorSeverity.ERROR,
+              { data: { nodeId: item, workflowId: this.workflow.id } }
+            );
+            throw error;
+          } else {
+            throw new Error(`Node reference '${item}' not found in workflow`);
+          }
         }
       } else if (typeof item === 'object' && item !== null) {
         // Nested configuration
@@ -187,7 +212,18 @@ export class EdgeRouter {
         // Store inline config for later use
         inlineConfigs[nodeId] = nodeConfig;
       } else if (!isOptional) {
-        throw new Error(`Node reference '${nodeId}' not found in workflow`);
+        if (this.errorHandler) {
+          const error = this.errorHandler.createError(
+            ErrorCategory.FLOW_CONTROL,
+            'invalid_node_reference',
+            `Node reference '${nodeId}' not found in workflow`,
+            ErrorSeverity.ERROR,
+            { data: { nodeId, workflowId: this.workflow.id } }
+          );
+          throw error;
+        } else {
+          throw new Error(`Node reference '${nodeId}' not found in workflow`);
+        }
       }
     }
 
@@ -337,12 +373,32 @@ export class EdgeRouter {
             
             this.resolveEdge(edgeConfig, true);
           } catch (error) {
-            errors.push(`Node '${nodeId}' edge '${edgeKey}': ${error instanceof Error ? error.message : 'Unknown error'}`);
+            // Check if it's a WorkflowError
+            if (this.errorHandler && this.isWorkflowError(error)) {
+              errors.push(`Node '${nodeId}' edge '${edgeKey}': ${error.message} (${error.code})`);
+            } else {
+              errors.push(`Node '${nodeId}' edge '${edgeKey}': ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
           }
         }
       }
     }
 
     return errors;
+  }
+  
+  /**
+   * Type guard to check if an error is a WorkflowError
+   * @param error - Error to check
+   * @returns Boolean indicating if error is a WorkflowError
+   */
+  private isWorkflowError(error: any): error is WorkflowError {
+    return (
+      error &&
+      typeof error === 'object' &&
+      'category' in error &&
+      'code' in error &&
+      'id' in error
+    );
   }
 }

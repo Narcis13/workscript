@@ -8,6 +8,7 @@ import { NodeRegistry } from '../registry/NodeRegistry';
 import { StateManager } from '../state/StateManager';
 import { LoopManager } from './LoopManager';
 import { v4 as uuidv4 } from 'uuid';
+import { ErrorHandler, ErrorCategory, ErrorSeverity } from '../error/ErrorHandler';
 
 /**
  * NodeExecutor class responsible for executing individual workflow nodes
@@ -17,10 +18,17 @@ export class NodeExecutor {
   private nodeRegistry: NodeRegistry;
   private stateManager: StateManager;
   private loopManager: LoopManager;
+  private errorHandler: ErrorHandler;
 
-  constructor(nodeRegistry: NodeRegistry, stateManager: StateManager, loopManager?: LoopManager) {
+  constructor(
+    nodeRegistry: NodeRegistry, 
+    stateManager: StateManager, 
+    errorHandler?: ErrorHandler,
+    loopManager?: LoopManager
+  ) {
     this.nodeRegistry = nodeRegistry;
     this.stateManager = stateManager;
+    this.errorHandler = errorHandler || new ErrorHandler();
     this.loopManager = loopManager || new LoopManager();
   }
 
@@ -43,20 +51,69 @@ export class NodeExecutor {
     // Validate node type exists
     const nodeType = nodeConfig.type;
     if (!nodeType) {
-      throw new Error(`Node '${nodeId}' is missing required 'type' property`);
+      const error = this.errorHandler.createError(
+        ErrorCategory.VALIDATION,
+        'missing_node_type',
+        `Node '${nodeId}' is missing required 'type' property`,
+        ErrorSeverity.ERROR,
+        { nodeId, executionId, workflowId }
+      );
+      return { error: () => error };
     }
 
     // Get node class from registry
     const NodeClass = this.nodeRegistry.get(nodeType);
     if (!NodeClass) {
-      throw new Error(`Unknown node type '${nodeType}' for node '${nodeId}'`);
+      const error = this.errorHandler.createError(
+        ErrorCategory.VALIDATION,
+        'unknown_node_type',
+        `Unknown node type '${nodeType}' for node '${nodeId}'`,
+        ErrorSeverity.ERROR,
+        { nodeId, executionId, workflowId, data: { nodeType } }
+      );
+      return { error: () => error };
     }
 
     // Create node instance
-    const nodeInstance = new (NodeClass as any)() as WorkflowNode;
+    let nodeInstance: WorkflowNode;
+    try {
+      nodeInstance = new (NodeClass as any)() as WorkflowNode;
+    } catch (err) {
+      const error = this.errorHandler.createError(
+        ErrorCategory.RUNTIME,
+        'node_instantiation_failed',
+        `Failed to instantiate node '${nodeId}' of type '${nodeType}'`,
+        ErrorSeverity.ERROR,
+        { 
+          nodeId, 
+          executionId, 
+          workflowId, 
+          originalError: err instanceof Error ? err : new Error(String(err)),
+          data: { nodeType } 
+        }
+      );
+      return { error: () => error };
+    }
 
     // Get current state
-    const state = await this.stateManager.get(executionId);
+    let state: Record<string, any>;
+    try {
+      state = await this.stateManager.get(executionId);
+    } catch (err) {
+      const error = this.errorHandler.createError(
+        ErrorCategory.RUNTIME,
+        'state_retrieval_failed',
+        `Failed to retrieve state for execution '${executionId}'`,
+        ErrorSeverity.ERROR,
+        { 
+          nodeId, 
+          executionId, 
+          workflowId, 
+          originalError: err instanceof Error ? err : new Error(String(err))
+        }
+      );
+      return { error: () => error };
+    }
 
     // Create execution context
     const context: ExecutionContext = {
@@ -72,18 +129,83 @@ export class NodeExecutor {
       const result = await nodeInstance.execute(context, nodeConfig.config);
 
       // Update state if it was modified
-      // Note: In a real implementation, we might want to track state changes
-      // more explicitly or use a proxy to detect modifications
-      await this.stateManager.update(executionId, context.state);
+      try {
+        await this.stateManager.update(executionId, context.state);
+      } catch (err) {
+        const error = this.errorHandler.createError(
+          ErrorCategory.RUNTIME,
+          'state_update_failed',
+          `Failed to update state for execution '${executionId}'`,
+          ErrorSeverity.WARNING, // Warning because execution succeeded but state update failed
+          { 
+            nodeId, 
+            executionId, 
+            workflowId, 
+            originalError: err instanceof Error ? err : new Error(String(err))
+          }
+        );
+        // Continue with execution but include error in result
+        return { 
+          ...result,
+          error: () => error 
+        };
+      }
 
       return result;
-    } catch (error) {
-      // Wrap and rethrow with context
-      throw new Error(
+    } catch (err) {
+      // Handle node execution error
+      const error = this.errorHandler.createError(
+        ErrorCategory.NODE_EXECUTION,
+        'node_execution_failed',
         `Failed to execute node '${nodeId}' of type '${nodeType}': ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`
+          err instanceof Error ? err.message : 'Unknown error'
+        }`,
+        ErrorSeverity.ERROR,
+        { 
+          nodeId, 
+          executionId, 
+          workflowId, 
+          originalError: err instanceof Error ? err : new Error(String(err)),
+          data: { 
+            nodeType,
+            inputs: context.inputs 
+          } 
+        }
       );
+      
+      // Add error information to state
+      context.state = {
+        ...context.state,
+        lastError: {
+          id: error.id,
+          message: error.message,
+          code: error.code,
+          nodeId: error.nodeId,
+          timestamp: error.timestamp
+        }
+      };
+      
+      try {
+        // Update state with error information
+        await this.stateManager.update(executionId, context.state);
+      } catch (stateErr) {
+        // Log but continue if state update fails
+        this.errorHandler.createError(
+          ErrorCategory.RUNTIME,
+          'error_state_update_failed',
+          `Failed to update state with error information`,
+          ErrorSeverity.WARNING,
+          { 
+            nodeId, 
+            executionId, 
+            workflowId, 
+            originalError: stateErr instanceof Error ? stateErr : new Error(String(stateErr))
+          }
+        );
+      }
+      
+      // Return error edge for routing
+      return { error: () => error };
     }
   }
 
@@ -147,7 +269,8 @@ export class NodeExecutor {
 // Export singleton instance
 export const createNodeExecutor = (
   nodeRegistry: NodeRegistry,
-  stateManager: StateManager
+  stateManager: StateManager,
+  errorHandler?: ErrorHandler
 ): NodeExecutor => {
-  return new NodeExecutor(nodeRegistry, stateManager);
+  return new NodeExecutor(nodeRegistry, stateManager, errorHandler);
 };
