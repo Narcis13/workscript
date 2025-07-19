@@ -98,3 +98,45 @@ The codebase follows a clean monorepo structure with three main packages:
 
 ## Claude code AI agent workflow
 - **CRITICAL** On every session and every prompt asked by user you must read, think and evaluate files in ./.kiro/specs/json-workflow-engine folder! Implement tasks taking in consideration design and requirements defined in this folder. THIS IS MANDATORY!
+
+## AI-Assisted Software Development Framework
+
+### Overview
+This project includes a framework for transforming software specifications into structured development artifacts. The framework is located in `.kiro/framework/` and provides a systematic approach to generate requirements, design documents, and implementation tasks.
+
+### Framework Components
+
+1. **Requirements Generation** (`.kiro/framework/templates/requirements-prompt.md`)
+   - Transforms specifications into user stories with acceptance criteria
+   - Uses WHEN/THEN/IF format for testable conditions
+
+2. **Design Generation** (`.kiro/framework/templates/design-prompt.md`)
+   - Creates technical architecture from specifications
+   - Includes component diagrams, interfaces, and data models
+
+3. **Tasks Generation** (`.kiro/framework/templates/tasks-prompt.md`)
+   - Breaks down implementation into ordered, actionable tasks
+   - Links tasks to specific requirements
+
+### Using the Framework
+
+#### Manual Process:
+1. Create a specification markdown file
+2. Use each prompt template with the specification to generate artifacts
+3. Save outputs to `.kiro/specs/[project-name]/`
+
+#### Automated Process:
+```bash
+bun run .kiro/framework/generate-artifacts.ts path/to/spec.md project-name
+```
+
+### Working with Generated Artifacts
+
+When implementing features:
+1. Always reference the generated artifacts in `.kiro/specs/[project]/`
+2. Follow the tasks checklist in `tasks.md`
+3. Ensure implementations meet requirements in `requirements.md`
+4. Adhere to the architecture defined in `design.md`
+
+### Example
+See `.kiro/specs/task-api-example/` for an example of generated artifacts from a task management API specification.

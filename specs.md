@@ -274,5 +274,5 @@ Nodes can emit a `loop` edge to create iteration patterns:
 - Real-time monitoring and observability
 - Workflow scheduling and triggers
 - Integration with external systems
-- Performance optimization for large workflows
+- Human in the Loop
 - Workflow composition and reusability
