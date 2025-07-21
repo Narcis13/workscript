@@ -40,7 +40,7 @@
 
 ## Core Components
 
-- [ ] 6. Implement NodeRegistry class
+- [x] 6. Implement NodeRegistry class
   - Create registration methods
   - Implement node discovery from filesystem
   - Add metadata retrieval
