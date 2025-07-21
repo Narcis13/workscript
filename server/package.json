@@ -9,7 +9,9 @@
     "test": "vitest --run"
   },
   "dependencies": {
+    "@types/glob": "^9.0.0",
     "ajv": "^8.17.1",
+    "glob": "^11.0.3",
     "hono": "^4.7.11",
     "shared": "workspace:*"
   },

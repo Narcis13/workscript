@@ -1,4 +1,5 @@
-import { WorkflowNode, NodeMetadata } from '../../../shared/src/types';
+import { WorkflowNode } from '../../../shared/src/types';
+import type { NodeMetadata } from '../../../shared/src/types';
 import { glob } from 'glob';
 import path from 'path';
 

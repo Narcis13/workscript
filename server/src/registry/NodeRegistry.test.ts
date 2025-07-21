@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NodeRegistry, NodeNotFoundError, NodeRegistrationError } from './NodeRegistry';
-import { WorkflowNode, NodeMetadata, ExecutionContext, EdgeMap } from '../../../shared/src/types';
+import { WorkflowNode } from '../../../shared/src/types';
+import type { NodeMetadata, ExecutionContext, EdgeMap } from '../../../shared/src/types';
 
 // Mock workflow node for testing
 class TestNode extends WorkflowNode {
@@ -13,7 +14,7 @@ class TestNode extends WorkflowNode {
     outputs: ['output1']
   };
 
-  async execute(context: ExecutionContext, config?: Record<string, any>): Promise<EdgeMap> {
+  async execute(_context: ExecutionContext, _config?: Record<string, any>): Promise<EdgeMap> {
     return {
       success: { result: 'test' }
     };
@@ -28,7 +29,7 @@ class AnotherTestNode extends WorkflowNode {
     version: '2.0.0'
   };
 
-  async execute(context: ExecutionContext): Promise<EdgeMap> {
+  async execute(_context: ExecutionContext): Promise<EdgeMap> {
     return {
       complete: { done: true }
     };
@@ -39,7 +40,7 @@ class AnotherTestNode extends WorkflowNode {
 class InvalidNode extends WorkflowNode {
   metadata: any = null;
 
-  async execute(context: ExecutionContext): Promise<EdgeMap> {
+  async execute(_context: ExecutionContext): Promise<EdgeMap> {
     return {};
   }
 }
@@ -100,7 +101,9 @@ describe('NodeRegistry', () => {
 
     it('should allow re-registering node with same version', async () => {
       await registry.register(TestNode);
-      await expect(registry.register(TestNode)).resolves.not.toThrow();
+      // Should not throw when registering same version
+      await registry.register(TestNode);
+      expect(registry.hasNode('test-node')).toBe(true);
     });
   });
 
@@ -181,7 +184,7 @@ describe('NodeRegistry', () => {
 
     it('should remove singleton instance', async () => {
       await registry.register(TestNode, { singleton: true });
-      const instance = registry.getInstance('test-node');
+      registry.getInstance('test-node'); // Create singleton instance
       
       registry.unregister('test-node');
       expect(() => registry.getInstance('test-node')).toThrow(NodeNotFoundError);
@@ -204,7 +207,9 @@ describe('NodeRegistry', () => {
     // Note: This test would require actual files in the filesystem
     // For now, we'll skip the file-based discovery test
     it('should handle discovery of non-existent directory gracefully', async () => {
-      await expect(registry.discover('/non/existent/path')).resolves.not.toThrow();
+      // Should not throw even with non-existent path
+      await registry.discover('/non/existent/path');
+      expect(registry.size).toBe(0);
     });
   });
 });
