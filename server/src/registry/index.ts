@@ -1,1 +1,0 @@
-export { NodeRegistry, nodeRegistry } from './NodeRegistry';
