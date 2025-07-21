@@ -69,12 +69,12 @@ interface ExecutionContext {
       "data": "here"
     }
   },
-  "workflow": {
+  "workflow": [
     "node-name": {
       "param1": "value1",
       "edge-name?": "next-node-or-config"
     }
-  }
+  ]
 }
 ```
 
@@ -187,10 +187,10 @@ Nodes can emit a `loop` edge to create iteration patterns:
 - Loop constructs enable iteration without complex control structures
 - Shared state enables data flow between nodes
 
-### Extensibility
-- Plugin architecture for custom nodes
-- Configurable execution contexts
-- Support for different node types and behaviors
+### Node configuration
+- Nodes can be defined with a mix of params and edge routing keys (those ending with '?')
+- Nested configurations allow for more complex scenarios
+
 
 ## Implementation Stack
 
@@ -210,10 +210,10 @@ Nodes can emit a `loop` edge to create iteration patterns:
     "inputFile": "data.csv",
     "outputFormat": "json"
   },
-  "workflow": {
+  "workflow": [
     "read-file": {
-      "encoding": "utf8",
-      "error?": "handle-file-error"
+      "encoding": "utf8", //this is params for the node and will be accesible via config param
+      "error?": "handle-file-error" //this is an edge route for the node in case read-file emit "error" edge then handle-file-error node will be executed 
     },
     "parse-csv": {
       "delimiter": ",",
@@ -225,7 +225,7 @@ Nodes can emit a `loop` edge to create iteration patterns:
       "success?": "write-output",
       "validation_failed?": "generate-error-report"
     }
-  }
+  ]
 }
 ```
 
@@ -233,7 +233,7 @@ Nodes can emit a `loop` edge to create iteration patterns:
 ```json
 {
   "id": "auth-flow",
-  "workflow": {
+  "workflow": [
     "validate-credentials": {
       "hashAlgorithm": "bcrypt",
       "success?": "generate-token",
@@ -244,7 +244,7 @@ Nodes can emit a `loop` edge to create iteration patterns:
       "expiresIn": "24h",
       "success?": "log-successful-login"
     }
-  }
+  ]
 }
 ```
 
@@ -256,21 +256,19 @@ Nodes can emit a `loop` edge to create iteration patterns:
     "items": ["item1", "item2", "item3"],
     "processed": 0
   },
-  "workflow": {
+  "workflow": [
     "process-batch": {
       "batchSize": 1,
       "loop?": ["process-item", "update-progress"],
       "complete?": "generate-report",
       "error?": "handle-batch-error"
     }
-  }
+  ]
 }
 ```
 
 ## Future Considerations
 
-- Parallel execution of node sequences
-- Workflow versioning and migration
 - Real-time monitoring and observability
 - Workflow scheduling and triggers
 - Integration with external systems
