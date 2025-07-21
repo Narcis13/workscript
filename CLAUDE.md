@@ -133,7 +133,7 @@ bun run .kiro/framework/generate-artifacts.ts path/to/spec.md project-name
 ### Working with Generated Artifacts
 
 When implementing features:
-1. Always reference the generated artifacts in `.kiro/specs/[project]/`
+1. Always reference the generated artifacts in `.kiro/specs/json-workflow-engine/`
 2. Follow the tasks checklist in `tasks.md`
 3. Ensure implementations meet requirements in `requirements.md`
 4. Adhere to the architecture defined in `design.md`

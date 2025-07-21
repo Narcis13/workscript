@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# Generated files
+*.generated.*
+*.min.js
+*.min.css
+
+# Other
+.git/
+.husky/
+.DS_Store
+*.log

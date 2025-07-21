@@ -1,10 +1,17 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { ApiResponse } from 'shared/dist'
+import { securityHeaders, logger, errorHandler } from './middleware'
 
 const app = new Hono()
 
-app.use(cors())
+// Global middleware
+app.use('*', logger)
+app.use('*', securityHeaders)
+app.use('*', cors())
+
+// Error handling
+app.onError(errorHandler)
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
