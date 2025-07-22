@@ -48,30 +48,38 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action',
-            config: { message: 'Starting workflow' },
-            edges: {
-              next: 'process'
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              config: { message: 'Starting workflow' },
+              edges: {
+                next: 'process'
+              }
             }
           },
-          process: {
-            type: 'decision',
-            edges: {
-              'true': 'success',
-              'false': 'failure'
+          {
+            process: {
+              type: 'decision',
+              edges: {
+                'true': 'success',
+                'false': 'failure'
+              }
             }
           },
-          success: {
-            type: 'action',
-            config: { message: 'Success!' }
+          {
+            success: {
+              type: 'action',
+              config: { message: 'Success!' }
+            }
           },
-          failure: {
-            type: 'action',
-            config: { message: 'Failed!' }
+          {
+            failure: {
+              type: 'action',
+              config: { message: 'Failed!' }
+            }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -83,11 +91,13 @@ describe('WorkflowParser', () => {
       const workflow = {
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action'
+        workflow: [
+          {
+            start: {
+              type: 'action'
+            }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -105,11 +115,13 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: 'v1.0',
-        workflow: {
-          start: {
-            type: 'action'
+        workflow: [
+          {
+            start: {
+              type: 'action'
+            }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -127,24 +139,28 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'unknown-node',
-            edges: {
-              next: 'end'
+        workflow: [
+          {
+            start: {
+              type: 'unknown-node',
+              edges: {
+                next: 'end'
+              }
             }
           },
-          end: {
-            type: 'action'
+          {
+            end: {
+              type: 'action'
+            }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
       expect(result.valid).toBe(false);
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          path: '/workflow/start/type',
+          path: '/workflow[0]/start/type',
           message: "Node type 'unknown-node' not found in registry",
           code: 'NODE_TYPE_NOT_FOUND'
         })
@@ -156,21 +172,23 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action',
-            edges: {
-              next: 'non-existent-node'
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              edges: {
+                next: 'non-existent-node'
+              }
             }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
       expect(result.valid).toBe(false);
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          path: '/workflow/start/edges/next',
+          path: '/workflow[0]/start/edges/next',
           message: "Edge references non-existent node 'non-existent-node'",
           code: 'EDGE_TARGET_NOT_FOUND'
         })
@@ -182,24 +200,28 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'decision',
-            edges: {
-              'true': {
-                type: 'action',
-                config: { message: 'Inline action' },
-                edges: {
-                  done: 'end'
-                }
-              },
-              'false': 'end'
+        workflow: [
+          {
+            start: {
+              type: 'decision',
+              edges: {
+                'true': {
+                  type: 'action',
+                  config: { message: 'Inline action' },
+                  edges: {
+                    done: 'end'
+                  }
+                },
+                'false': 'end'
+              }
             }
           },
-          end: {
-            type: 'action'
+          {
+            end: {
+              type: 'action'
+            }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -212,16 +234,18 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'decision',
-            edges: {
-              'true': {
-                config: { message: 'Missing type' }
+        workflow: [
+          {
+            start: {
+              type: 'decision',
+              edges: {
+                'true': {
+                  config: { message: 'Missing type' }
+                }
               }
             }
           }
-        }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -229,9 +253,9 @@ describe('WorkflowParser', () => {
       // Schema validation catches this error before semantic validation
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          path: '/workflow/start/edges/true',
-          message: "must have required property 'type'",
-          code: 'SCHEMA_VALIDATION_ERROR'
+          path: '/workflow[0]/start/edges/true',
+          message: 'Nested node configuration must have a type',
+          code: 'NESTED_NODE_MISSING_TYPE'
         })
       );
     });
@@ -241,17 +265,19 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action',
-            edges: {
-              next: ['step1', 'step2', 'step3']
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              edges: {
+                next: ['step1', 'step2', 'step3']
+              }
             }
           },
-          step1: { type: 'action' },
-          step2: { type: 'action' },
-          step3: { type: 'action' }
-        }
+          { step1: { type: 'action' } },
+          { step2: { type: 'action' } },
+          { step3: { type: 'action' } }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -264,17 +290,19 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action',
-            edges: {
-              'next?': 'end',
-              'fallback': 'error'
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              edges: {
+                'next?': 'end',
+                'fallback': 'error'
+              }
             }
           },
-          end: { type: 'action' },
-          error: { type: 'action' }
-        }
+          { end: { type: 'action' } },
+          { error: { type: 'action' } }
+        ]
       };
 
       const result = parser.validate(workflow);
@@ -290,19 +318,23 @@ describe('WorkflowParser', () => {
         name: 'Test Workflow',
         version: '1.0.0',
         initialState: { counter: 0 },
-        workflow: {
-          start: {
-            type: 'action',
-            config: { message: 'Hello' },
-            edges: {
-              next: 'end'
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              config: { message: 'Hello' },
+              edges: {
+                next: 'end'
+              }
             }
           },
-          end: {
-            type: 'action',
-            config: { message: 'Goodbye' }
+          {
+            end: {
+              type: 'action',
+              config: { message: 'Goodbye' }
+            }
           }
-        }
+        ]
       };
 
       const parsed = parser.parse(workflow);
@@ -325,17 +357,19 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action',
-            edges: {
-              'success?': 'end',
-              'error': 'errorHandler'
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              edges: {
+                'success?': 'end',
+                'error': 'errorHandler'
+              }
             }
           },
-          end: { type: 'action' },
-          errorHandler: { type: 'action' }
-        }
+          { end: { type: 'action' } },
+          { errorHandler: { type: 'action' } }
+        ]
       };
 
       const parsed = parser.parse(workflow);
@@ -352,17 +386,19 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'action',
-            edges: {
-              pipeline: ['step1', 'step2', 'step3']
+        workflow: [
+          {
+            start: {
+              type: 'action',
+              edges: {
+                pipeline: ['step1', 'step2', 'step3']
+              }
             }
           },
-          step1: { type: 'action' },
-          step2: { type: 'action' },
-          step3: { type: 'action' }
-        }
+          { step1: { type: 'action' } },
+          { step2: { type: 'action' } },
+          { step3: { type: 'action' } }
+        ]
       };
 
       const parsed = parser.parse(workflow);
@@ -376,22 +412,24 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'decision',
-            edges: {
-              'true': {
-                type: 'action',
-                config: { message: 'Inline success' },
-                edges: {
-                  done: 'end'
-                }
-              },
-              'false': 'end'
+        workflow: [
+          {
+            start: {
+              type: 'decision',
+              edges: {
+                'true': {
+                  type: 'action',
+                  config: { message: 'Inline success' },
+                  edges: {
+                    done: 'end'
+                  }
+                },
+                'false': 'end'
+              }
             }
           },
-          end: { type: 'action' }
-        }
+          { end: { type: 'action' } }
+        ]
       };
 
       const parsed = parser.parse(workflow);
@@ -412,11 +450,13 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          start: {
-            type: 'invalid-node'
+        workflow: [
+          {
+            start: {
+              type: 'invalid-node'
+            }
           }
-        }
+        ]
       };
 
       expect(() => parser.parse(workflow)).toThrow(WorkflowValidationError);
@@ -435,23 +475,25 @@ describe('WorkflowParser', () => {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
-        workflow: {
-          complexNode: {
-            type: 'action',
-            timeout: 5000,
-            retries: 3,
-            config: {
-              apiUrl: 'https://api.example.com',
-              method: 'POST'
-            },
-            edges: {
-              success: 'nextStep',
-              'error?': 'errorHandler'
+        workflow: [
+          {
+            complexNode: {
+              type: 'action',
+              timeout: 5000,
+              retries: 3,
+              config: {
+                apiUrl: 'https://api.example.com',
+                method: 'POST'
+              },
+              edges: {
+                success: 'nextStep',
+                'error?': 'errorHandler'
+              }
             }
           },
-          nextStep: { type: 'action' },
-          errorHandler: { type: 'action' }
-        }
+          { nextStep: { type: 'action' } },
+          { errorHandler: { type: 'action' } }
+        ]
       };
 
       const parsed = parser.parse(workflow);

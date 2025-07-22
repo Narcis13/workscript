@@ -3,9 +3,6 @@
   "workspaces": {
     "": {
       "name": "bhvr",
-      "dependencies": {
-        "ajv": "^8.17.1",
-      },
       "devDependencies": {
         "bun-types": "latest",
         "concurrently": "^9.1.2",

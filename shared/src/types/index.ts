@@ -29,10 +29,20 @@ export interface WorkflowDefinition {
   name: string;
   version: string;
   initialState?: Record<string, any>;
-  workflow: Record<string, NodeConfiguration>;
+  workflow: NodeConfiguration[];
 }
 
-export type NodeConfiguration = Record<string, any>;
+export interface NodeConfiguration {
+  [key: string]: NodeConfigValue;
+}
+
+export type NodeConfigValue = 
+  | string 
+  | number
+  | boolean
+  | string[] 
+  | Record<string, any>
+  | NodeConfiguration;
 
 export interface ValidationResult {
   valid: boolean;

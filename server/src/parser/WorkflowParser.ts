@@ -77,31 +77,46 @@ export class WorkflowParser {
 
   private validateSemantics(workflow: WorkflowDefinition): ValidationError[] {
     const errors: ValidationError[] = [];
-    const nodeIds = new Set(Object.keys(workflow.workflow));
+    const nodeIds = new Set<string>();
+    
+    // First pass: collect all node IDs
+    workflow.workflow.forEach((nodeConfig, index) => {
+      Object.keys(nodeConfig).forEach(key => {
+        const nodeId = key.endsWith('?') ? key.slice(0, -1) : key;
+        nodeIds.add(nodeId);
+      });
+    });
 
-    // Validate each node
-    for (const [nodeId, nodeConfig] of Object.entries(workflow.workflow)) {
-      // Check if node type exists in registry
-      if (nodeConfig.type && !this.nodeRegistry.hasNode(nodeConfig.type)) {
-        errors.push({
-          path: `/workflow/${nodeId}/type`,
-          message: `Node type '${nodeConfig.type}' not found in registry`,
-          code: 'NODE_TYPE_NOT_FOUND'
-        });
-      }
+    // Second pass: validate each node
+    workflow.workflow.forEach((nodeConfig, index) => {
+      for (const [key, value] of Object.entries(nodeConfig)) {
+        const nodeId = key.endsWith('?') ? key.slice(0, -1) : key;
+        
+        // Check if value is an object with type property (indicating it's a node configuration)
+        if (typeof value === 'object' && !Array.isArray(value) && value !== null && 'type' in value) {
+          // Check if node type exists in registry
+          if (!this.nodeRegistry.hasNode(value.type)) {
+            errors.push({
+              path: `/workflow[${index}]/${key}/type`,
+              message: `Node type '${value.type}' not found in registry`,
+              code: 'NODE_TYPE_NOT_FOUND'
+            });
+          }
 
-      // Validate edges if present
-      if (nodeConfig.edges) {
-        for (const [edgeKey, edgeValue] of Object.entries(nodeConfig.edges)) {
-          const edgeErrors = this.validateEdgeRoute(
-            edgeValue,
-            nodeIds,
-            `/workflow/${nodeId}/edges/${edgeKey}`
-          );
-          errors.push(...edgeErrors);
+          // Validate edges if present
+          if ('edges' in value && value.edges) {
+            for (const [edgeKey, edgeValue] of Object.entries(value.edges)) {
+              const edgeErrors = this.validateEdgeRoute(
+                edgeValue,
+                nodeIds,
+                `/workflow[${index}]/${key}/edges/${edgeKey}`
+              );
+              errors.push(...edgeErrors);
+            }
+          }
         }
       }
-    }
+    });
 
     return errors;
   }
@@ -165,31 +180,47 @@ export class WorkflowParser {
     return errors;
   }
 
-  private parseNodes(workflowNodes: Record<string, NodeConfiguration>): ParsedNode[] {
+  private parseNodes(workflowNodes: NodeConfiguration[]): ParsedNode[] {
     const parsedNodes: ParsedNode[] = [];
 
-    for (const [nodeId, nodeConfig] of Object.entries(workflowNodes)) {
-      const { type, edges, config, ...rest } = nodeConfig;
-      
-      const parsedNode: ParsedNode = {
-        nodeId,
-        type: type || 'unknown',
-        config: config || rest,
-        edges: {}
-      };
-
-      // Parse edges with parameter separation
-      if (edges) {
-        for (const [edgeKey, edgeValue] of Object.entries(edges)) {
-          const isOptional = edgeKey.endsWith('?');
-          const cleanEdgeKey = isOptional ? edgeKey.slice(0, -1) : edgeKey;
+    workflowNodes.forEach((nodeConfig) => {
+      for (const [key, value] of Object.entries(nodeConfig)) {
+        const nodeId = key.endsWith('?') ? key.slice(0, -1) : key;
+        
+        // Parse based on the type of value
+        if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          // Extract known properties
+          const { type, edges, config, ...rest } = value as any;
           
-          parsedNode.edges[cleanEdgeKey] = this.parseEdgeRoute(edgeValue);
+          const parsedNode: ParsedNode = {
+            nodeId,
+            type: type || 'unknown',
+            config: config || (Object.keys(rest).length > 0 ? rest : {}),
+            edges: {}
+          };
+
+          // Parse edges with parameter separation
+          if (edges) {
+            for (const [edgeKey, edgeValue] of Object.entries(edges)) {
+              const isOptional = edgeKey.endsWith('?');
+              const cleanEdgeKey = isOptional ? edgeKey.slice(0, -1) : edgeKey;
+              
+              parsedNode.edges[cleanEdgeKey] = this.parseEdgeRoute(edgeValue);
+            }
+          }
+
+          parsedNodes.push(parsedNode);
+        } else {
+          // Simple value - treat as a basic node
+          parsedNodes.push({
+            nodeId,
+            type: 'unknown',
+            config: { value },
+            edges: {}
+          });
         }
       }
-
-      parsedNodes.push(parsedNode);
-    }
+    });
 
     return parsedNodes;
   }
@@ -200,7 +231,7 @@ export class WorkflowParser {
       return route.endsWith('?') ? route.slice(0, -1) : route;
     } else if (Array.isArray(route)) {
       // Process array routes recursively
-      return route.map(item => this.parseEdgeRoute(item));
+      return route.map(item => this.parseEdgeRoute(item)) as string[];
     } else if (typeof route === 'object' && route !== null) {
       // For nested configurations, parse their edges recursively
       const { edges, ...rest } = route;

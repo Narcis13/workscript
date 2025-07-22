@@ -28,42 +28,61 @@
       "description": "Initial state for the workflow execution"
     },
     "workflow": {
+      "type": "array",
+      "description": "Array of node configurations",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "patternProperties": {
+          "^[a-zA-Z0-9_-]+$": {
+            "$ref": "#/definitions/nodeConfigValue"
+          }
+        },
+        "additionalProperties": false,
+        "minProperties": 1
+      }
+    }
+  },
+  "definitions": {
+    "nodeConfigValue": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "String value (could be node reference or parameter)"
+        },
+        {
+          "type": "number",
+          "description": "Numeric value"
+        },
+        {
+          "type": "boolean",
+          "description": "Boolean value"
+        },
+        {
+          "type": "array",
+          "description": "Array of values",
+          "items": {
+            "$ref": "#/definitions/nodeConfigValue"
+          }
+        },
+        {
+          "type": "object",
+          "description": "Object value (could be nested configuration or parameters)",
+          "additionalProperties": {
+            "$ref": "#/definitions/nodeConfigValue"
+          }
+        }
+      ]
+    },
+    "nodeConfiguration": {
       "type": "object",
-      "description": "Map of node IDs to node configurations",
       "patternProperties": {
         "^[a-zA-Z0-9_-]+$": {
-          "$ref": "#/definitions/nodeConfiguration"
+          "$ref": "#/definitions/nodeConfigValue"
         }
       },
       "additionalProperties": false,
       "minProperties": 1
-    }
-  },
-  "definitions": {
-    "nodeConfiguration": {
-      "type": "object",
-      "required": ["type"],
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "The type of node to execute"
-        },
-        "config": {
-          "type": "object",
-          "description": "Configuration parameters for the node"
-        },
-        "edges": {
-          "type": "object",
-          "description": "Map of edge keys to edge routes",
-          "patternProperties": {
-            "^[a-zA-Z0-9_-]+\\??$": {
-              "$ref": "#/definitions/edgeRoute"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": true
     },
     "edgeRoute": {
       "oneOf": [
