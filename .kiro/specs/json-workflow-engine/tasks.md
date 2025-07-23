@@ -62,7 +62,6 @@
   - Create state initialization
   - Implement atomic state updates
   - Add state retrieval methods
-  - Implement locking mechanism for concurrent access
   - Create state snapshot functionality
   - Add state persistence interface
   - _Requirements: 11, 22_
