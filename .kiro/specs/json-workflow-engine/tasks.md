@@ -49,14 +49,14 @@
   - Add error handling for missing nodes
   - _Requirements: 9, 15_
 
-- [ ] 7. Create WorkflowParser class
+- [x] 7. Create WorkflowParser class
   - Implement JSON schema validation
   - Create node reference resolution
   - Parse node configurations and edge routes
   - Handle nested configurations
   - Implement parameter and edge separation
   - Add comprehensive error reporting
-  - _Requirements: 5, 6, 8, 14, 24_
+  - _Requirements: 5, 6, 8, 24_
 
 - [ ] 8. Implement StateManager class
   - Create state initialization
@@ -81,7 +81,7 @@
   - Implement route type detection
   - Add next node resolution
   - Create sequence execution logic
-  - _Requirements: 4, 13, 14_
+  - _Requirements: 4, 13_
 
 - [ ] 11. Add loop construct support
   - Implement loop detection

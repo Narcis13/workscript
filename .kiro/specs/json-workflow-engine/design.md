@@ -57,7 +57,7 @@ graph TB
 
 ### Component Architecture
 
-The system is organized as a monorepo with three main packages: shared types, server implementation, and client utilities. Each package has specific responsibilities and dependencies.
+The system is organized as a monorepo with three main packages following the bhvr stack (Bun + Hono + Vite + React): shared types, server implementation, and client utilities. Each package has specific responsibilities and dependencies.
 
 ```mermaid
 graph LR
@@ -120,12 +120,12 @@ graph LR
 
 #### WorkflowNode Abstract Class
 ```typescript
-// shared/src/types/WorkflowNode.ts
+// shared/src/types/index.ts
 export interface NodeMetadata {
   id: string;
   name: string;
   description?: string;
-  version: string;
+  version?: string;
   inputs?: string[];
   outputs?: string[];
 }
@@ -138,8 +138,7 @@ export interface ExecutionContext {
   executionId: string;
 }
 
-export type EdgeFunction = (context: ExecutionContext) => any;
-export type EdgeMap = Record<string, EdgeFunction>;
+export type EdgeMap = Record<string, any>;
 
 export abstract class WorkflowNode {
   abstract metadata: NodeMetadata;
@@ -153,32 +152,43 @@ export abstract class WorkflowNode {
 
 #### Workflow Definition Types
 ```typescript
-// shared/src/types/WorkflowDefinition.ts
+// shared/src/types/index.ts
 export interface WorkflowDefinition {
   id: string;
   name: string;
   version: string;
+  description?: string;
   initialState?: Record<string, any>;
-  workflow: NodeConfiguration[];
+  workflow: WorkflowStep[];
 }
 
-export type NodeConfiguration = Record<string, NodeConfigValue>;
-export type NodeConfigValue = 
+export type WorkflowStep = 
+  | string                           // Simple node reference without configuration
+  | { [nodeId: string]: NodeConfiguration };  // Node with configuration
+
+export interface NodeConfiguration {
+  [key: string]: ParameterValue | EdgeRoute;
+}
+
+export type ParameterValue = 
   | string 
-  | string[] 
-  | Record<string, any>
-  | NodeConfiguration;
-
-export interface ParsedNode {
-  nodeId: string;
-  config: Record<string, any>;
-  edges: Record<string, EdgeRoute>;
-}
+  | number
+  | boolean
+  | Array<ParameterValue>
+  | { [key: string]: ParameterValue };
 
 export type EdgeRoute = 
-  | string 
-  | string[] 
-  | NodeConfiguration;
+  | string                    // Single node reference
+  | EdgeRouteItem[]           // Sequence of nodes/configs
+  | NestedNodeConfiguration;  // Nested configuration
+
+export type EdgeRouteItem = 
+  | string                    // Node ID in sequence
+  | NestedNodeConfiguration;  // Nested config in sequence
+
+export interface NestedNodeConfiguration {
+  [nodeId: string]: NodeConfiguration;
+}
 ```
 
 ### Node Registry (server/src/registry/)
@@ -186,36 +196,85 @@ export type EdgeRoute =
 #### NodeRegistry Class
 ```typescript
 // server/src/registry/NodeRegistry.ts
+interface NodeRegistration {
+  nodeClass: typeof WorkflowNode;
+  metadata: NodeMetadata;
+  singleton: boolean;
+}
+
 export class NodeRegistry {
   private nodes: Map<string, NodeRegistration> = new Map();
   private instances: Map<string, WorkflowNode> = new Map();
 
-  interface NodeRegistration {
-    nodeClass: typeof WorkflowNode;
-    metadata: NodeMetadata;
-    singleton: boolean;
-  }
-
+  /**
+   * Register a workflow node class
+   */
   async register(
     nodeClass: typeof WorkflowNode,
     options?: { singleton?: boolean }
   ): Promise<void> {
-    const instance = new nodeClass();
+    // Create a temporary instance to get metadata
+    let instance: WorkflowNode;
+    try {
+      instance = new (nodeClass as any)();
+    } catch (error) {
+      throw new NodeRegistrationError(
+        `Failed to instantiate node class: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
     const metadata = instance.metadata;
-    
+
+    // Validate metadata
+    if (!metadata || !metadata.id || !metadata.name || !metadata.version) {
+      throw new NodeRegistrationError(
+        'Node metadata must include id, name, and version',
+        metadata?.id
+      );
+    }
+
+    // Register the node
     this.nodes.set(metadata.id, {
       nodeClass,
       metadata,
       singleton: options?.singleton ?? false
     });
+
+    // If singleton, create the instance now
+    if (options?.singleton) {
+      this.instances.set(metadata.id, instance);
+    }
   }
 
+  /**
+   * Discover and register nodes from a directory
+   */
   async discover(directory: string): Promise<void> {
-    const files = await glob(`${directory}/**/*.ts`);
+    const pattern = path.join(directory, '**/*.{ts,js}');
+    const files = await glob(pattern, { absolute: true });
+
     for (const file of files) {
-      const module = await import(file);
-      if (module.default && module.default.prototype instanceof WorkflowNode) {
-        await this.register(module.default);
+      try {
+        // Skip test files and index files
+        if (file.includes('.test.') || file.endsWith('index.ts') || file.endsWith('index.js')) {
+          continue;
+        }
+
+        const module = await import(file);
+        
+        // Check for default export
+        if (module.default && this.isWorkflowNode(module.default)) {
+          await this.register(module.default);
+        }
+        
+        // Check for named exports
+        for (const [exportName, exportValue] of Object.entries(module)) {
+          if (exportName !== 'default' && this.isWorkflowNode(exportValue)) {
+            await this.register(exportValue as typeof WorkflowNode);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to load node from ${file}:`, error);
       }
     }
   }
@@ -226,14 +285,16 @@ export class NodeRegistry {
       throw new NodeNotFoundError(nodeId);
     }
 
+    // Return singleton instance if available
     if (registration.singleton) {
       if (!this.instances.has(nodeId)) {
-        this.instances.set(nodeId, new registration.nodeClass());
+        this.instances.set(nodeId, new (registration.nodeClass as any)());
       }
       return this.instances.get(nodeId)!;
     }
 
-    return new registration.nodeClass();
+    // Create new instance
+    return new (registration.nodeClass as any)();
   }
 
   getMetadata(nodeId: string): NodeMetadata {
@@ -247,99 +308,230 @@ export class NodeRegistry {
   listNodes(): NodeMetadata[] {
     return Array.from(this.nodes.values()).map(r => r.metadata);
   }
+
+  hasNode(nodeId: string): boolean {
+    return this.nodes.has(nodeId);
+  }
+
+  unregister(nodeId: string): void {
+    if (!this.nodes.has(nodeId)) {
+      throw new NodeNotFoundError(nodeId);
+    }
+    
+    this.nodes.delete(nodeId);
+    this.instances.delete(nodeId);
+  }
+
+  clear(): void {
+    this.nodes.clear();
+    this.instances.clear();
+  }
+
+  get size(): number {
+    return this.nodes.size;
+  }
+
+  private isWorkflowNode(value: any): value is typeof WorkflowNode {
+    return (
+      typeof value === 'function' &&
+      value.prototype &&
+      (value.prototype instanceof WorkflowNode ||
+        value.prototype.constructor === WorkflowNode ||
+        // Check for matching interface structure
+        (typeof value.prototype.execute === 'function' &&
+         value.prototype.metadata !== undefined))
+    );
+  }
 }
 ```
 
 ### Workflow Parser (server/src/parser/)
 
+#### ParsedNode and ParsedWorkflow Interfaces
+```typescript
+// server/src/parser/WorkflowParser.ts
+export interface ParsedNode {
+  nodeId: string;
+  config: Record<string, ParameterValue>;
+  edges: Record<string, EdgeRoute>;
+}
+
+export interface ParsedWorkflow {
+  id: string;
+  name: string;
+  version: string;
+  initialState?: Record<string, any>;
+  nodes: ParsedNode[];
+}
+```
+
 #### WorkflowParser Class
 ```typescript
 // server/src/parser/WorkflowParser.ts
 export class WorkflowParser {
-  constructor(
-    private registry: NodeRegistry,
-    private schema: JSONSchema
-  ) {}
+  private ajv: Ajv;
+  private nodeRegistry: NodeRegistry;
 
-  async parse(definition: any): Promise<ParsedWorkflow> {
-    // Validate against JSON schema
-    const validation = await this.validateSchema(definition);
-    if (!validation.valid) {
-      throw new ValidationError(validation.errors);
-    }
-
-    const parsed: ParsedWorkflow = {
-      id: definition.id,
-      name: definition.name,
-      version: definition.version,
-      initialState: definition.initialState || {},
-      nodes: []
-    };
-
-    // Parse each node configuration
-    for (const nodeConfig of definition.workflow) {
-      const parsedNodes = await this.parseNodeConfig(nodeConfig);
-      parsed.nodes.push(...parsedNodes);
-    }
-
-    // Validate node references
-    await this.validateNodeReferences(parsed);
-
-    return parsed;
+  constructor(nodeRegistry: NodeRegistry) {
+    this.nodeRegistry = nodeRegistry;
+    this.ajv = new Ajv({ allErrors: true, verbose: true });
   }
 
-  private async parseNodeConfig(
-    config: NodeConfiguration
-  ): Promise<ParsedNode[]> {
-    const result: ParsedNode[] = [];
+  public parse(workflowDefinition: unknown): ParsedWorkflow {
+    const validationResult = this.validate(workflowDefinition);
+    
+    if (!validationResult.valid) {
+      throw new WorkflowValidationError('Workflow validation failed', validationResult.errors);
+    }
 
-    for (const [key, value] of Object.entries(config)) {
-      const nodeId = key.replace(/\?$/, '');
-      const { params, edges } = this.separateParamsAndEdges(value);
+    const workflow = workflowDefinition as WorkflowDefinition;
+    const parsedNodes = this.parseNodes(workflow.workflow);
 
-      // Validate node exists in registry
-      this.registry.getMetadata(nodeId);
+    return {
+      id: workflow.id,
+      name: workflow.name,
+      version: workflow.version,
+      initialState: workflow.initialState,
+      nodes: parsedNodes
+    };
+  }
 
-      result.push({
-        nodeId,
-        config: params,
-        edges
-      });
+  public validate(workflowDefinition: unknown): ValidationResult {
+    const errors: ValidationError[] = [];
 
-      // Recursively parse nested configurations
-      for (const edge of Object.values(edges)) {
-        if (typeof edge === 'object' && !Array.isArray(edge)) {
-          const nested = await this.parseNodeConfig(edge);
-          result.push(...nested);
+    // JSON Schema validation
+    const schemaValid = this.ajv.validate(workflowSchema, workflowDefinition);
+    
+    if (!schemaValid && this.ajv.errors) {
+      errors.push(...this.ajv.errors.map(error => ({
+        path: error.instancePath || '/',
+        message: error.message || 'Unknown validation error',
+        code: 'SCHEMA_VALIDATION_ERROR'
+      })));
+    }
+
+    // If schema validation passes, perform semantic validation
+    if (errors.length === 0 && workflowDefinition && typeof workflowDefinition === 'object') {
+      const workflow = workflowDefinition as WorkflowDefinition;
+      const semanticErrors = this.validateSemantics(workflow);
+      errors.push(...semanticErrors);
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  private validateSemantics(workflow: WorkflowDefinition): ValidationError[] {
+    const errors: ValidationError[] = [];
+    const nodeIds = new Set<string>();
+    
+    // First pass: collect all node IDs from workflow steps
+    workflow.workflow.forEach((step, stepIndex) => {
+      if (typeof step === 'string') {
+        // Simple node reference
+        nodeIds.add(step);
+        
+        // Check if node type exists in registry
+        if (!this.nodeRegistry.hasNode(step)) {
+          errors.push({
+            path: `/workflow[${stepIndex}]`,
+            message: `Node type '${step}' not found in registry`,
+            code: 'NODE_TYPE_NOT_FOUND'
+          });
+        }
+      } else {
+        // Node configuration object
+        for (const nodeId of Object.keys(step)) {
+          nodeIds.add(nodeId);
+          
+          // Check if node type exists in registry  
+          if (!this.nodeRegistry.hasNode(nodeId)) {
+            errors.push({
+              path: `/workflow[${stepIndex}]/${nodeId}`,
+              message: `Node type '${nodeId}' not found in registry`,
+              code: 'NODE_TYPE_NOT_FOUND'
+            });
+          }
         }
       }
-    }
+    });
 
-    return result;
+    // Second pass: validate edge routes for configured nodes
+    workflow.workflow.forEach((step, stepIndex) => {
+      if (typeof step === 'object') {
+        for (const [nodeId, nodeConfig] of Object.entries(step)) {
+          const { edges } = this.separateParametersAndEdges(nodeConfig);
+          
+          for (const [edgeName, edgeRoute] of Object.entries(edges)) {
+            const edgeErrors = this.validateEdgeRoute(
+              edgeRoute,
+              nodeIds,
+              `/workflow[${stepIndex}]/${nodeId}/${edgeName}?`
+            );
+            errors.push(...edgeErrors);
+          }
+        }
+      }
+    });
+
+    return errors;
   }
 
-  private separateParamsAndEdges(
-    value: NodeConfigValue
-  ): { params: Record<string, any>, edges: Record<string, EdgeRoute> } {
-    const params: Record<string, any> = {};
+  private parseNodes(workflowSteps: WorkflowStep[]): ParsedNode[] {
+    const parsedNodes: ParsedNode[] = [];
+
+    workflowSteps.forEach((step) => {
+      if (typeof step === 'string') {
+        // Simple node reference without configuration
+        parsedNodes.push({
+          nodeId: step,
+          config: {},
+          edges: {}
+        });
+      } else {
+        // Node configuration object
+        for (const [nodeId, nodeConfig] of Object.entries(step)) {
+          const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
+          
+          parsedNodes.push({
+            nodeId,
+            config: parameters,
+            edges
+          });
+        }
+      }
+    });
+
+    return parsedNodes;
+  }
+
+  private separateParametersAndEdges(
+    nodeConfig: NodeConfiguration
+  ): { parameters: Record<string, ParameterValue>; edges: Record<string, EdgeRoute> } {
+    const parameters: Record<string, ParameterValue> = {};
     const edges: Record<string, EdgeRoute> = {};
 
-    if (typeof value === 'object' && !Array.isArray(value)) {
-      for (const [k, v] of Object.entries(value)) {
-        if (k.endsWith('?')) {
-          edges[k.slice(0, -1)] = v;
-        } else {
-          params[k] = v;
-        }
+    for (const [key, value] of Object.entries(nodeConfig)) {
+      if (key.endsWith('?')) {
+        // This is an edge route
+        const edgeName = key.slice(0, -1);
+        edges[edgeName] = value as EdgeRoute;
+      } else {
+        // This is a parameter
+        parameters[key] = value as ParameterValue;
       }
     }
 
-    return { params, edges };
+    return { parameters, edges };
   }
 }
 ```
 
 ### Execution Engine (server/src/engine/)
+
+> **Implementation Status**: The execution engine is planned for implementation. The current codebase includes the foundational components (WorkflowParser and NodeRegistry) needed to support execution.
 
 #### ExecutionEngine Class
 ```typescript
@@ -468,6 +660,8 @@ export class ExecutionEngine {
 
 ### State Manager (server/src/state/)
 
+> **Implementation Status**: The state manager is planned for implementation. State management will be implemented as part of the execution engine development.
+
 #### StateManager Class
 ```typescript
 // server/src/state/StateManager.ts
@@ -545,6 +739,8 @@ export class StateManager {
 
 ### Error Handler (server/src/errors/)
 
+> **Implementation Status**: The error handler is planned for implementation. Error handling will be integrated into the execution engine and middleware layers.
+
 #### ErrorHandler Class
 ```typescript
 // server/src/errors/ErrorHandler.ts
@@ -617,39 +813,127 @@ export class ErrorHandler {
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow Definition Schema",
   "type": "object",
   "required": ["id", "name", "version", "workflow"],
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[a-zA-Z0-9-_]+$"
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the workflow"
     },
     "name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "description": "Human-readable name for the workflow"
     },
     "version": {
       "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the workflow"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of the workflow"
     },
     "initialState": {
-      "type": "object"
+      "type": "object",
+      "description": "Initial state for the workflow execution"
     },
     "workflow": {
-      "type": "array",
+      "type": "array", 
+      "description": "Array of workflow steps (node references or configurations)",
       "minItems": 1,
       "items": {
-        "type": "object",
-        "patternProperties": {
-          "^[a-zA-Z0-9-_]+\\??$": {
-            "oneOf": [
-              { "type": "string" },
-              { "type": "array" },
-              { "type": "object" }
-            ]
-          }
-        }
+        "$ref": "#/definitions/workflowStep"
       }
+    }
+  },
+  "definitions": {
+    "workflowStep": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Simple node reference without configuration"
+        },
+        {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+$": {
+              "$ref": "#/definitions/nodeConfiguration"
+            }
+          },
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1,
+          "description": "Node with configuration parameters and/or edge routes"
+        }
+      ]
+    },
+    "nodeConfiguration": {
+      "type": "object",
+      "description": "Node configuration with parameters and optional edge routes",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "$ref": "#/definitions/parameterValue"
+        },
+        "^[a-zA-Z0-9_-]+\\?$": {
+          "$ref": "#/definitions/edgeRoute"
+        }
+      },
+      "additionalProperties": false
+    },
+    "parameterValue": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/definitions/parameterValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/parameterValue" }
+        }
+      ]
+    },
+    "edgeRoute": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Direct reference to a node ID"
+        },
+        {
+          "type": "array",
+          "description": "Sequence of nodes or configurations to execute",
+          "items": { "$ref": "#/definitions/edgeRouteItem" },
+          "minItems": 1
+        },
+        { "$ref": "#/definitions/nestedNodeConfiguration" }
+      ]
+    },
+    "edgeRouteItem": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "description": "Node ID reference in sequence"
+        },
+        { "$ref": "#/definitions/nestedNodeConfiguration" }
+      ]
+    },
+    "nestedNodeConfiguration": {
+      "type": "object",
+      "description": "Nested node configuration for inline node definition",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/nodeConfiguration" }
+      },
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1
     }
   }
 }
@@ -658,7 +942,29 @@ export class ErrorHandler {
 ### Runtime Data Models
 
 ```typescript
-// Execution tracking
+// Current shared types (shared/src/types/index.ts)
+export interface ValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+}
+
+export interface ValidationError {
+  path: string;
+  message: string;
+  code: string;
+}
+
+export interface ExecutionResult {
+  executionId: string;
+  workflowId: string;
+  status: 'running' | 'completed' | 'failed';
+  finalState?: Record<string, any>;
+  error?: string;
+  startTime: Date;
+  endTime?: Date;
+}
+
+// Planned execution tracking interfaces
 interface ExecutionRecord {
   id: string;
   workflowId: string;
@@ -1354,9 +1660,10 @@ export const devConfig = {
 ### Core Technologies
 - **Runtime**: Bun 1.x - Fast JavaScript runtime with native TypeScript support
 - **Language**: TypeScript 5.x - Type safety and modern JavaScript features
-- **Server Framework**: Hono 3.x - Lightweight, fast web framework
+- **Server Framework**: Hono 4.x - Lightweight, fast web framework
 - **Validation**: Ajv 8.x - JSON Schema validation
 - **Testing**: Vitest - Fast, Vite-powered test runner
+- **Build System**: Native Bun bundler and TypeScript compiler
 
 ### Development Tools
 - **Build Tool**: Bun's built-in bundler

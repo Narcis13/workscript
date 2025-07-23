@@ -9,7 +9,7 @@ export interface NodeMetadata {
   id: string;
   name: string;
   description?: string;
-  version: string;
+  version?: string;
   inputs?: string[];
   outputs?: string[];
 }

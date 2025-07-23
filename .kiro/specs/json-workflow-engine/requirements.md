@@ -16,7 +16,7 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 1. WHEN creating a new node class THEN it must extend the abstract `WorkflowNode` class
 2. WHEN implementing a node THEN it must define the `metadata` property with required fields (id, name, version)
-3. WHEN implementing the `execute` method THEN it must accept `ExecutionContext` and optional `config` parameters
+3. WHEN implementing the `execute` method THEN it must accept `ExecutionContext` and  `config` parameters
 4. WHEN the `execute` method completes THEN it must return a Promise resolving to an `EdgeMap`
 5. IF the node has inputs or outputs THEN they must be declared in the metadata
 
@@ -51,7 +51,7 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 #### Acceptance Criteria
 
 1. WHEN a node returns an edge THEN the engine must route to the corresponding configuration
-2. IF an edge route is defined with `?` suffix THEN it is treated as optional
+2. IF an edge route is defined with `?` suffix THEN it is treated as a routing edge
 3. IF a node returns an edge without a defined route THEN execution continues to the next node
 4. WHEN defining edge routes THEN they can be a string (node name), array (sequence), or object (nested config)
 5. WHEN executing an array edge route THEN nodes must execute in the specified order
@@ -76,8 +76,7 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 1. WHEN configuring a node THEN non-edge parameters are passed to the node's config
 2. WHEN a node executes THEN it receives configuration parameters through the `config` argument
-3. IF a parameter key ends with `?` THEN it is treated as an edge route, not a configuration parameter
-4. WHEN parsing node configuration THEN the system must separate parameters from edge routes
+3. WHEN parsing node configuration THEN the system must separate parameters from edge routes
 
 ### Requirement 7
 
@@ -85,10 +84,10 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 #### Acceptance Criteria
 
-1. WHEN a node returns a `loop` edge THEN the engine executes the defined loop sequence
-2. WHEN loop execution completes THEN the same node is called again
-3. WHEN the node returns a non-loop edge THEN the loop terminates
-4. IF a `loop?` route is defined THEN it can be a node reference, array, or nested configuration
+1. WHEN a node name ends with '...' THEN the engine treat that node as a loop controller
+2. WHEN loop controller execution completes THEN the same node is called again
+3. WHEN the node returns a non-routed edge THEN the loop terminates
+4. IF any `[name]?` route is defined and the loop controller return that edge THEN it can be a node reference, array, or nested configuration
 5. WHEN executing loops THEN shared state must persist across iterations
 
 ### Requirement 8
@@ -122,7 +121,7 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 #### Acceptance Criteria
 
 1. WHEN executing a workflow THEN it must process nodes in the defined sequence
-2. WHEN a node completes THEN it must route based on the returned edge
+2. WHEN a node completes THEN it must route based on the returned edge or none of the edges returned are not routed the engine will execute the next node in sequence
 3. IF an error occurs THEN it must handle it according to error edge routes
 4. WHEN managing execution THEN it must maintain execution context throughout
 5. IF execution completes successfully THEN it must return the final state
@@ -162,16 +161,7 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 3. IF an array contains objects THEN they are treated as inline node configurations
 4. WHEN processing nested configurations THEN parameters are passed correctly to each node
 
-### Requirement 14
 
-**User Story:** As a workflow developer, I want optional edge routes, so that I can reduce workflow verbosity.
-
-#### Acceptance Criteria
-
-1. WHEN a node returns an edge without a defined route THEN execution continues sequentially
-2. IF all edge routes are optional THEN the workflow can run without any routing definitions
-3. WHEN parsing optional routes THEN they must be identified by the `?` suffix
-4. IF an optional route is not taken THEN no error should occur
 
 ### Requirement 15
 

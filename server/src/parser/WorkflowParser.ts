@@ -21,7 +21,7 @@ export interface ParsedNode {
 export interface ParsedWorkflow {
   id: string;
   name: string;
-  version: string;
+  version?: string;
   initialState?: Record<string, any>;
   nodes: ParsedNode[];
 }
