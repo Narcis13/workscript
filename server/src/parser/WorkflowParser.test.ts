@@ -50,33 +50,15 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action',
-              config: { message: 'Starting workflow' },
-              edges: {
-                next: 'process'
-              }
+            action: {
+              message: 'Starting workflow',
+              'next?': 'decision'
             }
           },
           {
-            process: {
-              type: 'decision',
-              edges: {
-                'true': 'success',
-                'false': 'failure'
-              }
-            }
-          },
-          {
-            success: {
-              type: 'action',
-              config: { message: 'Success!' }
-            }
-          },
-          {
-            failure: {
-              type: 'action',
-              config: { message: 'Failed!' }
+            decision: {
+              'true?': 'action',
+              'false?': 'action'
             }
           }
         ]
@@ -93,8 +75,8 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action'
+            action: {
+              message: 'test'
             }
           }
         ]
@@ -117,8 +99,8 @@ describe('WorkflowParser', () => {
         version: 'v1.0',
         workflow: [
           {
-            start: {
-              type: 'action'
+            action: {
+              message: 'test'
             }
           }
         ]
@@ -141,18 +123,11 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'unknown-node',
-              edges: {
-                next: 'end'
-              }
+            'unknown-node': {
+              'next?': 'action'
             }
           },
-          {
-            end: {
-              type: 'action'
-            }
-          }
+          'action'
         ]
       };
 
@@ -160,7 +135,7 @@ describe('WorkflowParser', () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          path: '/workflow[0]/start/type',
+          path: '/workflow[0]/unknown-node',
           message: "Node type 'unknown-node' not found in registry",
           code: 'NODE_TYPE_NOT_FOUND'
         })
@@ -174,11 +149,8 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action',
-              edges: {
-                next: 'non-existent-node'
-              }
+            action: {
+              'next?': 'non-existent-node'
             }
           }
         ]
@@ -188,7 +160,7 @@ describe('WorkflowParser', () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          path: '/workflow[0]/start/edges/next',
+          path: '/workflow[0]/action/next?',
           message: "Edge references non-existent node 'non-existent-node'",
           code: 'EDGE_TARGET_NOT_FOUND'
         })
@@ -202,25 +174,17 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'decision',
-              edges: {
-                'true': {
-                  type: 'action',
-                  config: { message: 'Inline action' },
-                  edges: {
-                    done: 'end'
-                  }
-                },
-                'false': 'end'
-              }
+            decision: {
+              'true?': {
+                action: {
+                  message: 'Inline action',
+                  'done?': 'action'
+                }
+              },
+              'false?': 'action'
             }
           },
-          {
-            end: {
-              type: 'action'
-            }
-          }
+          'action'
         ]
       };
 
@@ -229,18 +193,17 @@ describe('WorkflowParser', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should fail validation for nested node with missing type', () => {
+    it('should fail validation for nested node with invalid node type', () => {
       const workflow = {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'decision',
-              edges: {
-                'true': {
-                  config: { message: 'Missing type' }
+            decision: {
+              'true?': {
+                'invalid-node': {
+                  message: 'Invalid nested node'
                 }
               }
             }
@@ -250,12 +213,11 @@ describe('WorkflowParser', () => {
 
       const result = parser.validate(workflow);
       expect(result.valid).toBe(false);
-      // Schema validation catches this error before semantic validation
       expect(result.errors).toContainEqual(
         expect.objectContaining({
-          path: '/workflow[0]/start/edges/true',
-          message: 'Nested node configuration must have a type',
-          code: 'NESTED_NODE_MISSING_TYPE'
+          path: '/workflow[0]/decision/true?/invalid-node',
+          message: "Nested node type 'invalid-node' not found in registry",
+          code: 'NODE_TYPE_NOT_FOUND'
         })
       );
     });
@@ -267,16 +229,12 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action',
-              edges: {
-                next: ['step1', 'step2', 'step3']
-              }
+            action: {
+              'next?': ['action', 'decision', 'action']
             }
           },
-          { step1: { type: 'action' } },
-          { step2: { type: 'action' } },
-          { step3: { type: 'action' } }
+          'action',
+          'decision'
         ]
       };
 
@@ -285,23 +243,21 @@ describe('WorkflowParser', () => {
       expect(result.errors).toHaveLength(0);
     });
 
-    it('should validate optional edges', () => {
+    it('should validate edges with question mark syntax', () => {
       const workflow = {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action',
-              edges: {
-                'next?': 'end',
-                'fallback': 'error'
-              }
+            action: {
+              message: 'test parameter',
+              'success?': 'action',
+              'error?': 'decision'
             }
           },
-          { end: { type: 'action' } },
-          { error: { type: 'action' } }
+          'action',
+          'decision'
         ]
       };
 
@@ -320,18 +276,14 @@ describe('WorkflowParser', () => {
         initialState: { counter: 0 },
         workflow: [
           {
-            start: {
-              type: 'action',
-              config: { message: 'Hello' },
-              edges: {
-                next: 'end'
-              }
+            action: {
+              message: 'Hello',
+              'next?': 'action'
             }
           },
           {
-            end: {
-              type: 'action',
-              config: { message: 'Goodbye' }
+            action: {
+              message: 'Goodbye'
             }
           }
         ]
@@ -345,38 +297,38 @@ describe('WorkflowParser', () => {
       expect(parsed.initialState).toEqual({ counter: 0 });
       expect(parsed.nodes).toHaveLength(2);
       
-      const startNode = parsed.nodes.find(n => n.nodeId === 'start');
-      expect(startNode).toBeDefined();
-      expect(startNode?.config).toEqual({ message: 'Hello' });
-      expect(startNode?.edges).toEqual({ next: 'end' });
+      const firstNode = parsed.nodes[0];
+      expect(firstNode?.nodeId).toBe('action');
+      expect(firstNode?.config).toEqual({ message: 'Hello' });
+      expect(firstNode?.edges).toEqual({ next: 'action' });
     });
 
-    it('should parse optional edges correctly', () => {
+    it('should parse question mark edges correctly', () => {
       const workflow = {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action',
-              edges: {
-                'success?': 'end',
-                'error': 'errorHandler'
-              }
+            action: {
+              timeout: 5000,
+              'success?': 'action',
+              'error?': 'decision'
             }
           },
-          { end: { type: 'action' } },
-          { errorHandler: { type: 'action' } }
+          'action',
+          'decision'
         ]
       };
 
       const parsed = parser.parse(workflow);
-      const startNode = parsed.nodes.find(n => n.nodeId === 'start');
+      const firstNode = parsed.nodes[0];
       
-      expect(startNode?.edges).toEqual({
-        success: 'end',
-        error: 'errorHandler'
+      expect(firstNode?.nodeId).toBe('action');
+      expect(firstNode?.config).toEqual({ timeout: 5000 });
+      expect(firstNode?.edges).toEqual({
+        success: 'action',
+        error: 'decision'
       });
     });
 
@@ -387,23 +339,20 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'action',
-              edges: {
-                pipeline: ['step1', 'step2', 'step3']
-              }
+            action: {
+              'pipeline?': ['action', 'decision', 'action']
             }
           },
-          { step1: { type: 'action' } },
-          { step2: { type: 'action' } },
-          { step3: { type: 'action' } }
+          'action',
+          'decision'
         ]
       };
 
       const parsed = parser.parse(workflow);
-      const startNode = parsed.nodes.find(n => n.nodeId === 'start');
+      const firstNode = parsed.nodes[0];
       
-      expect(startNode?.edges.pipeline).toEqual(['step1', 'step2', 'step3']);
+      expect(firstNode?.nodeId).toBe('action');
+      expect(firstNode?.edges.pipeline).toEqual(['action', 'decision', 'action']);
     });
 
     it('should parse nested node configurations', () => {
@@ -413,35 +362,31 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'decision',
-              edges: {
-                'true': {
-                  type: 'action',
-                  config: { message: 'Inline success' },
-                  edges: {
-                    done: 'end'
-                  }
-                },
-                'false': 'end'
-              }
+            decision: {
+              'true?': {
+                action: {
+                  message: 'Inline success',
+                  'done?': 'action'
+                }
+              },
+              'false?': 'action'
             }
           },
-          { end: { type: 'action' } }
+          'action'
         ]
       };
 
       const parsed = parser.parse(workflow);
-      const startNode = parsed.nodes.find(n => n.nodeId === 'start');
+      const firstNode = parsed.nodes[0];
       
-      expect(startNode?.edges['true']).toEqual({
-        type: 'action',
-        config: { message: 'Inline success' },
-        edges: {
-          done: 'end'
+      expect(firstNode?.nodeId).toBe('decision');
+      expect(firstNode?.edges['true']).toEqual({
+        action: {
+          message: 'Inline success',
+          'done?': 'action'
         }
       });
-      expect(startNode?.edges['false']).toBe('end');
+      expect(firstNode?.edges['false']).toBe('action');
     });
 
     it('should throw WorkflowValidationError for invalid workflow', () => {
@@ -451,8 +396,8 @@ describe('WorkflowParser', () => {
         version: '1.0.0',
         workflow: [
           {
-            start: {
-              type: 'invalid-node'
+            'invalid-node': {
+              message: 'test'
             }
           }
         ]
@@ -469,43 +414,78 @@ describe('WorkflowParser', () => {
       }
     });
 
-    it('should separate config from edges in parsed nodes', () => {
+    it('should separate parameters from edges in parsed nodes', () => {
       const workflow = {
         id: 'test-workflow',
         name: 'Test Workflow',
         version: '1.0.0',
         workflow: [
           {
-            complexNode: {
-              type: 'action',
+            action: {
               timeout: 5000,
               retries: 3,
-              config: {
-                apiUrl: 'https://api.example.com',
-                method: 'POST'
-              },
-              edges: {
-                success: 'nextStep',
-                'error?': 'errorHandler'
-              }
+              apiUrl: 'https://api.example.com',
+              method: 'POST',
+              'success?': 'action',
+              'error?': 'decision'
             }
           },
-          { nextStep: { type: 'action' } },
-          { errorHandler: { type: 'action' } }
+          'action',
+          'decision'
         ]
       };
 
       const parsed = parser.parse(workflow);
-      const complexNode = parsed.nodes.find(n => n.nodeId === 'complexNode');
+      const firstNode = parsed.nodes[0];
       
-      expect(complexNode?.config).toEqual({
+      expect(firstNode?.nodeId).toBe('action');
+      expect(firstNode?.config).toEqual({
+        timeout: 5000,
+        retries: 3,
         apiUrl: 'https://api.example.com',
         method: 'POST'
       });
-      expect(complexNode?.edges).toEqual({
-        success: 'nextStep',
-        error: 'errorHandler'
+      expect(firstNode?.edges).toEqual({
+        success: 'action',
+        error: 'decision'
       });
+    });
+
+    it('should parse simple string node references', () => {
+      const workflow = {
+        id: 'test-workflow',
+        name: 'Test Workflow',
+        version: '1.0.0',
+        workflow: [
+          'action',
+          'decision',
+          {
+            action: {
+              message: 'configured node',
+              'next?': 'decision'
+            }
+          }
+        ]
+      };
+
+      const parsed = parser.parse(workflow);
+      
+      expect(parsed.nodes).toHaveLength(3);
+      
+      // First node: simple string reference
+      expect(parsed.nodes[0]?.nodeId).toBe('action');
+      expect(parsed.nodes[0]?.config).toEqual({});
+      expect(parsed.nodes[0]?.edges).toEqual({});
+      
+      // Second node: simple string reference
+      expect(parsed.nodes[1]?.nodeId).toBe('decision');
+      expect(parsed.nodes[1]?.config).toEqual({});
+      expect(parsed.nodes[1]?.edges).toEqual({});
+      
+      // Third node: configured node
+      expect(parsed.nodes[2]?.nodeId).toBe('action');
+      expect(parsed.nodes[2]?.config).toEqual({ message: 'configured node' });
+      expect(parsed.nodes[2]?.edges).toEqual({ next: 'decision' });
     });
   });
 });
