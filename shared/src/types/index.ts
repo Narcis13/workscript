@@ -28,21 +28,38 @@ export interface WorkflowDefinition {
   id: string;
   name: string;
   version: string;
+  description?: string;
   initialState?: Record<string, any>;
-  workflow: NodeConfiguration[];
+  workflow: WorkflowStep[];
 }
+
+export type WorkflowStep = 
+  | string                           // Simple node reference without configuration
+  | { [nodeId: string]: NodeConfiguration };  // Node with configuration
 
 export interface NodeConfiguration {
-  [key: string]: NodeConfigValue;
+  [key: string]: ParameterValue | EdgeRoute;
 }
 
-export type NodeConfigValue = 
+export type ParameterValue = 
   | string 
   | number
   | boolean
-  | string[] 
-  | Record<string, any>
-  | NodeConfiguration;
+  | Array<ParameterValue>
+  | { [key: string]: ParameterValue };
+
+export type EdgeRoute = 
+  | string                    // Single node reference
+  | EdgeRouteItem[]           // Sequence of nodes/configs
+  | NestedNodeConfiguration;  // Nested configuration
+
+export type EdgeRouteItem = 
+  | string                    // Node ID in sequence
+  | NestedNodeConfiguration;  // Nested config in sequence
+
+export interface NestedNodeConfiguration {
+  [nodeId: string]: NodeConfiguration;
+}
 
 export interface ValidationResult {
   valid: boolean;

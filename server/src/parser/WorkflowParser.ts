@@ -1,16 +1,22 @@
 import Ajv from 'ajv';
-import type { WorkflowDefinition, ValidationResult, ValidationError, NodeConfiguration } from '../../../shared/src/types';
+import type { 
+  WorkflowDefinition, 
+  ValidationResult, 
+  ValidationError, 
+  WorkflowStep,
+  NodeConfiguration,
+  ParameterValue,
+  EdgeRoute,
+  NestedNodeConfiguration
+} from '../../../shared/src/types';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import workflowSchema from '../schemas/workflow-schema.json';
 
 export interface ParsedNode {
   nodeId: string;
-  type: string;
-  config: Record<string, any>;
+  config: Record<string, ParameterValue>;
   edges: Record<string, EdgeRoute>;
 }
-
-export type EdgeRoute = string | string[] | NodeConfiguration;
 
 export interface ParsedWorkflow {
   id: string;
@@ -79,40 +85,50 @@ export class WorkflowParser {
     const errors: ValidationError[] = [];
     const nodeIds = new Set<string>();
     
-    // First pass: collect all node IDs
-    workflow.workflow.forEach((nodeConfig, index) => {
-      Object.keys(nodeConfig).forEach(key => {
-        const nodeId = key.endsWith('?') ? key.slice(0, -1) : key;
-        nodeIds.add(nodeId);
-      });
-    });
-
-    // Second pass: validate each node
-    workflow.workflow.forEach((nodeConfig, index) => {
-      for (const [key, value] of Object.entries(nodeConfig)) {
-        const nodeId = key.endsWith('?') ? key.slice(0, -1) : key;
+    // First pass: collect all node IDs from workflow steps
+    workflow.workflow.forEach((step, stepIndex) => {
+      if (typeof step === 'string') {
+        // Simple node reference
+        nodeIds.add(step);
         
-        // Check if value is an object with type property (indicating it's a node configuration)
-        if (typeof value === 'object' && !Array.isArray(value) && value !== null && 'type' in value) {
-          // Check if node type exists in registry
-          if (!this.nodeRegistry.hasNode(value.type)) {
+        // Check if node type exists in registry
+        if (!this.nodeRegistry.hasNode(step)) {
+          errors.push({
+            path: `/workflow[${stepIndex}]`,
+            message: `Node type '${step}' not found in registry`,
+            code: 'NODE_TYPE_NOT_FOUND'
+          });
+        }
+      } else {
+        // Node configuration object
+        for (const nodeId of Object.keys(step)) {
+          nodeIds.add(nodeId);
+          
+          // Check if node type exists in registry  
+          if (!this.nodeRegistry.hasNode(nodeId)) {
             errors.push({
-              path: `/workflow[${index}]/${key}/type`,
-              message: `Node type '${value.type}' not found in registry`,
+              path: `/workflow[${stepIndex}]/${nodeId}`,
+              message: `Node type '${nodeId}' not found in registry`,
               code: 'NODE_TYPE_NOT_FOUND'
             });
           }
+        }
+      }
+    });
 
-          // Validate edges if present
-          if ('edges' in value && value.edges) {
-            for (const [edgeKey, edgeValue] of Object.entries(value.edges)) {
-              const edgeErrors = this.validateEdgeRoute(
-                edgeValue,
-                nodeIds,
-                `/workflow[${index}]/${key}/edges/${edgeKey}`
-              );
-              errors.push(...edgeErrors);
-            }
+    // Second pass: validate edge routes for configured nodes
+    workflow.workflow.forEach((step, stepIndex) => {
+      if (typeof step === 'object') {
+        for (const [nodeId, nodeConfig] of Object.entries(step)) {
+          const { edges } = this.separateParametersAndEdges(nodeConfig);
+          
+          for (const [edgeName, edgeRoute] of Object.entries(edges)) {
+            const edgeErrors = this.validateEdgeRoute(
+              edgeRoute,
+              nodeIds,
+              `/workflow[${stepIndex}]/${nodeId}/${edgeName}?`
+            );
+            errors.push(...edgeErrors);
           }
         }
       }
@@ -122,7 +138,7 @@ export class WorkflowParser {
   }
 
   private validateEdgeRoute(
-    route: any,
+    route: EdgeRoute,
     validNodeIds: Set<string>,
     path: string
   ): ValidationError[] {
@@ -130,93 +146,99 @@ export class WorkflowParser {
 
     if (typeof route === 'string') {
       // String route - check if it references a valid node
-      const targetNodeId = route.endsWith('?') ? route.slice(0, -1) : route;
-      if (!validNodeIds.has(targetNodeId)) {
+      if (!validNodeIds.has(route) && !this.nodeRegistry.hasNode(route)) {
         errors.push({
           path,
-          message: `Edge references non-existent node '${targetNodeId}'`,
+          message: `Edge references non-existent node '${route}'`,
           code: 'EDGE_TARGET_NOT_FOUND'
         });
       }
     } else if (Array.isArray(route)) {
       // Array route - validate each element
       route.forEach((item, index) => {
-        const itemErrors = this.validateEdgeRoute(
-          item,
-          validNodeIds,
-          `${path}[${index}]`
-        );
-        errors.push(...itemErrors);
+        if (typeof item === 'string') {
+          if (!validNodeIds.has(item) && !this.nodeRegistry.hasNode(item)) {
+            errors.push({
+              path: `${path}[${index}]`,
+              message: `Edge references non-existent node '${item}'`,
+              code: 'EDGE_TARGET_NOT_FOUND'
+            });
+          }
+        } else {
+          // Nested configuration in array
+          const nestedErrors = this.validateNestedConfiguration(
+            item,
+            validNodeIds,
+            `${path}[${index}]`
+          );
+          errors.push(...nestedErrors);
+        }
       });
     } else if (typeof route === 'object' && route !== null) {
-      // Nested node configuration - validate it has a type
-      if (!route.type) {
+      // Nested node configuration
+      const nestedErrors = this.validateNestedConfiguration(
+        route,
+        validNodeIds,
+        path
+      );
+      errors.push(...nestedErrors);
+    }
+
+    return errors;
+  }
+
+  private validateNestedConfiguration(
+    config: NestedNodeConfiguration,
+    validNodeIds: Set<string>,
+    path: string
+  ): ValidationError[] {
+    const errors: ValidationError[] = [];
+
+    for (const [nodeId, nodeConfig] of Object.entries(config)) {
+      // Check if nested node type exists in registry
+      if (!this.nodeRegistry.hasNode(nodeId)) {
         errors.push({
-          path,
-          message: 'Nested node configuration must have a type',
-          code: 'NESTED_NODE_MISSING_TYPE'
-        });
-      } else if (!this.nodeRegistry.hasNode(route.type)) {
-        errors.push({
-          path: `${path}/type`,
-          message: `Node type '${route.type}' not found in registry`,
+          path: `${path}/${nodeId}`,
+          message: `Nested node type '${nodeId}' not found in registry`,
           code: 'NODE_TYPE_NOT_FOUND'
         });
       }
 
       // Recursively validate nested edges
-      if (route.edges) {
-        for (const [edgeKey, edgeValue] of Object.entries(route.edges)) {
-          const edgeErrors = this.validateEdgeRoute(
-            edgeValue,
-            validNodeIds,
-            `${path}/edges/${edgeKey}`
-          );
-          errors.push(...edgeErrors);
-        }
+      const { edges } = this.separateParametersAndEdges(nodeConfig);
+      for (const [edgeName, edgeRoute] of Object.entries(edges)) {
+        const edgeErrors = this.validateEdgeRoute(
+          edgeRoute,
+          validNodeIds,
+          `${path}/${nodeId}/${edgeName}?`
+        );
+        errors.push(...edgeErrors);
       }
     }
 
     return errors;
   }
 
-  private parseNodes(workflowNodes: NodeConfiguration[]): ParsedNode[] {
+  private parseNodes(workflowSteps: WorkflowStep[]): ParsedNode[] {
     const parsedNodes: ParsedNode[] = [];
 
-    workflowNodes.forEach((nodeConfig) => {
-      for (const [key, value] of Object.entries(nodeConfig)) {
-        const nodeId = key.endsWith('?') ? key.slice(0, -1) : key;
-        
-        // Parse based on the type of value
-        if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
-          // Extract known properties
-          const { type, edges, config, ...rest } = value as any;
+    workflowSteps.forEach((step) => {
+      if (typeof step === 'string') {
+        // Simple node reference without configuration
+        parsedNodes.push({
+          nodeId: step,
+          config: {},
+          edges: {}
+        });
+      } else {
+        // Node configuration object
+        for (const [nodeId, nodeConfig] of Object.entries(step)) {
+          const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
           
-          const parsedNode: ParsedNode = {
-            nodeId,
-            type: type || 'unknown',
-            config: config || (Object.keys(rest).length > 0 ? rest : {}),
-            edges: {}
-          };
-
-          // Parse edges with parameter separation
-          if (edges) {
-            for (const [edgeKey, edgeValue] of Object.entries(edges)) {
-              const isOptional = edgeKey.endsWith('?');
-              const cleanEdgeKey = isOptional ? edgeKey.slice(0, -1) : edgeKey;
-              
-              parsedNode.edges[cleanEdgeKey] = this.parseEdgeRoute(edgeValue);
-            }
-          }
-
-          parsedNodes.push(parsedNode);
-        } else {
-          // Simple value - treat as a basic node
           parsedNodes.push({
             nodeId,
-            type: 'unknown',
-            config: { value },
-            edges: {}
+            config: parameters,
+            edges
           });
         }
       }
@@ -225,32 +247,26 @@ export class WorkflowParser {
     return parsedNodes;
   }
 
-  private parseEdgeRoute(route: any): EdgeRoute {
-    if (typeof route === 'string') {
-      // Remove optional marker from string routes
-      return route.endsWith('?') ? route.slice(0, -1) : route;
-    } else if (Array.isArray(route)) {
-      // Process array routes recursively
-      return route.map(item => this.parseEdgeRoute(item)) as string[];
-    } else if (typeof route === 'object' && route !== null) {
-      // For nested configurations, parse their edges recursively
-      const { edges, ...rest } = route;
-      const parsedConfig: NodeConfiguration = { ...rest };
-      
-      if (edges) {
-        parsedConfig.edges = {};
-        for (const [edgeKey, edgeValue] of Object.entries(edges)) {
-          const isOptional = edgeKey.endsWith('?');
-          const cleanEdgeKey = isOptional ? edgeKey.slice(0, -1) : edgeKey;
-          parsedConfig.edges[cleanEdgeKey] = this.parseEdgeRoute(edgeValue);
-        }
+  private separateParametersAndEdges(
+    nodeConfig: NodeConfiguration
+  ): { parameters: Record<string, ParameterValue>; edges: Record<string, EdgeRoute> } {
+    const parameters: Record<string, ParameterValue> = {};
+    const edges: Record<string, EdgeRoute> = {};
+
+    for (const [key, value] of Object.entries(nodeConfig)) {
+      if (key.endsWith('?')) {
+        // This is an edge route
+        const edgeName = key.slice(0, -1);
+        edges[edgeName] = value as EdgeRoute;
+      } else {
+        // This is a parameter
+        parameters[key] = value as ParameterValue;
       }
-      
-      return parsedConfig;
     }
-    
-    return route;
+
+    return { parameters, edges };
   }
+
 }
 
 export class WorkflowValidationError extends Error {

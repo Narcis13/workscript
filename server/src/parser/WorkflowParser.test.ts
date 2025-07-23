@@ -347,7 +347,6 @@ describe('WorkflowParser', () => {
       
       const startNode = parsed.nodes.find(n => n.nodeId === 'start');
       expect(startNode).toBeDefined();
-      expect(startNode?.type).toBe('action');
       expect(startNode?.config).toEqual({ message: 'Hello' });
       expect(startNode?.edges).toEqual({ next: 'end' });
     });
@@ -499,7 +498,6 @@ describe('WorkflowParser', () => {
       const parsed = parser.parse(workflow);
       const complexNode = parsed.nodes.find(n => n.nodeId === 'complexNode');
       
-      expect(complexNode?.type).toBe('action');
       expect(complexNode?.config).toEqual({
         apiUrl: 'https://api.example.com',
         method: 'POST'
