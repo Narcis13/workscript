@@ -1,0 +1,392 @@
+/**
+ * ExecutionEngine - Core workflow execution orchestration
+ * 
+ * Implements Requirements:
+ * - Requirement 3: Access to execution context during node execution
+ * - Requirement 10: Execute workflows reliably with proper error handling
+ */
+
+import { randomUUID } from 'crypto';
+import type { 
+  ExecutionContext, 
+  ExecutionResult, 
+  EdgeMap 
+} from '../../../shared/src/types';
+import type { ParsedWorkflow, ParsedNode } from '../parser/WorkflowParser';
+import { NodeRegistry } from '../registry/NodeRegistry';
+import { StateManager } from '../state/StateManager';
+
+export interface NodeExecutionResult {
+  edge: string | null;
+  data: any;
+}
+
+export interface ExecutionPlan {
+  type: 'continue' | 'jump' | 'sequence' | 'nested' | 'end';
+  targetIndex?: number;
+  steps?: ExecutionStep[];
+  config?: any;
+}
+
+export interface ExecutionStep {
+  type: 'node' | 'nested';
+  nodeId?: string;
+  config?: any;
+}
+
+export class ExecutionEngineError extends Error {
+  constructor(
+    message: string,
+    public executionId: string,
+    public nodeId?: string,
+    public originalError?: Error
+  ) {
+    super(message);
+    this.name = 'ExecutionEngineError';
+  }
+}
+
+export class LoopLimitError extends ExecutionEngineError {
+  constructor(executionId: string, nodeId: string) {
+    super(`Loop limit exceeded for node: ${nodeId}`, executionId, nodeId);
+    this.name = 'LoopLimitError';
+  }
+}
+
+export class ExecutionEngine {
+  private static readonly MAX_LOOP_ITERATIONS = 1000;
+  private static readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
+
+  constructor(
+    private registry: NodeRegistry,
+    private stateManager: StateManager
+  ) {}
+
+  /**
+   * Execute a parsed workflow
+   * Requirement 10.1: WHEN executing a workflow THEN it must process nodes in the defined sequence
+   */
+  async execute(workflow: ParsedWorkflow): Promise<ExecutionResult> {
+    const executionId = this.generateExecutionId();
+    const startTime = new Date();
+    
+    try {
+      // Initialize state with workflow initial state
+      await this.stateManager.initialize(executionId, workflow.initialState || {});
+
+      // Create initial execution context
+      const context = this.createInitialContext(workflow, executionId);
+
+      // Execute nodes sequentially with edge routing
+      await this.executeWorkflowSequence(workflow, context);
+
+      // Get final state
+      const finalState = await this.stateManager.getState(executionId);
+      
+      return {
+        executionId,
+        workflowId: workflow.id,
+        status: 'completed',
+        finalState,
+        startTime,
+        endTime: new Date()
+      };
+
+    } catch (error) {
+      return {
+        executionId,
+        workflowId: workflow.id,
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        startTime,
+        endTime: new Date()
+      };
+    } finally {
+      // Schedule cleanup after a delay to allow for result retrieval
+      setTimeout(() => {
+        this.stateManager.cleanup(executionId).catch(console.error);
+      }, 60000); // 1 minute delay
+    }
+  }
+
+  /**
+   * Create initial execution context
+   * Requirement 3.2: WHEN accessing context THEN it must provide state, inputs, workflowId, nodeId, and executionId
+   */
+  private createInitialContext(
+    workflow: ParsedWorkflow, 
+    executionId: string
+  ): ExecutionContext {
+    return {
+      state: {},
+      inputs: {},
+      workflowId: workflow.id,
+      nodeId: '',
+      executionId
+    };
+  }
+
+  /**
+   * Execute the main workflow sequence
+   * Requirement 10.2: WHEN a node completes THEN it must route based on the returned edge
+   */
+  private async executeWorkflowSequence(
+    workflow: ParsedWorkflow,
+    context: ExecutionContext
+  ): Promise<void> {
+    let currentIndex = 0;
+    const loopCounts = new Map<string, number>();
+
+    while (currentIndex < workflow.nodes.length) {
+      const node = workflow.nodes[currentIndex];
+      if (!node) {
+        throw new ExecutionEngineError(
+          `Node not found at index ${currentIndex}`,
+          context.executionId
+        );
+      }
+      
+      // Check for loop node (ending with '...')
+      const isLoopNode = node.nodeId.endsWith('...');
+      if (isLoopNode) {
+        const baseNodeId = node.nodeId.slice(0, -3);
+        const loopCount = loopCounts.get(baseNodeId) || 0;
+        
+        if (loopCount >= ExecutionEngine.MAX_LOOP_ITERATIONS) {
+          throw new LoopLimitError(context.executionId, node.nodeId);
+        }
+        
+        loopCounts.set(baseNodeId, loopCount + 1);
+      }
+
+      // Execute the current node
+      const result = await this.executeNode(node, context);
+
+      // Handle edge routing
+      const nextIndex = await this.resolveEdgeRoute(
+        result, 
+        node, 
+        workflow, 
+        currentIndex,
+        context
+      );
+
+      if (nextIndex === -1) {
+        // End execution
+        break;
+      }
+
+      // Reset loop counter if we're not returning to the same loop node
+      if (isLoopNode && nextIndex !== currentIndex) {
+        const baseNodeId = node.nodeId.slice(0, -3);
+        loopCounts.delete(baseNodeId);
+      }
+
+      currentIndex = nextIndex;
+    }
+  }
+
+  /**
+   * Execute a single node
+   * Requirement 3.1: WHEN a node executes THEN it must receive an ExecutionContext object
+   */
+  private async executeNode(
+    node: ParsedNode,
+    context: ExecutionContext
+  ): Promise<NodeExecutionResult> {
+    try {
+      // Get node instance from registry
+      const instance = this.registry.getInstance(node.nodeId);
+      
+      // Update context for this node execution
+      const nodeContext: ExecutionContext = {
+        ...context,
+        nodeId: node.nodeId,
+        state: await this.stateManager.getState(context.executionId),
+        inputs: await this.prepareNodeInputs(context.executionId, node)
+      };
+
+      // Execute the node
+      const edgeMap = await instance.execute(nodeContext, node.config);
+      
+      // Determine which edge was taken
+      const edgeResult = await this.processEdgeMap(edgeMap, nodeContext);
+      
+      // Update state with any changes from node execution
+      await this.updateStateFromContext(context.executionId, nodeContext);
+
+      return edgeResult;
+
+    } catch (error) {
+      // Check if node has error edge route
+      if (node.edges.error) {
+        return { 
+          edge: 'error', 
+          data: { 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+          }
+        };
+      }
+      throw new ExecutionEngineError(
+        `Node execution failed: ${node.nodeId}`,
+        context.executionId,
+        node.nodeId,
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
+  }
+
+  /**
+   * Process the EdgeMap returned by a node to determine the edge taken
+   */
+  private async processEdgeMap(
+    edgeMap: EdgeMap, 
+    context: ExecutionContext
+  ): Promise<NodeExecutionResult> {
+    // Find the first edge that returns non-undefined data
+    for (const [edgeName, edgeFunction] of Object.entries(edgeMap)) {
+      if (typeof edgeFunction === 'function') {
+        try {
+          const data = await edgeFunction(context);
+          if (data !== undefined) {
+            // Store edge data for next node if provided
+            if (data && typeof data === 'object') {
+              await this.stateManager.setEdgeContext(context.executionId, data);
+            }
+            return { edge: edgeName, data };
+          }
+        } catch (error) {
+          console.warn(`Edge function ${edgeName} failed:`, error);
+          continue;
+        }
+      }
+    }
+
+    // No edge taken - continue sequential execution
+    return { edge: null, data: null };
+  }
+
+  /**
+   * Resolve edge routing to determine next execution step
+   * Requirement 10.2: WHEN a node completes THEN it must route based on the returned edge
+   */
+  private async resolveEdgeRoute(
+    result: NodeExecutionResult,
+    node: ParsedNode,
+    workflow: ParsedWorkflow,
+    currentIndex: number,
+    context: ExecutionContext
+  ): Promise<number> {
+    // No edge taken - continue to next node
+    if (!result.edge || !node.edges[result.edge]) {
+      return currentIndex + 1;
+    }
+
+    const route = node.edges[result.edge];
+
+    if (typeof route === 'string') {
+      // Direct node reference - find its index
+      const targetIndex = workflow.nodes.findIndex(n => n.nodeId === route);
+      return targetIndex >= 0 ? targetIndex : currentIndex + 1;
+      
+    } else if (Array.isArray(route)) {
+      // Execute sequence of nodes/configs
+      await this.executeSequence(route, context);
+      return currentIndex + 1; // Continue after sequence
+      
+    } else if (typeof route === 'object' && route !== null) {
+      // Execute nested configuration
+      await this.executeNestedConfiguration(route, context);
+      return currentIndex + 1; // Continue after nested execution
+    }
+
+    // Fallback - continue to next node
+    return currentIndex + 1;
+  }
+
+  /**
+   * Execute a sequence of edge route items
+   */
+  private async executeSequence(
+    sequence: any[],
+    context: ExecutionContext
+  ): Promise<void> {
+    for (const item of sequence) {
+      if (typeof item === 'string') {
+        // Execute referenced node
+        const instance = this.registry.getInstance(item);
+        const nodeContext = {
+          ...context,
+          nodeId: item,
+          state: await this.stateManager.getState(context.executionId),
+          inputs: await this.stateManager.getAndClearEdgeContext(context.executionId) || {}
+        };
+        
+        await instance.execute(nodeContext, {});
+        await this.updateStateFromContext(context.executionId, nodeContext);
+        
+      } else if (typeof item === 'object') {
+        // Execute nested configuration
+        await this.executeNestedConfiguration(item, context);
+      }
+    }
+  }
+
+  /**
+   * Execute a nested node configuration
+   */
+  private async executeNestedConfiguration(
+    config: any,
+    context: ExecutionContext
+  ): Promise<void> {
+    for (const [nodeId, nodeConfig] of Object.entries(config)) {
+      const instance = this.registry.getInstance(nodeId);
+      const nodeContext = {
+        ...context,
+        nodeId,
+        state: await this.stateManager.getState(context.executionId),
+        inputs: await this.stateManager.getAndClearEdgeContext(context.executionId) || {}
+      };
+      
+      await instance.execute(nodeContext, nodeConfig as Record<string, any>);
+      await this.updateStateFromContext(context.executionId, nodeContext);
+    }
+  }
+
+  /**
+   * Prepare inputs for node execution, including edge context data
+   */
+  private async prepareNodeInputs(
+    executionId: string,
+    node: ParsedNode
+  ): Promise<Record<string, any>> {
+    const edgeContext = await this.stateManager.getAndClearEdgeContext(executionId);
+    const currentState = await this.stateManager.getState(executionId);
+    
+    return {
+      ...edgeContext,
+      ...currentState,
+      _nodeConfig: node.config
+    };
+  }
+
+  /**
+   * Update state from execution context after node execution
+   */
+  private async updateStateFromContext(
+    executionId: string,
+    context: ExecutionContext
+  ): Promise<void> {
+    if (context.state && typeof context.state === 'object') {
+      await this.stateManager.updateState(executionId, context.state);
+    }
+  }
+
+  /**
+   * Generate a unique execution ID
+   */
+  private generateExecutionId(): string {
+    return `exec_${randomUUID()}`;
+  }
+}

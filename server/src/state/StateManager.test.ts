@@ -3,7 +3,9 @@ import {
   StateManager, 
   StateNotFoundError, 
   StateLockError, 
-  SnapshotNotFoundError,
+  SnapshotNotFoundError
+} from './StateManager';
+import type {
   StatePersistenceAdapter,
   WorkflowState
 } from './StateManager';
@@ -244,8 +246,8 @@ describe('StateManager', () => {
       
       const snapshots = stateManager.getSnapshots(testExecutionId);
       expect(snapshots).toHaveLength(2);
-      expect(snapshots[0].data).toEqual(testInitialState);
-      expect(snapshots[1].data.counter).toBe(5);
+      expect(snapshots[0]?.data).toEqual(testInitialState);
+      expect(snapshots[1]?.data.counter).toBe(5);
     });
 
     it('should rollback to snapshots successfully', async () => {
