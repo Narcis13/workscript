@@ -327,6 +327,50 @@ describe('ExecutionEngine', () => {
 
       expect(result.status).toBe('completed');
     });
+
+    it('should handle edge routing to Registry-only nodes', async () => {
+      // Create a separate node that exists only in Registry, not in workflow
+      class RegistryOnlyNode extends WorkflowNode {
+        metadata = {
+          id: 'registry-only-node',
+          name: 'Registry Only Node',
+          version: '1.0.0'
+        };
+
+        async execute(context: any, config?: any) {
+          context.state.registryNodeExecuted = true;
+          return {
+            success: () => ({ registryResult: 'executed' })
+          };
+        }
+      }
+
+      await registry.register(RegistryOnlyNode);
+
+      const workflow: ParsedWorkflow = {
+        id: 'registry-route-workflow',
+        name: 'Registry Route Workflow',
+        nodes: [
+          {
+            nodeId: 'conditional-node',
+            config: { condition: true },
+            edges: {
+              success: 'registry-only-node'  // This node exists only in Registry
+            }
+          },
+          {
+            nodeId: 'test-node',
+            config: {},
+            edges: {}
+          }
+        ]
+      };
+
+      const result = await engine.execute(workflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.registryNodeExecuted).toBe(true);
+    });
   });
 
   describe('error handling', () => {

@@ -286,9 +286,20 @@ export class ExecutionEngine {
     const route = node.edges[result.edge];
 
     if (typeof route === 'string') {
-      // Direct node reference - find its index
+      // Direct node reference - first try to find in workflow nodes
       const targetIndex = workflow.nodes.findIndex(n => n.nodeId === route);
-      return targetIndex >= 0 ? targetIndex : currentIndex + 1;
+      if (targetIndex >= 0) {
+        return targetIndex;
+      }
+      
+      // If not found in workflow, execute from Registry and continue
+      if (this.registry.hasNode(route)) {
+        await this.executeNodeFromRegistry(route, context);
+        return currentIndex + 1;
+      }
+      
+      // Node not found anywhere - continue to next node
+      return currentIndex + 1;
       
     } else if (Array.isArray(route)) {
       // Execute sequence of nodes/configs
@@ -306,6 +317,25 @@ export class ExecutionEngine {
   }
 
   /**
+   * Execute a single node directly from Registry
+   */
+  private async executeNodeFromRegistry(
+    nodeId: string,
+    context: ExecutionContext
+  ): Promise<void> {
+    const instance = this.registry.getInstance(nodeId);
+    const nodeContext = {
+      ...context,
+      nodeId,
+      state: await this.stateManager.getState(context.executionId),
+      inputs: await this.stateManager.getAndClearEdgeContext(context.executionId) || {}
+    };
+    
+    await instance.execute(nodeContext, {});
+    await this.updateStateFromContext(context.executionId, nodeContext);
+  }
+
+  /**
    * Execute a sequence of edge route items
    */
   private async executeSequence(
@@ -314,17 +344,8 @@ export class ExecutionEngine {
   ): Promise<void> {
     for (const item of sequence) {
       if (typeof item === 'string') {
-        // Execute referenced node
-        const instance = this.registry.getInstance(item);
-        const nodeContext = {
-          ...context,
-          nodeId: item,
-          state: await this.stateManager.getState(context.executionId),
-          inputs: await this.stateManager.getAndClearEdgeContext(context.executionId) || {}
-        };
-        
-        await instance.execute(nodeContext, {});
-        await this.updateStateFromContext(context.executionId, nodeContext);
+        // Execute referenced node using the centralized method
+        await this.executeNodeFromRegistry(item, context);
         
       } else if (typeof item === 'object') {
         // Execute nested configuration
