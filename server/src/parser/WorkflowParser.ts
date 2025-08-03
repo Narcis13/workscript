@@ -15,7 +15,18 @@ import workflowSchema from '../schemas/workflow-schema.json';
 export interface ParsedNode {
   nodeId: string;
   config: Record<string, ParameterValue>;
-  edges: Record<string, EdgeRoute>;
+  edges: Record<string, ParsedEdge>;
+  children: ParsedNode[];
+  parent?: ParsedNode;
+  depth: number;
+  uniqueId: string;
+}
+
+export interface ParsedEdge {
+  type: 'simple' | 'sequence' | 'nested';
+  target?: string;
+  sequence?: Array<string | ParsedNode>;
+  nestedNode?: ParsedNode;
 }
 
 export interface ParsedWorkflow {
@@ -221,6 +232,7 @@ export class WorkflowParser {
 
   private parseNodes(workflowSteps: WorkflowStep[]): ParsedNode[] {
     const parsedNodes: ParsedNode[] = [];
+    let nodeCounter = 0;
 
     workflowSteps.forEach((step) => {
       if (typeof step === 'string') {
@@ -228,23 +240,119 @@ export class WorkflowParser {
         parsedNodes.push({
           nodeId: step,
           config: {},
-          edges: {}
+          edges: {},
+          children: [],
+          depth: 0,
+          uniqueId: `${step}_${nodeCounter++}`
         });
       } else {
         // Node configuration object
         for (const [nodeId, nodeConfig] of Object.entries(step)) {
-          const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
-          
-          parsedNodes.push({
-            nodeId,
-            config: parameters,
-            edges
-          });
+          const parsedNode = this.parseNodeRecursively(nodeId, nodeConfig, 0, `${nodeId}_${nodeCounter++}`);
+          parsedNodes.push(parsedNode);
         }
       }
     });
 
     return parsedNodes;
+  }
+
+  private parseNodeRecursively(
+    nodeId: string, 
+    nodeConfig: NodeConfiguration, 
+    depth: number, 
+    uniqueId: string,
+    parent?: ParsedNode
+  ): ParsedNode {
+    const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
+    
+    const parsedNode: ParsedNode = {
+      nodeId,
+      config: parameters,
+      edges: {},
+      children: [],
+      parent,
+      depth,
+      uniqueId
+    };
+
+    // Parse edges recursively to build the tree structure
+    for (const [edgeName, edgeRoute] of Object.entries(edges)) {
+      parsedNode.edges[edgeName] = this.parseEdgeRecursively(edgeRoute, depth + 1, parsedNode);
+    }
+
+    return parsedNode;
+  }
+
+  private parseEdgeRecursively(edgeRoute: EdgeRoute, depth: number, parent: ParsedNode): ParsedEdge {
+    let edgeCounter = 0;
+
+    if (typeof edgeRoute === 'string') {
+      // Simple string reference
+      return {
+        type: 'simple',
+        target: edgeRoute
+      };
+    } else if (Array.isArray(edgeRoute)) {
+      // Array of routes (sequence)
+      const parsedSequence: Array<string | ParsedNode> = [];
+      
+      edgeRoute.forEach((item, index) => {
+        if (typeof item === 'string') {
+          parsedSequence.push(item);
+        } else {
+          // Nested configuration in array
+          for (const [nodeId, nodeConfig] of Object.entries(item)) {
+            const uniqueId = `${parent.uniqueId}_seq_${index}_${nodeId}_${edgeCounter++}`;
+            const nestedNode = this.parseNodeRecursively(nodeId, nodeConfig, depth, uniqueId, parent);
+            parent.children.push(nestedNode);
+            parsedSequence.push(nestedNode);
+          }
+        }
+      });
+
+      return {
+        type: 'sequence',
+        sequence: parsedSequence
+      };
+    } else if (typeof edgeRoute === 'object' && edgeRoute !== null) {
+      // Nested node configuration
+      const nestedConfigs = edgeRoute as NestedNodeConfiguration;
+      
+      if (Object.keys(nestedConfigs).length === 1) {
+        // Single nested node
+        const [nodeId, nodeConfig] = Object.entries(nestedConfigs)[0]!;
+        const uniqueId = `${parent.uniqueId}_nested_${nodeId}_${edgeCounter++}`;
+        const nestedNode = this.parseNodeRecursively(nodeId, nodeConfig, depth, uniqueId, parent);
+        parent.children.push(nestedNode);
+        
+        return {
+          type: 'nested',
+          nestedNode
+        };
+      } else {
+        // Multiple nested nodes - treat as sequence
+        const parsedSequence: ParsedNode[] = [];
+        
+        for (const [nodeId, nodeConfig] of Object.entries(nestedConfigs)) {
+          const uniqueId = `${parent.uniqueId}_multi_${nodeId}_${edgeCounter++}`;
+          const nestedNode = this.parseNodeRecursively(nodeId, nodeConfig, depth, uniqueId, parent);
+          parent.children.push(nestedNode);
+          parsedSequence.push(nestedNode);
+        }
+
+        return {
+          type: 'sequence',
+          sequence: parsedSequence
+        };
+      }
+    }
+
+    // Fallback for unknown edge route types
+    return {
+      type: 'simple',
+      target: String(edgeRoute)
+    };
   }
 
   private separateParametersAndEdges(

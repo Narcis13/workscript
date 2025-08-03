@@ -84,7 +84,10 @@ describe('ExecutionEngine', () => {
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_0'
           }
         ]
       };
@@ -106,13 +109,16 @@ describe('ExecutionEngine', () => {
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_0'
           }
         ]
       };
 
       const result = await engine.execute(workflow);
-
+//console.log(result)
       expect(result.status).toBe('completed');
       expect(result.finalState).toMatchObject({
         counter: 0,
@@ -134,7 +140,14 @@ describe('ExecutionEngine', () => {
       const workflow: ParsedWorkflow = {
         id: 'error-workflow',
         name: 'Error Workflow',
-        nodes: [{ nodeId: 'error-node', config: {}, edges: {} }]
+        nodes: [{ 
+          nodeId: 'error-node', 
+          config: {}, 
+          edges: {},
+          children: [],
+          depth: 0,
+          uniqueId: 'error-node_0'
+        }]
       };
 
       const result = await engine.execute(workflow);
@@ -160,12 +173,23 @@ describe('ExecutionEngine', () => {
           {
             nodeId: 'error-node',
             config: {},
-            edges: { error: 'test-node' }
+            edges: { 
+              error: { 
+                type: 'simple', 
+                target: 'test-node' 
+              } 
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'error-node_0'
           },
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
           }
         ]
       };
@@ -180,9 +204,30 @@ describe('ExecutionEngine', () => {
         id: 'sequence-workflow',
         name: 'Sequence Workflow',
         nodes: [
-          { nodeId: 'test-node', config: {}, edges: {} },
-          { nodeId: 'test-node', config: {}, edges: {} },
-          { nodeId: 'test-node', config: {}, edges: {} }
+          { 
+            nodeId: 'test-node', 
+            config: {}, 
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_0'
+          },
+          { 
+            nodeId: 'test-node', 
+            config: {}, 
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
+          },
+          { 
+            nodeId: 'test-node', 
+            config: {}, 
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_2'
+          }
         ]
       };
 
@@ -201,14 +246,20 @@ describe('ExecutionEngine', () => {
             nodeId: 'conditional-node',
             config: {},
             edges: {
-              success: 'test-node',
-              failure: 'test-node'
-            }
+              success: { type: 'simple', target: 'test-node' },
+              failure: { type: 'simple', target: 'test-node' }
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'conditional-node_0'
           },
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
           }
         ]
       };
@@ -228,14 +279,20 @@ describe('ExecutionEngine', () => {
             nodeId: 'loop-node...',
             config: {},
             edges: {
-              continue: 'loop-node...',
-              complete: 'test-node'
-            }
+              continue: { type: 'simple', target: 'loop-node...' },
+              complete: { type: 'simple', target: 'test-node' }
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'loop-node_0'
           },
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
           }
         ]
       };
@@ -265,7 +322,12 @@ describe('ExecutionEngine', () => {
           {
             nodeId: 'infinite-loop...',
             config: {},
-            edges: { continue: 'infinite-loop...' }
+            edges: { 
+              continue: { type: 'simple', target: 'infinite-loop...' } 
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'infinite-loop_0'
           }
         ]
       };
@@ -285,13 +347,22 @@ describe('ExecutionEngine', () => {
             nodeId: 'conditional-node',
             config: { condition: true },
             edges: {
-              success: ['test-node', 'test-node']
-            }
+              success: { 
+                type: 'sequence', 
+                sequence: ['test-node', 'test-node'] 
+              }
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'conditional-node_0'
           },
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
           }
         ]
       };
@@ -311,14 +382,28 @@ describe('ExecutionEngine', () => {
             config: { condition: true },
             edges: {
               success: {
-                'test-node': { param: 'nested' }
+                type: 'nested',
+                nestedNode: {
+                  nodeId: 'test-node',
+                  config: { param: 'nested' },
+                  edges: {},
+                  children: [],
+                  depth: 1,
+                  uniqueId: 'test-node_nested'
+                }
               }
-            }
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'conditional-node_0'
           },
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
           }
         ]
       };
@@ -355,13 +440,22 @@ describe('ExecutionEngine', () => {
             nodeId: 'conditional-node',
             config: { condition: true },
             edges: {
-              success: 'registry-only-node'  // This node exists only in Registry
-            }
+              success: { 
+                type: 'simple', 
+                target: 'registry-only-node' 
+              }
+            },
+            children: [],
+            depth: 0,
+            uniqueId: 'conditional-node_0'
           },
           {
             nodeId: 'test-node',
             config: {},
-            edges: {}
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'test-node_1'
           }
         ]
       };
@@ -416,8 +510,22 @@ describe('ExecutionEngine', () => {
         name: 'State Workflow',
         initialState: { count: 0 },
         nodes: [
-          { nodeId: 'state-node', config: {}, edges: {} },
-          { nodeId: 'state-node', config: {}, edges: {} }
+          { 
+            nodeId: 'state-node', 
+            config: {}, 
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'state-node_0'
+          },
+          { 
+            nodeId: 'state-node', 
+            config: {}, 
+            edges: {},
+            children: [],
+            depth: 0,
+            uniqueId: 'state-node_1'
+          }
         ]
       };
 

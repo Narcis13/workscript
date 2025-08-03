@@ -12,7 +12,7 @@ import type {
   ExecutionResult, 
   EdgeMap 
 } from '../../../shared/src/types';
-import type { ParsedWorkflow, ParsedNode } from '../parser/WorkflowParser';
+import type { ParsedWorkflow, ParsedNode, ParsedEdge } from '../parser/WorkflowParser';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import { StateManager } from '../state/StateManager';
 
@@ -219,7 +219,7 @@ export class ExecutionEngine {
 
     } catch (error) {
       // Check if node has error edge route
-      if (node.edges.error) {
+      if (node.edges.error && node.edges.error.type === 'simple' && node.edges.error.target) {
         return { 
           edge: 'error', 
           data: { 
@@ -283,33 +283,42 @@ export class ExecutionEngine {
       return currentIndex + 1;
     }
 
-    const route = node.edges[result.edge];
+    const parsedEdge = node.edges[result.edge];
 
-    if (typeof route === 'string') {
-      // Direct node reference - first try to find in workflow nodes
-      const targetIndex = workflow.nodes.findIndex(n => n.nodeId === route);
-      if (targetIndex >= 0) {
-        return targetIndex;
-      }
-      
-      // If not found in workflow, execute from Registry and continue
-      if (this.registry.hasNode(route)) {
-        await this.executeNodeFromRegistry(route, context);
+    switch (parsedEdge.type) {
+      case 'simple':
+        // Direct node reference - first try to find in workflow nodes
+        if (parsedEdge.target) {
+          const targetIndex = workflow.nodes.findIndex(n => n.nodeId === parsedEdge.target);
+          if (targetIndex >= 0) {
+            return targetIndex;
+          }
+          
+          // If not found in workflow, execute from Registry and continue
+          if (this.registry.hasNode(parsedEdge.target)) {
+            await this.executeNodeFromRegistry(parsedEdge.target, context);
+            return currentIndex + 1;
+          }
+        }
+        break;
+
+      case 'sequence':
+        // Execute sequence of nodes/configs
+        if (parsedEdge.sequence) {
+          await this.executeSequenceFromParsedEdge(parsedEdge.sequence, context);
+        }
         return currentIndex + 1;
-      }
-      
-      // Node not found anywhere - continue to next node
-      return currentIndex + 1;
-      
-    } else if (Array.isArray(route)) {
-      // Execute sequence of nodes/configs
-      await this.executeSequence(route, context);
-      return currentIndex + 1; // Continue after sequence
-      
-    } else if (typeof route === 'object' && route !== null) {
-      // Execute nested configuration
-      await this.executeNestedConfiguration(route, context);
-      return currentIndex + 1; // Continue after nested execution
+
+      case 'nested':
+        // Execute nested node from AST
+        if (parsedEdge.nestedNode) {
+          await this.executeNestedNode(parsedEdge.nestedNode, context);
+        }
+        return currentIndex + 1;
+
+      default:
+        // Unknown edge type - continue to next node
+        break;
     }
 
     // Fallback - continue to next node
@@ -336,7 +345,61 @@ export class ExecutionEngine {
   }
 
   /**
-   * Execute a sequence of edge route items
+   * Execute a sequence from parsed edge structure
+   */
+  private async executeSequenceFromParsedEdge(
+    sequence: Array<string | ParsedNode>,
+    context: ExecutionContext
+  ): Promise<void> {
+    for (const item of sequence) {
+      if (typeof item === 'string') {
+        // Execute referenced node using the centralized method
+        await this.executeNodeFromRegistry(item, context);
+      } else if (typeof item === 'object' && 'nodeId' in item) {
+        // Execute nested ParsedNode from AST
+        await this.executeNestedNode(item, context);
+      }
+    }
+  }
+
+  /**
+   * Execute a nested ParsedNode from the AST
+   */
+  private async executeNestedNode(
+    parsedNode: ParsedNode,
+    context: ExecutionContext
+  ): Promise<void> {
+    // Execute the node itself first
+    const result = await this.executeNode(parsedNode, context);
+    
+    // If the node has edges and an edge was taken, recursively execute nested nodes
+    if (result.edge && parsedNode.edges[result.edge]) {
+      const edge = parsedNode.edges[result.edge];
+      
+      switch (edge.type) {
+        case 'simple':
+          if (edge.target && this.registry.hasNode(edge.target)) {
+            await this.executeNodeFromRegistry(edge.target, context);
+          }
+          break;
+          
+        case 'sequence':
+          if (edge.sequence) {
+            await this.executeSequenceFromParsedEdge(edge.sequence, context);
+          }
+          break;
+          
+        case 'nested':
+          if (edge.nestedNode) {
+            await this.executeNestedNode(edge.nestedNode, context);
+          }
+          break;
+      }
+    }
+  }
+
+  /**
+   * Execute a sequence of edge route items (legacy support)
    */
   private async executeSequence(
     sequence: any[],
@@ -355,7 +418,7 @@ export class ExecutionEngine {
   }
 
   /**
-   * Execute a nested node configuration
+   * Execute a nested node configuration (legacy support)
    */
   private async executeNestedConfiguration(
     config: any,

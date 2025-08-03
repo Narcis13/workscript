@@ -300,7 +300,12 @@ describe('WorkflowParser', () => {
       const firstNode = parsed.nodes[0];
       expect(firstNode?.nodeId).toBe('action');
       expect(firstNode?.config).toEqual({ message: 'Hello' });
-      expect(firstNode?.edges).toEqual({ next: 'action' });
+      expect(firstNode?.edges).toEqual({ 
+        next: { 
+          type: 'simple', 
+          target: 'action' 
+        } 
+      });
     });
 
     it('should parse question mark edges correctly', () => {
@@ -327,8 +332,8 @@ describe('WorkflowParser', () => {
       expect(firstNode?.nodeId).toBe('action');
       expect(firstNode?.config).toEqual({ timeout: 5000 });
       expect(firstNode?.edges).toEqual({
-        success: 'action',
-        error: 'decision'
+        success: { type: 'simple', target: 'action' },
+        error: { type: 'simple', target: 'decision' }
       });
     });
 
@@ -352,7 +357,10 @@ describe('WorkflowParser', () => {
       const firstNode = parsed.nodes[0];
       
       expect(firstNode?.nodeId).toBe('action');
-      expect(firstNode?.edges.pipeline).toEqual(['action', 'decision', 'action']);
+      expect(firstNode?.edges.pipeline).toEqual({
+        type: 'sequence',
+        sequence: ['action', 'decision', 'action']
+      });
     });
 
     it('should parse nested node configurations', () => {
@@ -380,13 +388,22 @@ describe('WorkflowParser', () => {
       const firstNode = parsed.nodes[0];
       
       expect(firstNode?.nodeId).toBe('decision');
-      expect(firstNode?.edges['true']).toEqual({
-        action: {
-          message: 'Inline success',
-          'done?': 'action'
-        }
+      
+      // Check 'true' edge structure
+      const trueEdge = firstNode?.edges['true'];
+      expect(trueEdge?.type).toBe('nested');
+      expect(trueEdge?.nestedNode?.nodeId).toBe('action');
+      expect(trueEdge?.nestedNode?.config).toEqual({ message: 'Inline success' });
+      expect(trueEdge?.nestedNode?.edges['done']).toEqual({
+        type: 'simple',
+        target: 'action'
       });
-      expect(firstNode?.edges['false']).toBe('action');
+      
+      // Check 'false' edge structure
+      expect(firstNode?.edges['false']).toEqual({
+        type: 'simple',
+        target: 'action'
+      });
     });
 
     it('should throw WorkflowValidationError for invalid workflow', () => {
@@ -446,8 +463,8 @@ describe('WorkflowParser', () => {
         method: 'POST'
       });
       expect(firstNode?.edges).toEqual({
-        success: 'action',
-        error: 'decision'
+        success: { type: 'simple', target: 'action' },
+        error: { type: 'simple', target: 'decision' }
       });
     });
 
@@ -485,7 +502,9 @@ describe('WorkflowParser', () => {
       // Third node: configured node
       expect(parsed.nodes[2]?.nodeId).toBe('action');
       expect(parsed.nodes[2]?.config).toEqual({ message: 'configured node' });
-      expect(parsed.nodes[2]?.edges).toEqual({ next: 'decision' });
+      expect(parsed.nodes[2]?.edges).toEqual({ 
+        next: { type: 'simple', target: 'decision' } 
+      });
     });
   });
 });
