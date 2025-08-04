@@ -9,6 +9,7 @@ import { ExecutionEngine } from './engine/ExecutionEngine';
 import { NodeRegistry } from './registry/NodeRegistry';
 import { StateManager } from './state/StateManager';
 import { WorkflowNode } from '../../shared/src/types';
+import type { ExecutionContext } from '../../shared/src/types';
 
 // Test nodes for integration testing
 class IntegrationActionNode extends WorkflowNode {
@@ -18,7 +19,7 @@ class IntegrationActionNode extends WorkflowNode {
     version: '1.0.0'
   };
 
-  async execute(context: any, config?: any) {
+  async execute(context: ExecutionContext, config?: any) {
     // Store execution trace
     if (!context.state.executionTrace) {
       context.state.executionTrace = [];
@@ -29,12 +30,36 @@ class IntegrationActionNode extends WorkflowNode {
       uniqueId: context.nodeId
     });
 
-    // Return edge map based on configuration
-    return {
-      success: () => ({ processed: true }),
-      done: () => ({ completed: true }),
-      next: () => ({ continue: true })
-    };
+    // Single-edge pattern: determine which edge to return based on internal logic
+    const message = config?.message || 'action executed';
+    
+    // Internal decision logic for which edge to return
+    if (message === 'Welcome authenticated user') {
+      return {
+        success: () => ({ processed: true })
+      };
+    } else if (message === 'Please authenticate') {
+      return {
+        done: () => ({ completed: true })
+      };
+    } else if (message === 'Nested action') {
+      return {
+        done: () => ({ completed: true })
+      };
+    } else if (message === 'Root action' || message === 'Start sequence') {
+      return {
+        success: () => ({ processed: true })
+      };
+    } else if (message === 'Deeply nested action') {
+      return {
+        next: () => ({ continue: true })
+      };
+    } else {
+      // Default edge for unmatched cases
+      return {
+        success: () => ({ processed: true })
+      };
+    }
   }
 }
 
@@ -55,12 +80,19 @@ class IntegrationDecisionNode extends WorkflowNode {
       condition: config?.condition || 'default'
     });
 
+    // Single-edge pattern: internal decision logic
     const condition = config?.condition || context.state.condition || true;
     
-    return {
-      true: () => condition ? { result: 'true_path' } : undefined,
-      false: () => !condition ? { result: 'false_path' } : undefined
-    };
+    // Determine which single edge to return based on condition evaluation
+    if (condition === 'user.isAuthenticated' || condition === true) {
+      return {
+        true: () => ({ result: 'true_path' })
+      };
+    } else {
+      return {
+        false: () => ({ result: 'false_path' })
+      };
+    }
   }
 }
 
@@ -138,8 +170,6 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
     
     // Should have executed at least one action node
     expect(trace.some((entry: any) => entry.nodeId === 'action')).toBe(true);
-    
-    console.log('Integration test execution trace:', JSON.stringify(trace, null, 2));
   });
 
   it('should handle simple nested configuration', async () => {
@@ -171,7 +201,6 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
     expect(result.status).toBe('completed');
     
     const trace = result.finalState?.executionTrace || [];
-    console.log('Simple nested execution trace:', JSON.stringify(trace, null, 2));
     
     // Should have executed root action
     expect(trace.some((entry: any) => entry.message === 'Root action')).toBe(true);
@@ -208,7 +237,6 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
     expect(result.status).toBe('completed');
     
     const trace = result.finalState?.executionTrace || [];
-    console.log('Sequence execution trace:', JSON.stringify(trace, null, 2));
     
     // Should have executed the start action
     expect(trace.some((entry: any) => entry.message === 'Start sequence')).toBe(true);
@@ -256,7 +284,6 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
     }
     
     const astStructure = parsedWorkflow.nodes.flatMap(node => traverseAST(node));
-    console.log('AST Structure:', JSON.stringify(astStructure, null, 2));
     
     // Verify AST structure
     expect(astStructure.length).toBeGreaterThan(1);

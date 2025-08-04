@@ -229,7 +229,7 @@ export class ExecutionEngine {
         };
       }
       throw new ExecutionEngineError(
-        `Node execution failed: ${node.nodeId}`,
+        `Node execution failed: ${node.nodeId} - ${error instanceof Error ? error.message : String(error)}`,
         context.executionId,
         node.nodeId,
         error instanceof Error ? error : new Error(String(error))
@@ -239,13 +239,21 @@ export class ExecutionEngine {
 
   /**
    * Process the EdgeMap returned by a node to determine the edge taken
+   * Optimized for single-edge pattern (99% use case)
    */
   private async processEdgeMap(
     edgeMap: EdgeMap, 
     context: ExecutionContext
   ): Promise<NodeExecutionResult> {
-    // Find the first edge that returns non-undefined data
-    for (const [edgeName, edgeFunction] of Object.entries(edgeMap)) {
+    const edgeEntries = Object.entries(edgeMap);
+    
+    // Design validation: warn if multiple edges are returned (indicates non-standard pattern)
+    if (edgeEntries.length > 1) {
+      console.warn(`Node ${context.nodeId} returned ${edgeEntries.length} edges. Consider using single-edge pattern for better performance.`);
+    }
+    
+    // Process edges - optimized for single edge case
+    for (const [edgeName, edgeFunction] of edgeEntries) {
       if (typeof edgeFunction === 'function') {
         try {
           const data = await edgeFunction(context);
@@ -369,32 +377,37 @@ export class ExecutionEngine {
     parsedNode: ParsedNode,
     context: ExecutionContext
   ): Promise<void> {
-    // Execute the node itself first
-    const result = await this.executeNode(parsedNode, context);
-    
-    // If the node has edges and an edge was taken, recursively execute nested nodes
-    if (result.edge && parsedNode.edges[result.edge]) {
-      const edge = parsedNode.edges[result.edge];
+    try {
+      // Execute the node itself first
+      const result = await this.executeNode(parsedNode, context);
       
-      switch (edge.type) {
-        case 'simple':
-          if (edge.target && this.registry.hasNode(edge.target)) {
-            await this.executeNodeFromRegistry(edge.target, context);
-          }
-          break;
-          
-        case 'sequence':
-          if (edge.sequence) {
-            await this.executeSequenceFromParsedEdge(edge.sequence, context);
-          }
-          break;
-          
-        case 'nested':
-          if (edge.nestedNode) {
-            await this.executeNestedNode(edge.nestedNode, context);
-          }
-          break;
+      // If the node has edges and an edge was taken, recursively execute nested nodes
+      if (result.edge && parsedNode.edges[result.edge]) {
+        const edge = parsedNode.edges[result.edge];
+        
+        switch (edge.type) {
+          case 'simple':
+            if (edge.target && this.registry.hasNode(edge.target)) {
+              await this.executeNodeFromRegistry(edge.target, context);
+            }
+            break;
+            
+          case 'sequence':
+            if (edge.sequence) {
+              await this.executeSequenceFromParsedEdge(edge.sequence, context);
+            }
+            break;
+            
+          case 'nested':
+            if (edge.nestedNode) {
+              await this.executeNestedNode(edge.nestedNode, context);
+            }
+            break;
+        }
       }
+    } catch (error) {
+      // Propagate errors from nested node execution
+      throw error;
     }
   }
 
