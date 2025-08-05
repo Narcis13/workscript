@@ -20,6 +20,8 @@ export interface ParsedNode {
   parent?: ParsedNode;
   depth: number;
   uniqueId: string;
+  isLoopNode: boolean;
+  baseNodeType: string;
 }
 
 export interface ParsedEdge {
@@ -44,6 +46,20 @@ export class WorkflowParser {
   constructor(nodeRegistry: NodeRegistry) {
     this.nodeRegistry = nodeRegistry;
     this.ajv = new Ajv({ allErrors: true, verbose: true });
+  }
+
+  /**
+   * Check if a node ID has loop syntax (ends with ...)
+   */
+  private isLoopNode(nodeId: string): boolean {
+    return nodeId.endsWith('...');
+  }
+
+  /**
+   * Get the base node type from a potentially loop node ID
+   */
+  private getBaseNodeType(nodeId: string): string {
+    return this.isLoopNode(nodeId) ? nodeId.slice(0, -3) : nodeId;
   }
 
   public parse(workflowDefinition: unknown): ParsedWorkflow {
@@ -102,11 +118,12 @@ export class WorkflowParser {
         // Simple node reference
         nodeIds.add(step);
         
-        // Check if node type exists in registry
-        if (!this.nodeRegistry.hasNode(step)) {
+        // Check if base node type exists in registry (strip ... suffix for loop nodes)
+        const baseNodeType = this.getBaseNodeType(step);
+        if (!this.nodeRegistry.hasNode(baseNodeType)) {
           errors.push({
             path: `/workflow[${stepIndex}]`,
-            message: `Node type '${step}' not found in registry`,
+            message: `Node type '${baseNodeType}' not found in registry`,
             code: 'NODE_TYPE_NOT_FOUND'
           });
         }
@@ -115,11 +132,12 @@ export class WorkflowParser {
         for (const nodeId of Object.keys(step)) {
           nodeIds.add(nodeId);
           
-          // Check if node type exists in registry  
-          if (!this.nodeRegistry.hasNode(nodeId)) {
+          // Check if base node type exists in registry (strip ... suffix for loop nodes)
+          const baseNodeType = this.getBaseNodeType(nodeId);
+          if (!this.nodeRegistry.hasNode(baseNodeType)) {
             errors.push({
               path: `/workflow[${stepIndex}]/${nodeId}`,
-              message: `Node type '${nodeId}' not found in registry`,
+              message: `Node type '${baseNodeType}' not found in registry`,
               code: 'NODE_TYPE_NOT_FOUND'
             });
           }
@@ -237,13 +255,18 @@ export class WorkflowParser {
     workflowSteps.forEach((step) => {
       if (typeof step === 'string') {
         // Simple node reference without configuration
+        const isLoop = this.isLoopNode(step);
+        const baseType = this.getBaseNodeType(step);
+        
         parsedNodes.push({
           nodeId: step,
           config: {},
           edges: {},
           children: [],
           depth: 0,
-          uniqueId: `${step}_${nodeCounter++}`
+          uniqueId: `${step}_${nodeCounter++}`,
+          isLoopNode: isLoop,
+          baseNodeType: baseType
         });
       } else {
         // Node configuration object
@@ -266,6 +289,9 @@ export class WorkflowParser {
   ): ParsedNode {
     const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
     
+    const isLoop = this.isLoopNode(nodeId);
+    const baseType = this.getBaseNodeType(nodeId);
+    
     const parsedNode: ParsedNode = {
       nodeId,
       config: parameters,
@@ -273,7 +299,9 @@ export class WorkflowParser {
       children: [],
       parent,
       depth,
-      uniqueId
+      uniqueId,
+      isLoopNode: isLoop,
+      baseNodeType: baseType
     };
 
     // Parse edges recursively to build the tree structure

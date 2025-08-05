@@ -195,8 +195,9 @@ export class ExecutionEngine {
     context: ExecutionContext
   ): Promise<NodeExecutionResult> {
     try {
-      // Get node instance from registry
-      const instance = this.registry.getInstance(node.nodeId);
+      // Get node instance from registry (strip ... suffix for loop nodes)
+      const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
+      const instance = this.registry.getInstance(nodeTypeId);
       
       // Update context for this node execution
       const nodeContext: ExecutionContext = {
@@ -286,13 +287,23 @@ export class ExecutionEngine {
     currentIndex: number,
     context: ExecutionContext
   ): Promise<number> {
+    const isLoopNode = node.nodeId.endsWith('...');
+    
     // No edge taken - continue to next node
-    if (!result.edge || !node.edges[result.edge]) {
+    if (!result.edge) {
       return currentIndex + 1;
     }
 
+    // Check if this edge has a configuration in the node
     const parsedEdge = node.edges[result.edge];
+    
+    if (!parsedEdge) {
+      // Edge has no configuration - for loop nodes, this means exit the loop
+      // For regular nodes, just continue
+      return currentIndex + 1;
+    }
 
+    // Execute the edge configuration
     switch (parsedEdge.type) {
       case 'simple':
         // Direct node reference - first try to find in workflow nodes
@@ -302,10 +313,9 @@ export class ExecutionEngine {
             return targetIndex;
           }
           
-          // If not found in workflow, execute from Registry and continue
+          // If not found in workflow, execute from Registry
           if (this.registry.hasNode(parsedEdge.target)) {
             await this.executeNodeFromRegistry(parsedEdge.target, context);
-            return currentIndex + 1;
           }
         }
         break;
@@ -315,21 +325,22 @@ export class ExecutionEngine {
         if (parsedEdge.sequence) {
           await this.executeSequenceFromParsedEdge(parsedEdge.sequence, context);
         }
-        return currentIndex + 1;
+        break;
 
       case 'nested':
         // Execute nested node from AST
         if (parsedEdge.nestedNode) {
           await this.executeNestedNode(parsedEdge.nestedNode, context);
         }
-        return currentIndex + 1;
-
-      default:
-        // Unknown edge type - continue to next node
         break;
     }
 
-    // Fallback - continue to next node
+    // For loop nodes, after executing the edge configuration, loop back to same node
+    // For regular nodes, continue to next node
+    if (isLoopNode) {
+      return currentIndex; // Loop back to same node for any followed edge
+    }
+    
     return currentIndex + 1;
   }
 

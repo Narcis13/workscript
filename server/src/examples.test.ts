@@ -21,16 +21,17 @@ class LoopNode extends WorkflowNode {
 
   async execute(context: ExecutionContext, config?: any) {
     context.state.loopCount++;
+    console.log(`Loop execution count: ${context.state.loopCount}`);
     if (context.state.loopCount < 5) {
       return {
-        loop: () => ({ message: 'Loop Node' })
+        again: () => ({ message: 'Loop Node' })
       }
     } else {
       return {
-        exit: () => ({ message: 'Loop Node' })
+        stop: () => ({ message: 'Exit Loop Node' })
+      }
     }
   }
-}
 }
 class PrintRandomNumber extends WorkflowNode {
   metadata = {
@@ -113,24 +114,33 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
       initialState: { condition: true, executionTrace: [], loopCount: 0 },
       workflow: [
        'print-random-number',
-       {'loop-node...': {
-          'loop?': {
+       {'decision-node': {
+          'big?':        {'loop-node...': {
+                                  'again?': {
+                                    'print-message': {
+                                      'message': 'Loop Node'
+                                    }
+                                  }
+       }},
+          'small?': {
             'print-message': {
-              'message': 'Loop Node'
-            }
-          },
-          'exit?': {  
-            'print-message': {
-              'message': 'EXIT Loop Node'
+              'message': 'Random number is small'
             }
           }
-       }}
+        }}
+
        
       ]
     };
 
     // Step 1: Parse the workflow definition into AST
-    const parsedWorkflow = parser.parse(workflowDefinition);
+    let parsedWorkflow;
+    try {
+      parsedWorkflow = parser.parse(workflowDefinition);
+    } catch (error: any) {
+      console.log('Validation errors:', JSON.stringify(error.errors, null, 2));
+      throw error;
+    }
     
     // Verify AST structure
     expect(parsedWorkflow.nodes.length).toBeGreaterThan(0);

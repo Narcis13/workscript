@@ -25,10 +25,13 @@ The current implementation significantly exceeds the original requirements with 
 - **Automatic Cleanup**: Scheduled state cleanup for completed executions
 
 ### 3. Sophisticated Execution Engine
-- **Loop Detection**: Built-in iteration limits and loop tracking
+- **Loop Node Support**: Built-in loop node execution with `...` suffix syntax
+- **Loop Detection**: Built-in iteration limits and loop tracking with MAX_LOOP_ITERATIONS safety
+- **Loop Execution Logic**: Automatic loop-back routing when nodes return 'loop' edges
 - **Error Recovery**: Comprehensive error handling with typed exceptions
 - **Nested Node Execution**: Full support for deeply nested workflow configurations
 - **Context Enhancement**: Extended execution context with edge data integration
+- **Registry Mapping**: Smart node instance lookup for loop nodes using base node types
 
 ### 4. Enhanced Type Safety
 - **Comprehensive Error Types**: Specific error classes for different failure scenarios
@@ -413,6 +416,8 @@ export interface ParsedNode {
   parent?: ParsedNode;                      // Parent reference for traversal
   depth: number;                            // Nesting depth tracking
   uniqueId: string;                         // Unique identifier for tree nodes
+  isLoopNode: boolean;                      // Loop node identification (ends with '...')
+  baseNodeType: string;                     // Base node type without '...' suffix for registry lookup
 }
 
 export interface ParsedEdge {
@@ -463,7 +468,7 @@ export class WorkflowParser {
     };
   }
 
-  // Advanced recursive parsing methods
+  // Advanced recursive parsing methods with loop node support
   private parseNodeRecursively(
     nodeId: string, 
     nodeConfig: NodeConfiguration, 
@@ -474,6 +479,22 @@ export class WorkflowParser {
     // Creates hierarchical node structure with parent/child relationships
     // Generates unique IDs for each node in the tree
     // Tracks nesting depth for execution planning
+    // Identifies loop nodes (ending with '...') and extracts base node type
+    // Validates base node type exists in registry for loop nodes
+  }
+
+  /**
+   * Check if a node ID has loop syntax (ends with ...)
+   */
+  private isLoopNode(nodeId: string): boolean {
+    return nodeId.endsWith('...');
+  }
+
+  /**
+   * Get the base node type from a potentially loop node ID
+   */
+  private getBaseNodeType(nodeId: string): string {
+    return this.isLoopNode(nodeId) ? nodeId.slice(0, -3) : nodeId;
   }
 
   private parseEdgeRecursively(
@@ -523,11 +544,12 @@ export class WorkflowParser {
         // Simple node reference
         nodeIds.add(step);
         
-        // Check if node type exists in registry
-        if (!this.nodeRegistry.hasNode(step)) {
+        // Check if base node type exists in registry (strip ... suffix for loop nodes)
+        const baseNodeType = this.getBaseNodeType(step);
+        if (!this.nodeRegistry.hasNode(baseNodeType)) {
           errors.push({
             path: `/workflow[${stepIndex}]`,
-            message: `Node type '${step}' not found in registry`,
+            message: `Node type '${baseNodeType}' not found in registry`,
             code: 'NODE_TYPE_NOT_FOUND'
           });
         }
@@ -536,11 +558,12 @@ export class WorkflowParser {
         for (const nodeId of Object.keys(step)) {
           nodeIds.add(nodeId);
           
-          // Check if node type exists in registry  
-          if (!this.nodeRegistry.hasNode(nodeId)) {
+          // Check if base node type exists in registry (strip ... suffix for loop nodes)
+          const baseNodeType = this.getBaseNodeType(nodeId);
+          if (!this.nodeRegistry.hasNode(baseNodeType)) {
             errors.push({
               path: `/workflow[${stepIndex}]/${nodeId}`,
-              message: `Node type '${nodeId}' not found in registry`,
+              message: `Node type '${baseNodeType}' not found in registry`,
               code: 'NODE_TYPE_NOT_FOUND'
             });
           }
@@ -575,21 +598,24 @@ export class WorkflowParser {
     workflowSteps.forEach((step) => {
       if (typeof step === 'string') {
         // Simple node reference without configuration
+        const isLoop = this.isLoopNode(step);
+        const baseType = this.getBaseNodeType(step);
+        
         parsedNodes.push({
           nodeId: step,
           config: {},
-          edges: {}
+          edges: {},
+          children: [],
+          depth: 0,
+          uniqueId: `${step}_${nodeCounter++}`,
+          isLoopNode: isLoop,
+          baseNodeType: baseType
         });
       } else {
         // Node configuration object
         for (const [nodeId, nodeConfig] of Object.entries(step)) {
-          const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
-          
-          parsedNodes.push({
-            nodeId,
-            config: parameters,
-            edges
-          });
+          const parsedNode = this.parseNodeRecursively(nodeId, nodeConfig, 0, `${nodeId}_${nodeCounter++}`);
+          parsedNodes.push(parsedNode);
         }
       }
     });
@@ -677,13 +703,54 @@ export class ExecutionEngine {
     }
   }
 
-  // Advanced execution methods
+  // Advanced execution methods with loop node support
   private async executeWorkflowSequence(
     workflow: ParsedWorkflow,
     context: ExecutionContext
   ): Promise<void> {
-    // Enhanced execution with loop tracking and edge routing
-    // Supports complex nested configurations from AST
+    let currentIndex = 0;
+    const loopCounts = new Map<string, number>();
+
+    while (currentIndex < workflow.nodes.length) {
+      const node = workflow.nodes[currentIndex];
+      
+      // Check for loop node (ending with '...')
+      const isLoopNode = node.nodeId.endsWith('...');
+      if (isLoopNode) {
+        const baseNodeId = node.nodeId.slice(0, -3);
+        const loopCount = loopCounts.get(baseNodeId) || 0;
+        
+        if (loopCount >= ExecutionEngine.MAX_LOOP_ITERATIONS) {
+          throw new LoopLimitError(context.executionId, node.nodeId);
+        }
+        
+        loopCounts.set(baseNodeId, loopCount + 1);
+      }
+
+      // Execute the current node
+      const result = await this.executeNode(node, context);
+
+      // Handle edge routing with loop-back logic
+      const nextIndex = await this.resolveEdgeRoute(
+        result, 
+        node, 
+        workflow, 
+        currentIndex,
+        context
+      );
+
+      if (nextIndex === -1) {
+        break; // End execution
+      }
+
+      // Reset loop counter if we're not returning to the same loop node
+      if (isLoopNode && nextIndex !== currentIndex) {
+        const baseNodeId = node.nodeId.slice(0, -3);
+        loopCounts.delete(baseNodeId);
+      }
+
+      currentIndex = nextIndex;
+    }
   }
 
   private async executeNestedNode(
@@ -701,15 +768,73 @@ export class ExecutionEngine {
     currentIndex: number,
     context: ExecutionContext
   ): Promise<number> {
-    // Advanced edge resolution using ParsedEdge types
-    // Supports simple, sequence, and nested routing
+    // No edge taken - continue to next node
+    if (!result.edge || !node.edges[result.edge]) {
+      return currentIndex + 1;
+    }
+
+    const parsedEdge = node.edges[result.edge];
+    const isLoopNode = node.nodeId.endsWith('...');
+
+    switch (parsedEdge.type) {
+      case 'simple':
+        // Direct node reference - first try to find in workflow nodes
+        if (parsedEdge.target) {
+          const targetIndex = workflow.nodes.findIndex(n => n.nodeId === parsedEdge.target);
+          if (targetIndex >= 0) {
+            return targetIndex;
+          }
+          
+          // If not found in workflow, execute from Registry and continue
+          if (this.registry.hasNode(parsedEdge.target)) {
+            await this.executeNodeFromRegistry(parsedEdge.target, context);
+            // For loop nodes with 'loop' edge, return to same node
+            if (isLoopNode && result.edge === 'loop') {
+              return currentIndex;
+            }
+            return currentIndex + 1;
+          }
+        }
+        break;
+
+      case 'sequence':
+        // Execute sequence of nodes/configs
+        if (parsedEdge.sequence) {
+          await this.executeSequenceFromParsedEdge(parsedEdge.sequence, context);
+        }
+        // For loop nodes with 'loop' edge, return to same node
+        if (isLoopNode && result.edge === 'loop') {
+          return currentIndex;
+        }
+        return currentIndex + 1;
+
+      case 'nested':
+        // Execute nested node from AST
+        if (parsedEdge.nestedNode) {
+          await this.executeNestedNode(parsedEdge.nestedNode, context);
+        }
+        // For loop nodes with 'loop' edge, return to same node
+        if (isLoopNode && result.edge === 'loop') {
+          return currentIndex;
+        }
+        return currentIndex + 1;
+
+      default:
+        // Unknown edge type - continue to next node
+        break;
+    }
+
+    // Fallback - continue to next node
+    return currentIndex + 1;
   }
 
   private async executeNode(
     node: ParsedNode,
     context: ExecutionContext
   ): Promise<NodeExecutionResult> {
-    const instance = this.registry.getInstance(node.nodeId);
+    // Get node instance from registry (strip ... suffix for loop nodes)
+    const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
+    const instance = this.registry.getInstance(nodeTypeId);
     
     // Update context for this node
     const nodeContext = {
@@ -982,13 +1107,13 @@ export class ErrorHandler {
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+$",
-          "description": "Simple node reference without configuration"
+          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
+          "description": "Simple node reference without configuration (supports loop nodes with '...' suffix)"
         },
         {
           "type": "object",
           "patternProperties": {
-            "^[a-zA-Z0-9_-]+$": {
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
               "$ref": "#/definitions/nodeConfiguration"
             }
           },
@@ -1057,7 +1182,7 @@ export class ErrorHandler {
       "type": "object",
       "description": "Nested node configuration for inline node definition",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/nodeConfiguration" }
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": { "$ref": "#/definitions/nodeConfiguration" }
       },
       "additionalProperties": false,
       "minProperties": 1,
@@ -1197,6 +1322,98 @@ sequenceDiagram
     E-->>API: Execution Result
     API-->>C: Response
 ```
+
+## Loop Node Implementation
+
+### Loop Node Syntax and Semantics
+
+Loop nodes are a specialized workflow pattern that allows for iterative execution within workflows. They are identified by the `...` suffix in their node ID and implement controlled loop execution with automatic loop-back routing.
+
+#### Loop Node Syntax
+```typescript
+// Loop node definition syntax
+{
+  "loop-node...": {
+    "loop?": {
+      // Nested nodes to execute during loop iteration
+      "print-message": {
+        "message": "Loop iteration"
+      }
+    },
+    "exit?": {
+      // Nested nodes to execute when exiting loop
+      "print-message": {
+        "message": "Exiting loop"
+      }
+    }
+  }
+}
+```
+
+#### Loop Execution Flow
+1. **Node Registration**: Loop nodes register using their base type (without `...` suffix)
+2. **Loop Detection**: Parser identifies loop nodes and stores `isLoopNode: true` and `baseNodeType`
+3. **Registry Lookup**: ExecutionEngine uses `baseNodeType` to get node instance from registry
+4. **Loop Logic**: Node's `execute()` method determines which edge to return
+5. **Edge Routing**: 
+   - **Edge WITH configuration**: Execute the edge configuration and loop back to same node
+   - **Edge WITHOUT configuration**: Exit the loop and continue to next workflow node
+6. **Loop Counting**: Engine tracks iterations per loop node to prevent infinite loops
+
+**Key Insight**: The workflow developer controls loop behavior by including or excluding edge configurations. Any edge name can be used - there are no reserved words.
+
+#### Loop Node Implementation Example
+```typescript
+class LoopNode extends WorkflowNode {
+  metadata = {
+    id: 'loop-node',
+    name: 'Loop Node',
+    version: '1.0.0'
+  };
+
+  async execute(context: ExecutionContext, config?: any) {
+    context.state.loopCount = (context.state.loopCount || 0) + 1;
+    
+    if (context.state.loopCount < 5) {
+      // Continue looping - return edge that HAS configuration
+      return {
+        again: () => ({ message: 'Loop iteration' })
+      }
+    } else {
+      // Exit loop - return edge that has NO configuration
+      return {
+        finished: () => ({ message: 'Loop completed' })
+      }
+    }
+  }
+}
+
+// Corresponding workflow configuration:
+{
+  "loop-node...": {
+    "again?": {  // This edge HAS configuration → will loop back
+      "print-message": {
+        "message": "Continuing loop..."
+      }
+    }
+    // "finished?" is NOT defined → when returned, exits the loop
+  }
+}
+```
+
+#### Safety Mechanisms
+- **MAX_LOOP_ITERATIONS**: Hard limit (1000) to prevent infinite loops
+- **Loop Counter Tracking**: Per-loop-node iteration counting
+- **Loop Counter Reset**: Counters reset when exiting loop context
+- **Error Handling**: LoopLimitError thrown when limits exceeded
+
+#### Loop Node Features
+- **Flexible Edge Naming**: No reserved edge names - developers can use any names (again, continue, repeat, etc.)
+- **Configuration-Based Control**: Loop behavior controlled by presence/absence of edge configurations
+- **State Persistence**: Loop state maintained across iterations
+- **Nested Execution**: Support for complex nested node configurations within loop edges
+- **Edge Context**: Data passing between loop iterations via edge functions
+- **Dynamic Exit Conditions**: Loop exit logic determined at runtime by node implementation
 
 ## Key Design Patterns
 

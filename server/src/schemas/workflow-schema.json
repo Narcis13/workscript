@@ -41,13 +41,13 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+$",
-          "description": "Simple node reference without configuration"
+          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
+          "description": "Simple node reference without configuration (supports loop syntax with ... suffix)"
         },
         {
           "type": "object",
           "patternProperties": {
-            "^[a-zA-Z0-9_-]+$": {
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
               "$ref": "#/definitions/nodeConfiguration"
             }
           },
@@ -62,10 +62,10 @@
       "type": "object",
       "description": "Node configuration with parameters and optional edge routes",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": {
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
           "$ref": "#/definitions/parameterValue"
         },
-        "^[a-zA-Z0-9_-]+\\?$": {
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?\\?$": {
           "$ref": "#/definitions/edgeRoute"
         }
       },
@@ -105,7 +105,7 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+$",
+          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
           "description": "Direct reference to a node ID"
         },
         {
@@ -125,7 +125,7 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+$",
+          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
           "description": "Node ID reference in sequence"
         },
         {
@@ -137,7 +137,7 @@
       "type": "object",
       "description": "Nested node configuration for inline node definition",
       "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": {
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
           "$ref": "#/definitions/nodeConfiguration"
         }
       },
