@@ -12,6 +12,26 @@ import { WorkflowNode } from '../../shared/src/types';
 import type { ExecutionContext } from '../../shared/src/types';
 
 // Test nodes for integration testing
+class LoopNode extends WorkflowNode {
+  metadata = {
+    id: 'loop-node',
+    name: 'Loop Node',
+    version: '1.0.0'
+  };
+
+  async execute(context: ExecutionContext, config?: any) {
+    context.state.loopCount++;
+    if (context.state.loopCount < 5) {
+      return {
+        loop: () => ({ message: 'Loop Node' })
+      }
+    } else {
+      return {
+        exit: () => ({ message: 'Loop Node' })
+    }
+  }
+}
+}
 class PrintRandomNumber extends WorkflowNode {
   metadata = {
     id: 'print-random-number',
@@ -82,6 +102,7 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
     await registry.register(PrintRandomNumber);
     await registry.register(IntegrationDecisionNode);
     await registry.register(PrintMessage);
+    await registry.register(LoopNode);
   });
 
   it('should parse and execute a workflow end-to-end', async () => {
@@ -89,19 +110,22 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
       id: 'integration-nested-workflow',
       name: 'Integration Nested Workflow',
       version: '1.0.0',
-      initialState: { condition: true, executionTrace: [] },
+      initialState: { condition: true, executionTrace: [], loopCount: 0 },
       workflow: [
        'print-random-number',
-       {'decision-node': {
-               'big?': {
-                    'print-message': {
-                              'message': 'Big number'
-                      }},
-               'small?': {
-                    'print-message': {
-                              'message': 'Small number'
-                     }}
+       {'loop-node...': {
+          'loop?': {
+            'print-message': {
+              'message': 'Loop Node'
+            }
+          },
+          'exit?': {  
+            'print-message': {
+              'message': 'EXIT Loop Node'
+            }
+          }
        }}
+       
       ]
     };
 
