@@ -389,31 +389,84 @@ export class ExecutionEngine {
     context: ExecutionContext
   ): Promise<void> {
     try {
-      // Execute the node itself first
-      const result = await this.executeNode(parsedNode, context);
+      const isLoopNode = parsedNode.nodeId.endsWith('...');
       
-      // If the node has edges and an edge was taken, recursively execute nested nodes
-      if (result.edge && parsedNode.edges[result.edge]) {
-        const edge = parsedNode.edges[result.edge];
+      if (isLoopNode) {
+        // Special handling for loop nodes - execute with loop detection
+        const loopCounts = new Map<string, number>();
+        const baseNodeId = parsedNode.nodeId.slice(0, -3);
         
-        switch (edge.type) {
-          case 'simple':
-            if (edge.target && this.registry.hasNode(edge.target)) {
-              await this.executeNodeFromRegistry(edge.target, context);
-            }
+        while (true) {
+          // Check loop limit
+          const loopCount = loopCounts.get(baseNodeId) || 0;
+          if (loopCount >= ExecutionEngine.MAX_LOOP_ITERATIONS) {
+            throw new LoopLimitError(context.executionId, parsedNode.nodeId);
+          }
+          loopCounts.set(baseNodeId, loopCount + 1);
+          
+          // Execute the loop node
+          const result = await this.executeNode(parsedNode, context);
+          
+          // If no edge taken or edge has no configuration, exit the loop
+          if (!result.edge || !parsedNode.edges[result.edge]) {
             break;
-            
-          case 'sequence':
-            if (edge.sequence) {
-              await this.executeSequenceFromParsedEdge(edge.sequence, context);
+          }
+          
+          // Execute the edge configuration
+          const edge = parsedNode.edges[result.edge];
+          if (edge) {
+            switch (edge.type) {
+              case 'simple':
+                if (edge.target && this.registry.hasNode(edge.target)) {
+                  await this.executeNodeFromRegistry(edge.target, context);
+                }
+                break;
+                
+              case 'sequence':
+                if (edge.sequence) {
+                  await this.executeSequenceFromParsedEdge(edge.sequence, context);
+                }
+                break;
+                
+              case 'nested':
+                if (edge.nestedNode) {
+                  await this.executeNestedNode(edge.nestedNode, context);
+                }
+                break;
             }
-            break;
-            
-          case 'nested':
-            if (edge.nestedNode) {
-              await this.executeNestedNode(edge.nestedNode, context);
+          }
+          
+          // Continue looping back to the same node
+        }
+      } else {
+        // Regular node execution (non-loop)
+        const result = await this.executeNode(parsedNode, context);
+        
+        // If the node has edges and an edge was taken, recursively execute nested nodes
+        if (result.edge && parsedNode.edges[result.edge]) {
+          const edge = parsedNode.edges[result.edge];
+          
+          if (edge) {
+            switch (edge.type) {
+              case 'simple':
+                if (edge.target && this.registry.hasNode(edge.target)) {
+                  await this.executeNodeFromRegistry(edge.target, context);
+                }
+                break;
+                
+              case 'sequence':
+                if (edge.sequence) {
+                  await this.executeSequenceFromParsedEdge(edge.sequence, context);
+                }
+                break;
+                
+              case 'nested':
+                if (edge.nestedNode) {
+                  await this.executeNestedNode(edge.nestedNode, context);
+                }
+                break;
             }
-            break;
+          }
         }
       }
     } catch (error) {

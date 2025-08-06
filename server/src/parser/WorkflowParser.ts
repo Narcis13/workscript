@@ -224,11 +224,12 @@ export class WorkflowParser {
     const errors: ValidationError[] = [];
 
     for (const [nodeId, nodeConfig] of Object.entries(config)) {
-      // Check if nested node type exists in registry
-      if (!this.nodeRegistry.hasNode(nodeId)) {
+      // Check if base node type exists in registry (strip ... suffix for loop nodes)
+      const baseNodeType = this.getBaseNodeType(nodeId);
+      if (!this.nodeRegistry.hasNode(baseNodeType)) {
         errors.push({
           path: `${path}/${nodeId}`,
-          message: `Nested node type '${nodeId}' not found in registry`,
+          message: `Nested node type '${baseNodeType}' not found in registry`,
           code: 'NODE_TYPE_NOT_FOUND'
         });
       }
