@@ -8,7 +8,7 @@ import type {
   ParameterValue,
   EdgeRoute,
   NestedNodeConfiguration
-} from '../../../shared/src/types';
+} from '../types';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import workflowSchema from '../schemas/workflow-schema.json';
 

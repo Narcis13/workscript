@@ -6,7 +6,15 @@
  * - Requirement 10: Execute workflows reliably with proper error handling
  */
 
-import { randomUUID } from 'crypto';
+// Conditional import for Node.js crypto module
+let randomUUID: () => string;
+if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+  // Browser environment - use Web Crypto API or fallback
+  randomUUID = () => globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : Math.random().toString(36);
+} else {
+  // Server environment
+  randomUUID = require('crypto').randomUUID;
+}
 import type { 
   ExecutionContext, 
   ExecutionResult, 

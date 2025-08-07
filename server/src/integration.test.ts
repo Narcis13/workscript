@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { WorkflowParser, ExecutionEngine, StateManager, NodeRegistry } from 'shared';
-import { WorkflowNode } from '../../shared/src/types';
-import type { ExecutionContext } from '../../shared/src/types';
+import { WorkflowNode } from 'shared';
+import type { ExecutionContext } from 'shared';
 
 // Test nodes for integration testing
 class IntegrationActionNode extends WorkflowNode {

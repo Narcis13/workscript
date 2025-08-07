@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NodeRegistry, NodeNotFoundError, NodeRegistrationError } from './NodeRegistry';
-import { WorkflowNode } from '../../../shared/src/types';
-import type { NodeMetadata, ExecutionContext, EdgeMap } from '../../../shared/src/types';
+import { WorkflowNode } from '../types';
+import type { NodeMetadata, ExecutionContext, EdgeMap } from '../types';
 
 // Mock workflow node for testing
 class TestNode extends WorkflowNode {
@@ -132,7 +132,8 @@ describe('NodeRegistry', () => {
         version: '1.0.0',
         description: 'A test node for unit testing',
         inputs: ['input1'],
-        outputs: ['output1']
+        outputs: ['output1'],
+        source: 'universal'
       });
     });
 

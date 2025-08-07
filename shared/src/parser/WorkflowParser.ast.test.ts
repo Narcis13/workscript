@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { WorkflowParser } from './WorkflowParser';
 import { NodeRegistry } from '../registry/NodeRegistry';
-import { WorkflowNode } from '../../../shared/src/types';
-import type { NodeMetadata, ExecutionContext, EdgeMap } from '../../../shared/src/types';
+import { WorkflowNode } from '../types';
+import type { NodeMetadata, ExecutionContext, EdgeMap } from '../types';
 
 // Mock node implementations for testing
 class MockActionNode extends WorkflowNode {

@@ -1,7 +1,14 @@
 import { WorkflowNode } from '../types';
 import type { NodeMetadata } from '../types';
-import { glob } from 'glob';
-import path from 'path';
+
+// Conditional imports for Node.js-only features
+let glob: any, path: any, fs: any;
+if (typeof globalThis === 'undefined' || !('window' in globalThis)) {
+  // Server environment - import Node.js modules
+  glob = require('glob').glob;
+  path = require('path');
+  fs = require('fs').promises;
+}
 
 export class NodeNotFoundError extends Error {
   constructor(public nodeId: string) {
@@ -101,6 +108,11 @@ export class NodeRegistry {
    * Get discovery paths based on environment
    */
   private getDiscoveryPaths(environment: Environment): Array<{ path: string; source: NodeSource }> {
+    // Only available in Node.js environment
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      return [];
+    }
+    
     const basePath = process.cwd();
     const paths: Array<{ path: string; source: NodeSource }> = [];
     
@@ -124,9 +136,15 @@ export class NodeRegistry {
    * @param source Node source type
    */
   async discoverFromPath(directory: string, source: NodeSource = 'universal'): Promise<void> {
+    // Only available in Node.js environment
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      console.warn('Node discovery is not available in browser environment');
+      return;
+    }
+
     // Check if directory exists before trying to glob
     try {
-      await import('fs').then(fs => fs.promises.access(directory));
+      await fs.access(directory);
     } catch {
       // Directory doesn't exist, skip silently
       return;
@@ -141,6 +159,11 @@ export class NodeRegistry {
    * @param source Node source type
    */
   async discover(directory: string, source: NodeSource = 'universal'): Promise<void> {
+    // Only available in Node.js environment
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      console.warn('Node discovery is not available in browser environment');
+      return;
+    }
     const pattern = path.join(directory, '**/*.{ts,js}');
     const files = await glob(pattern, { absolute: true });
 

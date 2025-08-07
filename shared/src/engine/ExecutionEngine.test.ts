@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { ExecutionEngine, ExecutionEngineError, LoopLimitError } from './ExecutionEngine';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import { StateManager } from '../state/StateManager';
-import { WorkflowNode } from '../../../shared/src/types';
+import { WorkflowNode } from '../types';
 import type { ParsedWorkflow } from '../parser/WorkflowParser';
 
 // Mock node for testing

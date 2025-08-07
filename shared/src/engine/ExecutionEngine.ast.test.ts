@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ExecutionEngine } from './ExecutionEngine';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import { StateManager } from '../state/StateManager';
-import { WorkflowNode } from '../../../shared/src/types';
+import { WorkflowNode } from '../types';
 import type { ParsedWorkflow, ParsedNode } from '../parser/WorkflowParser';
 
 // Mock nodes for testing deeply nested execution

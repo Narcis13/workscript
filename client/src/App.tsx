@@ -2,6 +2,7 @@ import { useState } from 'react'
 import beaver from './assets/beaver.svg'
 import { ApiResponse } from 'shared'
 import { Button } from './components/ui/button'
+import { WorkflowDemo } from './components/WorkflowDemo'
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 
@@ -53,6 +54,10 @@ function App() {
             </code>
           </pre>
         )}
+        
+        <div className="w-full mt-8 pt-8 border-t">
+          <WorkflowDemo />
+        </div>
     </div>
   )
 }
