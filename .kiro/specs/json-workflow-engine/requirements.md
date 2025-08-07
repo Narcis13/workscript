@@ -2,23 +2,25 @@
 
 ## Introduction
 
-This document outlines the comprehensive requirements for the Agentic Workflow Engine, a node-based workflow execution system that processes JSON-defined workflows. The engine enables flexible, conditional workflow execution through a modular architecture where nodes represent units of work and edges determine execution flow.
+This document outlines the comprehensive requirements for the Agentic Workflow Engine, a node-based workflow execution system that processes JSON-defined workflows. The engine enables flexible, conditional workflow execution through a modular, **shared architecture** where nodes represent units of work and edges determine execution flow.
 
-The Agentic Workflow Engine provides a declarative approach to workflow orchestration, allowing complex business logic to be defined in JSON format and executed through a TypeScript-based runtime. The system encompasses workflow definition, parsing, validation, execution, and state management capabilities, supporting conditional routing, loops, and error handling.
+The Agentic Workflow Engine provides a declarative approach to workflow orchestration, allowing complex business logic to be defined in JSON format and executed through a TypeScript-based runtime that runs across **multiple environments** (server, client, CLI). The system encompasses workflow definition, parsing, validation, execution, and state management capabilities, supporting conditional routing, loops, error handling, and **distributed node architectures**.
 
 ## Requirements
 
 ### Requirement 1
 
-**User Story:** As a system integrator, I want to implement custom workflow nodes, so that I can extend the engine with domain-specific functionality.
+**User Story:** As a system integrator, I want to implement custom workflow nodes for different environments, so that I can extend the engine with domain-specific functionality across server, client, and universal contexts.
 
 #### Acceptance Criteria
 
-1. WHEN creating a new node class THEN it must extend the abstract `WorkflowNode` class
+1. WHEN creating a new node class THEN it must extend the abstract `WorkflowNode` class from the shared package
 2. WHEN implementing a node THEN it must define the `metadata` property with required fields (id, name, version)
-3. WHEN implementing the `execute` method THEN it must accept `ExecutionContext` and  `config` parameters
+3. WHEN implementing the `execute` method THEN it must accept `ExecutionContext` and `config` parameters
 4. WHEN the `execute` method completes THEN it must return a Promise resolving to an `EdgeMap`
 5. IF the node has inputs or outputs THEN they must be declared in the metadata
+6. WHEN placing nodes THEN universal nodes go in `/shared/nodes/`, server nodes in `/server/nodes/`, client nodes in `/client/nodes/`
+7. IF a node has environment dependencies THEN it must be placed in the appropriate package directory
 
 ### Requirement 2
 
@@ -104,15 +106,18 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 ### Requirement 9
 
-**User Story:** As a system, I want to manage available nodes, so that workflows can discover and use registered nodes.
+**User Story:** As a system, I want to manage available nodes from multiple packages, so that workflows can discover and use registered nodes based on the execution environment.
 
 #### Acceptance Criteria
 
-1. WHEN registering a node THEN it must be stored with its metadata
+1. WHEN registering a node THEN it must be stored with its metadata and source package information
 2. WHEN looking up a node THEN it must return the node class and metadata
 3. IF a node is already registered THEN registration must handle versioning appropriately
 4. WHEN instantiating a node THEN the registry must create a new instance
 5. IF a node is not found THEN it must return an appropriate error
+6. WHEN discovering nodes THEN the registry must support multiple package sources (shared, server, client)
+7. WHEN filtering nodes THEN the registry must provide nodes appropriate for the execution environment
+8. IF environment-specific discovery is requested THEN only compatible nodes must be included
 
 ### Requirement 10
 
@@ -165,7 +170,7 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 ### Requirement 15
 
-**User Story:** As a system integrator, I want nodes stored as individual files, so that I can manage and version them independently.
+**User Story:** As a system integrator, I want nodes stored as individual files in environment-specific directories, so that I can manage and version them independently while supporting multi-environment execution.
 
 #### Acceptance Criteria
 
@@ -173,6 +178,10 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 2. WHEN a node file is loaded THEN it must export the node class as default or named export
 3. IF node dependencies exist THEN they must be resolvable through the module system
 4. WHEN updating a node THEN only that node's file needs modification
+5. WHEN organizing nodes THEN universal nodes go in `/shared/nodes/` directory
+6. WHEN creating server-specific nodes THEN they go in `/server/nodes/` directory
+7. WHEN creating client-specific nodes THEN they go in `/client/nodes/` directory
+8. IF a node uses environment-specific APIs THEN it must be placed in the appropriate package
 
 ### Requirement 16
 
@@ -200,15 +209,18 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 ### Requirement 18
 
-**User Story:** As a developer, I want a well-organized monorepo, so that I can maintain clean separation of concerns.
+**User Story:** As a developer, I want a well-organized monorepo with shared workflow engine, so that I can maintain clean separation of concerns while enabling multi-environment execution.
 
 #### Acceptance Criteria
 
-1. WHEN organizing code THEN shared types must be in the shared package
-2. WHEN building THEN packages must build in dependency order
-3. IF shared types change THEN dependent packages must be rebuilt
+1. WHEN organizing code THEN shared types and engine components must be in the shared package
+2. WHEN building THEN packages must build in dependency order (shared → server/client)
+3. IF shared engine changes THEN dependent packages must be rebuilt
 4. WHEN developing THEN hot reloading must work across packages
 5. IF installing dependencies THEN shared package must auto-build
+6. WHEN using the engine THEN server and client must import from shared package
+7. WHEN organizing nodes THEN they must be distributed across appropriate package directories
+8. IF creating new environments THEN they must be able to import the shared engine
 
 ### Requirement 19
 
@@ -284,12 +296,49 @@ The Agentic Workflow Engine provides a declarative approach to workflow orchestr
 
 ### Requirement 25
 
-**User Story:** As a system administrator, I want the engine to run on Bun runtime, so that I can leverage its performance benefits.
+**User Story:** As a system administrator, I want the engine to run across multiple environments, so that I can leverage its capabilities in server, client, and CLI contexts.
 
 #### Acceptance Criteria
 
-1. WHEN running the engine THEN it must execute on Bun runtime
-2. IF Bun-specific APIs are used THEN they must be properly typed
-3. WHEN starting the server THEN it must use Hono framework
-4. IF development mode is active THEN hot reloading must work
-5. WHEN building for production THEN all TypeScript must compile successfully
+1. WHEN running the engine on server THEN it must execute on Bun runtime with Hono framework
+2. WHEN running the engine in browser THEN it must work with standard JavaScript APIs
+3. WHEN running the engine in CLI THEN it must work with Node.js/Bun runtime
+4. IF environment-specific APIs are used THEN they must be properly isolated in appropriate packages
+5. WHEN building for production THEN all TypeScript must compile successfully for all target environments
+6. IF development mode is active THEN hot reloading must work across all packages
+
+### Requirement 26
+
+**User Story:** As a workflow engine user, I want the same core functionality across all environments, so that I can write portable workflows.
+
+#### Acceptance Criteria
+
+1. WHEN using the engine THEN core execution logic must be identical across environments
+2. WHEN parsing workflows THEN validation must behave consistently across environments
+3. WHEN managing state THEN state operations must work the same way in all environments
+4. IF environment-specific features are needed THEN they must be clearly documented as such
+5. WHEN writing workflows THEN universal nodes must work identically across environments
+
+### Requirement 27
+
+**User Story:** As a node developer, I want clear guidelines for node placement, so that I can create nodes for the appropriate environments.
+
+#### Acceptance Criteria
+
+1. WHEN creating universal nodes THEN they must have zero external dependencies
+2. WHEN creating server nodes THEN they can use Node.js/Bun APIs and server libraries
+3. WHEN creating client nodes THEN they can use browser APIs and client libraries
+4. IF a node needs environment detection THEN it must use standard environment detection patterns
+5. WHEN documenting nodes THEN environment compatibility must be clearly specified
+
+### Requirement 28
+
+**User Story:** As a system integrator, I want automatic node discovery based on environment, so that the engine loads appropriate nodes automatically.
+
+#### Acceptance Criteria
+
+1. WHEN initializing in server environment THEN registry must load shared and server nodes
+2. WHEN initializing in client environment THEN registry must load shared and client nodes
+3. WHEN initializing in universal mode THEN registry must load nodes from all packages
+4. IF node loading fails THEN appropriate error messages must indicate the source package
+5. WHEN querying available nodes THEN results must indicate the source package for each node

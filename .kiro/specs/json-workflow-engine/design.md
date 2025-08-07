@@ -2,11 +2,11 @@
 
 ## Overview
 
-The Agentic Workflow Engine is a sophisticated, node-based workflow execution system designed to process JSON-defined workflows with dynamic routing capabilities. The architecture leverages TypeScript's type system for compile-time safety while providing runtime flexibility through an abstract node system and edge-based routing. The engine enables complex business logic orchestration through a declarative JSON format, making workflow creation accessible to non-programmers while maintaining the power and extensibility needed for complex enterprise scenarios.
+The Agentic Workflow Engine is a sophisticated, node-based workflow execution system designed to process JSON-defined workflows with dynamic routing capabilities across **multiple environments** (server, client, CLI). The architecture leverages TypeScript's type system for compile-time safety while providing runtime flexibility through an abstract node system and edge-based routing. The engine enables complex business logic orchestration through a declarative JSON format, making workflow creation accessible to non-programmers while maintaining the power and extensibility needed for complex enterprise scenarios.
 
-The system is built on a modular, event-driven architecture that separates concerns into distinct components: workflow parsing and validation, node registry and discovery, execution orchestration, and state management. Each component is designed to be independently testable and scalable, following SOLID principles and leveraging modern TypeScript patterns. The monorepo structure ensures type safety across packages while enabling independent deployment and versioning of components.
+The system is built on a **shared, modular architecture** that separates concerns into distinct components: workflow parsing and validation, node registry and discovery, execution orchestration, and state management. Each component is designed to be independently testable and scalable, following SOLID principles and leveraging modern TypeScript patterns. The **monorepo structure with shared core engine** ensures type safety across packages while enabling **multi-environment deployment** and **distributed node architectures**.
 
-**Implementation Status**: The core components are fully implemented with advanced features including AST-like workflow parsing, comprehensive state management with snapshots and locking, and sophisticated edge routing with nested configurations. The execution engine supports both simple and complex workflow patterns with robust error handling and loop detection.
+**Implementation Status**: The core components are fully implemented with advanced features including AST-like workflow parsing, comprehensive state management with snapshots and locking, and sophisticated edge routing with nested configurations. The execution engine supports both simple and complex workflow patterns with robust error handling and loop detection. **The architecture is being migrated to a shared model** to enable the same engine to run across server, client, and future CLI environments with **distributed node discovery**.
 
 ## Key Implementation Enhancements
 
@@ -52,9 +52,20 @@ The current implementation significantly exceeds the original requirements with 
 
 ## Architecture
 
+### Shared Multi-Environment Architecture
+
+The Agentic Workflow Engine follows a **shared-core architecture** pattern with the core engine residing in a shared package that can be imported and used across multiple environments. The architecture provides clear separation between the shared workflow engine, environment-specific implementations, and distributed node systems.
+
+**Key Architectural Principles:**
+- **Shared Core Engine**: All core workflow logic resides in `/shared` package
+- **Environment-Agnostic Design**: Core engine works in browser, server, CLI contexts
+- **Distributed Node Architecture**: Nodes are organized by environment compatibility
+- **Zero External Dependencies**: Shared engine has minimal dependencies for maximum portability
+- **Type Safety**: Full TypeScript support across all environments
+
 ### High-Level Architecture
 
-The Agentic Workflow Engine follows a layered architecture pattern with clear separation between the presentation layer (JSON workflows), business logic layer (execution engine and nodes), and data layer (state management). The system is designed for both standalone deployment and integration into larger systems.
+The system is designed for **multi-environment deployment** with the same core engine running in server APIs, client applications, CLI tools, and future environments.
 
 ```mermaid
 graph TB
@@ -101,66 +112,83 @@ graph TB
 
 ### Component Architecture
 
-The system is organized as a monorepo with three main packages following the bhvr stack (Bun + Hono + Vite + React): shared types, server implementation, and client utilities. Each package has specific responsibilities and dependencies.
+The system is organized as a monorepo with three main packages following the bhvr stack (Bun + Hono + Vite + React): **shared engine and types**, server implementation, and client implementation. Each package has specific responsibilities and dependencies, with the **core workflow engine residing in the shared package** for multi-environment usage.
 
 ```mermaid
 graph LR
-    subgraph "Shared Package"
+    subgraph "Shared Package (Core Engine)"
         ST[Shared Types]
-        I[Interfaces]
-        E[Enums]
+        WPC[WorkflowParser]
+        EEC[ExecutionEngine]
+        NRC[NodeRegistry]
+        SMC[StateManager]
+        S[Schemas]
+        SN[Universal Nodes]
     end
     
     subgraph "Server Package"
-        subgraph "Core Components"
-            WPC[WorkflowParser]
-            EEC[ExecutionEngine]
-            NRC[NodeRegistry]
-            SMC[StateManager]
-            EH[ErrorHandler]
-        end
-        
         subgraph "API Layer"
             HA[Hono App]
             R[Routes]
             M[Middleware]
         end
         
-        subgraph "Node System"
-            AB[Abstract Base]
-            BN[Built-in Nodes]
-            NL[Node Loader]
+        subgraph "Server Nodes"
+            FSN[FileSystem Nodes]
+            DBN[Database Nodes]
+            AN[Auth Nodes]
         end
     end
     
     subgraph "Client Package"
-        CL[Client Library]
-        UI[UI Components]
-        UT[Utilities]
+        subgraph "UI Layer"
+            RC[React Components]
+            UI[UI Components]
+        end
+        
+        subgraph "Client Nodes"
+            DN[DOM Nodes]
+            LSN[LocalStorage Nodes]
+            FN[Fetch Nodes]
+        end
     end
     
-    ST --> WPC
-    ST --> EEC
-    ST --> NRC
-    ST --> SMC
-    I --> AB
-    AB --> BN
-    NL --> NRC
-    WPC --> EEC
-    NRC --> EEC
-    SMC --> EEC
-    EH --> EEC
-    HA --> R
-    R --> WPC
-    R --> EEC
-    M --> HA
-    ST --> CL
-    CL --> UI
+    %% All packages import from shared
+    ST --> HA
+    WPC --> HA
+    EEC --> HA
+    NRC --> HA
+    SMC --> HA
+    
+    ST --> RC
+    WPC --> RC
+    EEC --> RC
+    NRC --> RC
+    SMC --> RC
+    
+    %% Node discovery
+    NRC --> SN
+    NRC --> FSN
+    NRC --> DBN
+    NRC --> AN
+    NRC --> DN
+    NRC --> LSN
+    NRC --> FN
+    
+    %% API uses server nodes
+    R --> FSN
+    R --> DBN
+    R --> AN
+    
+    %% UI uses client nodes
+    UI --> DN
+    UI --> LSN
+    UI --> FN
 ```
 
 ## Components and Interfaces
 
-### Core Interfaces (shared/src/types/)
+### Core Interfaces (shared/src/types/) - ENHANCED FOR MULTI-ENVIRONMENT
 
 #### WorkflowNode Abstract Class (IMPLEMENTED)
 ```typescript
@@ -249,7 +277,7 @@ export interface NestedNodeConfiguration {
 }
 ```
 
-### Node Registry (server/src/registry/)
+### Node Registry (shared/src/registry/) - ENHANCED FOR MULTI-PACKAGE DISCOVERY
 
 #### NodeRegistry Class
 ```typescript
@@ -1414,6 +1442,191 @@ class LoopNode extends WorkflowNode {
 - **Nested Execution**: Support for complex nested node configurations within loop edges
 - **Edge Context**: Data passing between loop iterations via edge functions
 - **Dynamic Exit Conditions**: Loop exit logic determined at runtime by node implementation
+
+## Distributed Node Architecture
+
+### Node Package Organization
+
+The new shared architecture organizes nodes into three distinct categories based on their environment dependencies:
+
+#### Universal Nodes (`/shared/nodes/`)
+- **Zero External Dependencies**: Can run in any JavaScript environment
+- **Pure Computation**: Mathematical, logical, and data transformation operations
+- **Environment Agnostic**: No browser/server-specific APIs
+- **Examples**: `MathNode`, `DataTransformNode`, `LogicNode`, `ValidationNode`
+
+```typescript
+// Example: shared/nodes/MathNode.ts
+export class MathNode extends WorkflowNode {
+  metadata = {
+    id: 'math',
+    name: 'Math Operations',
+    version: '1.0.0',
+    inputs: ['operation', 'values'],
+    outputs: ['result']
+  };
+
+  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+    const { operation, values } = context.inputs;
+    
+    let result: number;
+    switch (operation) {
+      case 'add': result = values.reduce((a, b) => a + b, 0); break;
+      case 'multiply': result = values.reduce((a, b) => a * b, 1); break;
+      // ... more operations
+    }
+    
+    context.state.mathResult = result;
+    
+    return {
+      success: () => ({ result })
+    };
+  }
+}
+```
+
+#### Server Nodes (`/server/nodes/`)
+- **Server Dependencies**: File system, databases, server APIs
+- **Infrastructure Access**: Environment variables, server resources
+- **Network Operations**: HTTP clients, database connections
+- **Examples**: `FileSystemNode`, `DatabaseNode`, `AuthNode`, `EmailNode`
+
+```typescript
+// Example: server/nodes/FileSystemNode.ts
+import fs from 'fs/promises';
+import path from 'path';
+
+export class FileSystemNode extends WorkflowNode {
+  metadata = {
+    id: 'filesystem',
+    name: 'File System Operations',
+    version: '1.0.0',
+    inputs: ['operation', 'path', 'content'],
+    outputs: ['result', 'content']
+  };
+
+  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+    const { operation, filePath, content } = context.inputs;
+    
+    try {
+      switch (operation) {
+        case 'read':
+          const fileContent = await fs.readFile(filePath, 'utf-8');
+          context.state.fileContent = fileContent;
+          return { success: () => ({ content: fileContent }) };
+          
+        case 'write':
+          await fs.writeFile(filePath, content, 'utf-8');
+          return { success: () => ({ result: 'File written successfully' }) };
+          
+        case 'exists':
+          const exists = await fs.access(filePath).then(() => true).catch(() => false);
+          return { [exists ? 'exists' : 'not_exists']: () => ({ exists }) };
+      }
+    } catch (error) {
+      return { error: () => ({ error: error.message }) };
+    }
+  }
+}
+```
+
+#### Client Nodes (`/client/nodes/`)
+- **Browser APIs**: DOM manipulation, localStorage, fetch
+- **Client Resources**: Browser storage, user interactions
+- **Frontend Integrations**: UI frameworks, client libraries
+- **Examples**: `DOMNode`, `LocalStorageNode`, `FetchNode`, `UINode`
+
+```typescript
+// Example: client/nodes/LocalStorageNode.ts
+export class LocalStorageNode extends WorkflowNode {
+  metadata = {
+    id: 'localStorage',
+    name: 'Local Storage Operations',
+    version: '1.0.0',
+    inputs: ['operation', 'key', 'value'],
+    outputs: ['result', 'value']
+  };
+
+  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+    const { operation, key, value } = context.inputs;
+    
+    try {
+      switch (operation) {
+        case 'get':
+          const storedValue = localStorage.getItem(key);
+          context.state.storedValue = storedValue;
+          return { 
+            [storedValue ? 'found' : 'not_found']: () => ({ value: storedValue }) 
+          };
+          
+        case 'set':
+          localStorage.setItem(key, value);
+          return { success: () => ({ result: 'Value stored successfully' }) };
+          
+        case 'remove':
+          localStorage.removeItem(key);
+          return { success: () => ({ result: 'Value removed successfully' }) };
+      }
+    } catch (error) {
+      return { error: () => ({ error: error.message }) };
+    }
+  }
+}
+```
+
+### Enhanced NodeRegistry for Multi-Package Discovery
+
+```typescript
+// Enhanced NodeRegistry usage examples
+
+// Server environment - loads shared + server nodes
+const serverRegistry = new NodeRegistry();
+await serverRegistry.discoverFromPackages('server');
+
+// Client environment - loads shared + client nodes  
+const clientRegistry = new NodeRegistry();
+await clientRegistry.discoverFromPackages('client');
+
+// Universal environment - loads all nodes
+const universalRegistry = new NodeRegistry();
+await universalRegistry.discoverFromPackages('universal');
+
+// Query nodes by source
+const universalNodes = registry.getNodesBySource('shared');
+const serverNodes = registry.getNodesBySource('server');
+const clientNodes = registry.getNodesBySource('client');
+```
+
+### Environment Detection and Initialization
+
+```typescript
+// Factory pattern for environment-aware initialization
+export class WorkflowEngineFactory {
+  static async createForServer(): Promise<ExecutionEngine> {
+    const registry = new NodeRegistry();
+    await registry.discoverFromPackages('server');
+    
+    const stateManager = new StateManager();
+    return new ExecutionEngine(registry, stateManager);
+  }
+  
+  static async createForClient(): Promise<ExecutionEngine> {
+    const registry = new NodeRegistry();
+    await registry.discoverFromPackages('client');
+    
+    const stateManager = new StateManager();
+    return new ExecutionEngine(registry, stateManager);
+  }
+  
+  static async createUniversal(): Promise<ExecutionEngine> {
+    const registry = new NodeRegistry();
+    await registry.discoverFromPackages('universal');
+    
+    const stateManager = new StateManager();
+    return new ExecutionEngine(registry, stateManager);
+  }
+}
+```
 
 ## Key Design Patterns
 
