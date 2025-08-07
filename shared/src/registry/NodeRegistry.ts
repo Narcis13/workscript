@@ -1,5 +1,5 @@
-import { WorkflowNode } from '../../../shared/src/types';
-import type { NodeMetadata } from '../../../shared/src/types';
+import { WorkflowNode } from '../types';
+import type { NodeMetadata } from '../types';
 import { glob } from 'glob';
 import path from 'path';
 
@@ -17,10 +17,14 @@ export class NodeRegistrationError extends Error {
   }
 }
 
+type NodeSource = 'universal' | 'server' | 'client';
+type Environment = 'server' | 'client' | 'universal';
+
 interface NodeRegistration {
   nodeClass: typeof WorkflowNode;
   metadata: NodeMetadata;
   singleton: boolean;
+  source: NodeSource;
 }
 
 export class NodeRegistry {
@@ -34,7 +38,7 @@ export class NodeRegistry {
    */
   async register(
     nodeClass: typeof WorkflowNode,
-    options?: { singleton?: boolean }
+    options?: { singleton?: boolean; source?: NodeSource }
   ): Promise<void> {
     // Create a temporary instance to get metadata
     let instance: WorkflowNode;
@@ -71,7 +75,8 @@ export class NodeRegistry {
     this.nodes.set(metadata.id, {
       nodeClass,
       metadata,
-      singleton: options?.singleton ?? false
+      singleton: options?.singleton ?? false,
+      source: options?.source ?? 'universal'
     });
 
     // If singleton, create the instance now
@@ -81,10 +86,61 @@ export class NodeRegistry {
   }
 
   /**
+   * Discover and register nodes from multiple package directories
+   * @param environment Target environment ('server' | 'client' | 'universal')
+   */
+  async discoverFromPackages(environment: Environment = 'universal'): Promise<void> {
+    const discoveryPaths = this.getDiscoveryPaths(environment);
+    
+    for (const { path: discoveryPath, source } of discoveryPaths) {
+      await this.discoverFromPath(discoveryPath, source);
+    }
+  }
+
+  /**
+   * Get discovery paths based on environment
+   */
+  private getDiscoveryPaths(environment: Environment): Array<{ path: string; source: NodeSource }> {
+    const basePath = process.cwd();
+    const paths: Array<{ path: string; source: NodeSource }> = [];
+    
+    // Always include shared/nodes (universal nodes)
+    paths.push({ path: path.join(basePath, 'shared/nodes'), source: 'universal' });
+    
+    if (environment === 'server' || environment === 'universal') {
+      paths.push({ path: path.join(basePath, 'server/nodes'), source: 'server' });
+    }
+    
+    if (environment === 'client' || environment === 'universal') {
+      paths.push({ path: path.join(basePath, 'client/nodes'), source: 'client' });
+    }
+    
+    return paths;
+  }
+
+  /**
    * Discover and register nodes from a directory
    * @param directory Directory path to scan for node files
+   * @param source Node source type
    */
-  async discover(directory: string): Promise<void> {
+  async discoverFromPath(directory: string, source: NodeSource = 'universal'): Promise<void> {
+    // Check if directory exists before trying to glob
+    try {
+      await import('fs').then(fs => fs.promises.access(directory));
+    } catch {
+      // Directory doesn't exist, skip silently
+      return;
+    }
+
+    await this.discover(directory, source);
+  }
+
+  /**
+   * Discover and register nodes from a directory (legacy method)
+   * @param directory Directory path to scan for node files
+   * @param source Node source type
+   */
+  async discover(directory: string, source: NodeSource = 'universal'): Promise<void> {
     const pattern = path.join(directory, '**/*.{ts,js}');
     const files = await glob(pattern, { absolute: true });
 
@@ -99,13 +155,13 @@ export class NodeRegistry {
         
         // Check for default export
         if (module.default && this.isWorkflowNode(module.default)) {
-          await this.register(module.default);
+          await this.register(module.default, { source });
         }
         
         // Check for named exports
         for (const [exportName, exportValue] of Object.entries(module)) {
           if (exportName !== 'default' && this.isWorkflowNode(exportValue)) {
-            await this.register(exportValue as typeof WorkflowNode);
+            await this.register(exportValue as typeof WorkflowNode, { source });
           }
         }
       } catch (error) {
@@ -117,12 +173,18 @@ export class NodeRegistry {
   /**
    * Get an instance of a registered node
    * @param nodeId The node ID to instantiate
+   * @param environment Optional environment check
    * @returns A new or singleton instance of the node
    */
-  getInstance(nodeId: string): WorkflowNode {
+  getInstance(nodeId: string, environment?: Environment): WorkflowNode {
     const registration = this.nodes.get(nodeId);
     if (!registration) {
       throw new NodeNotFoundError(nodeId);
+    }
+
+    // Check environment compatibility
+    if (environment && !this.isNodeCompatible(registration.source, environment)) {
+      throw new NodeNotFoundError(`Node ${nodeId} is not available in ${environment} environment`);
     }
 
     // Return singleton instance if available
@@ -140,22 +202,50 @@ export class NodeRegistry {
   /**
    * Get metadata for a registered node
    * @param nodeId The node ID
-   * @returns The node metadata
+   * @returns The node metadata with source information
    */
-  getMetadata(nodeId: string): NodeMetadata {
+  getMetadata(nodeId: string): NodeMetadata & { source: NodeSource } {
     const registration = this.nodes.get(nodeId);
     if (!registration) {
       throw new NodeNotFoundError(nodeId);
     }
-    return registration.metadata;
+    return { ...registration.metadata, source: registration.source };
   }
 
   /**
    * List all registered nodes
    * @returns Array of node metadata
    */
-  listNodes(): NodeMetadata[] {
-    return Array.from(this.nodes.values()).map(r => r.metadata);
+  listNodes(environment?: Environment): NodeMetadata[] {
+    const nodes = Array.from(this.nodes.values());
+    
+    if (!environment) {
+      return nodes.map(r => r.metadata);
+    }
+    
+    return nodes
+      .filter(r => this.isNodeCompatible(r.source, environment))
+      .map(r => r.metadata);
+  }
+
+  /**
+   * List nodes by source
+   * @param source Filter by node source
+   * @returns Array of node metadata
+   */
+  listNodesBySource(source: NodeSource): NodeMetadata[] {
+    return Array.from(this.nodes.values())
+      .filter(r => r.source === source)
+      .map(r => r.metadata);
+  }
+
+  /**
+   * Check if a node is compatible with an environment
+   */
+  private isNodeCompatible(nodeSource: NodeSource, environment: Environment): boolean {
+    if (environment === 'universal') return true;
+    if (nodeSource === 'universal') return true;
+    return nodeSource === environment;
   }
 
   /**
