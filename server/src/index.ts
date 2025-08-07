@@ -2,10 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { ApiResponse, WorkflowDefinition } from 'shared/dist'
 import { securityHeaders, logger, errorHandler } from './middleware'
-import { ExecutionEngine } from './engine'
-import { NodeRegistry } from './registry'
-import { StateManager } from './state'
-import { WorkflowParser } from './parser'
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry } from 'shared'
 
 const app = new Hono()
 

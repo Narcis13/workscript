@@ -4,10 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { WorkflowParser } from './parser/WorkflowParser';
-import { ExecutionEngine } from './engine/ExecutionEngine';
-import { NodeRegistry } from './registry/NodeRegistry';
-import { StateManager } from './state/StateManager';
+import { WorkflowParser, ExecutionEngine, StateManager, NodeRegistry } from 'shared';
 import { WorkflowNode } from '../../shared/src/types';
 import type { ExecutionContext } from '../../shared/src/types';
 
