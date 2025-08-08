@@ -158,6 +158,7 @@ describe('ExecutionEngine AST Execution', () => {
   describe('Deeply Nested Workflow Execution', () => {
     it('should execute a complex deeply nested workflow correctly', async () => {
       // Create a workflow structure similar to the AST test but as ParsedWorkflow
+      console.log('Starting deeply nested workflow execution test');
       const nestedActionNode: ParsedNode = {
         nodeId: 'action',
         config: { message: 'Deep nested action', depth: 5 },

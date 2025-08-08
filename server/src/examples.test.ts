@@ -104,6 +104,7 @@ describe('WorkflowParser + ExecutionEngine Integration', () => {
   });
 
   it('should parse and execute a workflow end-to-end', async () => {
+    console.log('Starting integration test for workflow execution');
     const workflowDefinition = {
       id: 'integration-nested-workflow',
       name: 'Integration Nested Workflow',

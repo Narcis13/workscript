@@ -12,7 +12,7 @@ export class DataTransformNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, data } = context.inputs;
+    const { operation, data } = config || {};
     
     if (!operation || data === undefined) {
       return {

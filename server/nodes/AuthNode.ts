@@ -13,7 +13,7 @@ export class AuthNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, data, secret } = context.inputs;
+    const { operation, data, secret } = config || {};
     
     if (!operation || !data) {
       return {

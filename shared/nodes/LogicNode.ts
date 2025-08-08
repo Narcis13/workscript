@@ -12,7 +12,7 @@ export class LogicNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, values } = context.inputs;
+    const { operation, values } = config || {};
     
     if (!operation || !values) {
       return {

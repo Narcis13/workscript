@@ -12,7 +12,7 @@ export class LocalStorageNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, key, value } = context.inputs;
+    const { operation, key, value } = config || {};
     
     if (!operation || !key) {
       return {

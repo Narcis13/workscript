@@ -12,7 +12,7 @@ export class FetchNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { url, method = 'GET', headers = {}, body } = context.inputs;
+    const { url, method = 'GET', headers = {}, body } = config || {};
     
     if (!url) {
       return {

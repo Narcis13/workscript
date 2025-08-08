@@ -14,7 +14,7 @@ export class DatabaseNode extends WorkflowNode {
   private static mockDB: Map<string, Map<string, any>> = new Map();
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, table, data, query } = context.inputs;
+    const { operation, table, data, query } = config || {};
     
     if (!operation || !table) {
       return {

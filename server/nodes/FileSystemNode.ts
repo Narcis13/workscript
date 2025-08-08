@@ -14,7 +14,7 @@ export class FileSystemNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, path: filePath, content } = context.inputs;
+    const { operation, path: filePath, content } = config || {};
     
     if (!operation || !filePath) {
       return {

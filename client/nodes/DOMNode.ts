@@ -12,7 +12,7 @@ export class DOMNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, selector, content, attribute } = context.inputs;
+    const { operation, selector, content, attribute } = config || {};
     
     if (!operation) {
       return {
