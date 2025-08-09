@@ -141,3 +141,5 @@ export class DatabaseNode extends WorkflowNode {
     }
   }
 }
+
+export default DatabaseNode;

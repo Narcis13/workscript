@@ -97,10 +97,26 @@ export class NodeRegistry {
    * @param environment Target environment ('server' | 'client' | 'universal')
    */
   async discoverFromPackages(environment: Environment = 'universal'): Promise<void> {
+    // In browser environment, log warning and suggest manual registration
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      console.warn('File-based node discovery is not available in browser environment. Use registerClientNodes() method instead.');
+      return;
+    }
+
     const discoveryPaths = this.getDiscoveryPaths(environment);
     
     for (const { path: discoveryPath, source } of discoveryPaths) {
       await this.discoverFromPath(discoveryPath, source);
+    }
+  }
+
+  /**
+   * Manually register client-specific nodes (for browser environments)
+   * @param nodeClasses Array of node classes to register
+   */
+  async registerClientNodes(nodeClasses: Array<typeof WorkflowNode>): Promise<void> {
+    for (const nodeClass of nodeClasses) {
+      await this.register(nodeClass, { source: 'client' });
     }
   }
 
@@ -113,7 +129,8 @@ export class NodeRegistry {
       return [];
     }
     
-    const basePath = process.cwd();
+    // Find monorepo root by looking for package.json files in parent directories
+    const basePath = this.findMonorepoRoot();
     const paths: Array<{ path: string; source: NodeSource }> = [];
     
     // Always include shared/nodes (universal nodes)
@@ -131,6 +148,49 @@ export class NodeRegistry {
   }
 
   /**
+   * Find the monorepo root by looking for the directory that contains
+   * both shared/ and server/ subdirectories
+   */
+  private findMonorepoRoot(): string {
+    // Only available in Node.js environment
+    if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
+      return process.cwd();
+    }
+    
+    let currentDir = process.cwd();
+    console.log(`🔍 [DEBUG] Finding monorepo root, starting from: ${currentDir}`);
+    
+    // Walk up the directory tree to find the monorepo root
+    while (currentDir !== path.dirname(currentDir)) {
+      try {
+        const sharedPath = path.join(currentDir, 'shared');
+        const serverPath = path.join(currentDir, 'server');
+        
+        // Use require('fs') to ensure we have the right fs module
+        const nodeFs = require('fs');
+        const sharedExists = nodeFs.existsSync(sharedPath);
+        const serverExists = nodeFs.existsSync(serverPath);
+        
+        console.log(`🔍 [DEBUG] Checking ${currentDir}: shared=${sharedExists}, server=${serverExists}`);
+        
+        if (sharedExists && serverExists) {
+          console.log(`✅ [DEBUG] Found monorepo root: ${currentDir}`);
+          return currentDir;
+        }
+      } catch (error) {
+        console.log(`❌ [DEBUG] Error checking ${currentDir}:`, error);
+        // Continue searching
+      }
+      
+      currentDir = path.dirname(currentDir);
+    }
+    
+    // Fallback to current working directory
+    console.log(`⚠️  [DEBUG] Monorepo root not found, using fallback: ${process.cwd()}`);
+    return process.cwd();
+  }
+
+  /**
    * Discover and register nodes from a directory
    * @param directory Directory path to scan for node files
    * @param source Node source type
@@ -142,11 +202,15 @@ export class NodeRegistry {
       return;
     }
 
+    console.log(`🔍 [DEBUG] Checking directory: ${directory} (source: ${source})`);
+
     // Check if directory exists before trying to glob
     try {
       await fs.access(directory);
+      console.log(`✅ [DEBUG] Directory exists: ${directory}`);
     } catch {
       // Directory doesn't exist, skip silently
+      console.log(`❌ [DEBUG] Directory does not exist: ${directory}`);
       return;
     }
 
@@ -165,30 +229,39 @@ export class NodeRegistry {
       return;
     }
     const pattern = path.join(directory, '**/*.{ts,js}');
+    console.log(`🔍 [DEBUG] Scanning pattern: ${pattern}`);
     const files = await glob(pattern, { absolute: true });
+    console.log(`📁 [DEBUG] Found ${files.length} files:`, files);
 
     for (const file of files) {
       try {
         // Skip test files and index files
         if (file.includes('.test.') || file.endsWith('index.ts') || file.endsWith('index.js')) {
+          console.log(`⏭️  [DEBUG] Skipping ${file} (test/index file)`);
           continue;
         }
 
+        console.log(`📂 [DEBUG] Importing ${file}...`);
         const module = await import(file);
+        console.log(`📦 [DEBUG] Module exports:`, Object.keys(module));
         
         // Check for default export
         if (module.default && this.isWorkflowNode(module.default)) {
+          console.log(`✅ [DEBUG] Registering default export from ${file} as ${source} node`);
           await this.register(module.default, { source });
+        } else if (module.default) {
+          console.log(`❌ [DEBUG] Default export from ${file} is not a WorkflowNode`);
         }
         
         // Check for named exports
         for (const [exportName, exportValue] of Object.entries(module)) {
           if (exportName !== 'default' && this.isWorkflowNode(exportValue)) {
+            console.log(`✅ [DEBUG] Registering named export ${exportName} from ${file} as ${source} node`);
             await this.register(exportValue as typeof WorkflowNode, { source });
           }
         }
       } catch (error) {
-        console.warn(`Failed to load node from ${file}:`, error);
+        console.warn(`❌ [DEBUG] Failed to load node from ${file}:`, error);
       }
     }
   }

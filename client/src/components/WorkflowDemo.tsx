@@ -7,6 +7,9 @@ import {
   type WorkflowDefinition 
 } from 'shared';
 import { Button } from './ui/button';
+import { LocalStorageNode } from '../../nodes/LocalStorageNode';
+import { FetchNode } from '../../nodes/FetchNode';
+import { DOMNode } from '../../nodes/DOMNode';
 
 export function WorkflowDemo() {
   const [result, setResult] = useState<any>(null);
@@ -21,8 +24,12 @@ export function WorkflowDemo() {
       const parser = new WorkflowParser(registry);
       const engine = new ExecutionEngine(registry, stateManager);
 
-      // Discover client-specific nodes
-      await registry.discoverFromPackages('client');
+      // Register client-specific nodes manually (browser environment)
+      await registry.registerClientNodes([
+        LocalStorageNode,
+        FetchNode,
+        DOMNode
+      ]);
 
       const workflowDefinition: WorkflowDefinition = {
         id: 'client-demo',
@@ -31,15 +38,16 @@ export function WorkflowDemo() {
         description: 'Demo workflow running in browser with client nodes',
         workflow: [
           {
-            localStorage: {
+            'localStorage': {
+          
               operation: 'set',
               key: 'demo-key',
-              value: 'Hello from workflow!',
-              'success?': 'localStorage'
+              value: 'Hello from workflow!'
             }
           },
           {
-            localStorage: {
+            'localStorage': {
+              
               operation: 'get', 
               key: 'demo-key'
             }

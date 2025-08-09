@@ -1,5 +1,5 @@
-import { WorkflowNode } from '../src/types';
-import type { ExecutionContext, EdgeMap } from '../src/types';
+import { WorkflowNode } from 'shared';
+import type { ExecutionContext, EdgeMap } from 'shared';
 
 export class LogicNode extends WorkflowNode {
   metadata = {
@@ -60,3 +60,5 @@ export class LogicNode extends WorkflowNode {
     }
   }
 }
+
+export default LogicNode;

@@ -2,15 +2,11 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { ApiResponse, WorkflowDefinition } from 'shared/dist'
 import { securityHeaders, logger, errorHandler } from './middleware'
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry } from 'shared'
+import { WorkflowService } from './services/WorkflowService'
 
 const app = new Hono()
 
-// Initialize engine components
-const registry = new NodeRegistry()
-const stateManager = new StateManager()
-const executionEngine = new ExecutionEngine(registry, stateManager)
-const parser = new WorkflowParser(registry)
+// Initialize workflow service singleton (lazy initialization on first API call)
 
 // Global middleware
 app.use('*', logger)
@@ -37,12 +33,10 @@ app.get('/hello', async (c) => {
 app.post('/workflows', async (c) => {
   try {
     const workflowDefinition = await c.req.json() as WorkflowDefinition
+    const workflowService = await WorkflowService.getInstance()
 
-    // Parse and validate workflow
-    const parsedWorkflow = parser.parse(workflowDefinition)
-
-    // Execute workflow
-    const result = await executionEngine.execute(parsedWorkflow)
+    // Execute workflow using singleton service
+    const result = await workflowService.executeWorkflow(workflowDefinition)
 
     return c.json(result, { status: 202 })
   } catch (error) {
@@ -56,10 +50,34 @@ app.post('/workflows', async (c) => {
 
 app.get('/nodes', async (c) => {
   try {
-    const nodes = registry.listNodes()
-    return c.json(nodes)
+    const workflowService = await WorkflowService.getInstance()
+    const nodes = workflowService.getAvailableNodes()
+    
+    return c.json({
+      nodes,
+      serviceInfo: workflowService.getServiceInfo()
+    })
   } catch (error) {
     console.error('Error listing nodes:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+})
+
+app.get('/nodes/:source', async (c) => {
+  try {
+    const source = c.req.param('source') as 'universal' | 'server'
+    if (source !== 'universal' && source !== 'server') {
+      return c.json({ error: 'Invalid source. Must be "universal" or "server"' }, { status: 400 })
+    }
+    
+    const workflowService = await WorkflowService.getInstance()
+    const nodes = workflowService.getNodesBySource(source)
+    
+    return c.json({ nodes, source })
+  } catch (error) {
+    console.error('Error listing nodes by source:', error)
     return c.json({
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
@@ -69,7 +87,8 @@ app.get('/nodes', async (c) => {
 app.post('/workflows/validate', async (c) => {
   try {
     const workflowDefinition = await c.req.json()
-    const validationResult = parser.validate(workflowDefinition)
+    const workflowService = await WorkflowService.getInstance()
+    const validationResult = workflowService.validateWorkflow(workflowDefinition)
     
     return c.json(validationResult)
   } catch (error) {
@@ -81,6 +100,16 @@ app.post('/workflows/validate', async (c) => {
   }
 })
 
-
+app.get('/service/info', async (c) => {
+  try {
+    const workflowService = await WorkflowService.getInstance()
+    return c.json(workflowService.getServiceInfo())
+  } catch (error) {
+    console.error('Error getting service info:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+})
 
 export default app

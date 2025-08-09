@@ -112,3 +112,5 @@ export class AuthNode extends WorkflowNode {
     }
   }
 }
+
+export default AuthNode;

@@ -92,3 +92,5 @@ export class FileSystemNode extends WorkflowNode {
     }
   }
 }
+
+export default FileSystemNode;

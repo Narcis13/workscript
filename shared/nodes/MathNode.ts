@@ -1,5 +1,5 @@
-import { WorkflowNode } from '../src/types';
-import type { ExecutionContext, EdgeMap } from '../src/types';
+import { WorkflowNode } from 'shared';
+import type { ExecutionContext, EdgeMap } from 'shared';
 
 export class MathNode extends WorkflowNode {
   metadata = {
@@ -54,3 +54,5 @@ export class MathNode extends WorkflowNode {
     }
   }
 }
+
+export default MathNode;
