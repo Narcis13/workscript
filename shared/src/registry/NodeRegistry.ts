@@ -158,7 +158,7 @@ export class NodeRegistry {
     }
     
     let currentDir = process.cwd();
-    console.log(`🔍 [DEBUG] Finding monorepo root, starting from: ${currentDir}`);
+   // console.log(`🔍 [DEBUG] Finding monorepo root, starting from: ${currentDir}`);
     
     // Walk up the directory tree to find the monorepo root
     while (currentDir !== path.dirname(currentDir)) {
@@ -171,10 +171,10 @@ export class NodeRegistry {
         const sharedExists = nodeFs.existsSync(sharedPath);
         const serverExists = nodeFs.existsSync(serverPath);
         
-        console.log(`🔍 [DEBUG] Checking ${currentDir}: shared=${sharedExists}, server=${serverExists}`);
+       // console.log(`🔍 [DEBUG] Checking ${currentDir}: shared=${sharedExists}, server=${serverExists}`);
         
         if (sharedExists && serverExists) {
-          console.log(`✅ [DEBUG] Found monorepo root: ${currentDir}`);
+        //  console.log(`✅ [DEBUG] Found monorepo root: ${currentDir}`);
           return currentDir;
         }
       } catch (error) {
@@ -202,12 +202,12 @@ export class NodeRegistry {
       return;
     }
 
-    console.log(`🔍 [DEBUG] Checking directory: ${directory} (source: ${source})`);
+  //  console.log(`🔍 [DEBUG] Checking directory: ${directory} (source: ${source})`);
 
     // Check if directory exists before trying to glob
     try {
       await fs.access(directory);
-      console.log(`✅ [DEBUG] Directory exists: ${directory}`);
+    //  console.log(`✅ [DEBUG] Directory exists: ${directory}`);
     } catch {
       // Directory doesn't exist, skip silently
       console.log(`❌ [DEBUG] Directory does not exist: ${directory}`);
@@ -229,9 +229,9 @@ export class NodeRegistry {
       return;
     }
     const pattern = path.join(directory, '**/*.{ts,js}');
-    console.log(`🔍 [DEBUG] Scanning pattern: ${pattern}`);
+   // console.log(`🔍 [DEBUG] Scanning pattern: ${pattern}`);
     const files = await glob(pattern, { absolute: true });
-    console.log(`📁 [DEBUG] Found ${files.length} files:`, files);
+  //  console.log(`📁 [DEBUG] Found ${files.length} files:`, files);
 
     for (const file of files) {
       try {
@@ -241,13 +241,13 @@ export class NodeRegistry {
           continue;
         }
 
-        console.log(`📂 [DEBUG] Importing ${file}...`);
+      //  console.log(`📂 [DEBUG] Importing ${file}...`);
         const module = await import(file);
-        console.log(`📦 [DEBUG] Module exports:`, Object.keys(module));
+     //   console.log(`📦 [DEBUG] Module exports:`, Object.keys(module));
         
         // Check for default export
         if (module.default && this.isWorkflowNode(module.default)) {
-          console.log(`✅ [DEBUG] Registering default export from ${file} as ${source} node`);
+      //    console.log(`✅ [DEBUG] Registering default export from ${file} as ${source} node`);
           await this.register(module.default, { source });
         } else if (module.default) {
           console.log(`❌ [DEBUG] Default export from ${file} is not a WorkflowNode`);
@@ -256,7 +256,7 @@ export class NodeRegistry {
         // Check for named exports
         for (const [exportName, exportValue] of Object.entries(module)) {
           if (exportName !== 'default' && this.isWorkflowNode(exportValue)) {
-            console.log(`✅ [DEBUG] Registering named export ${exportName} from ${file} as ${source} node`);
+         //   console.log(`✅ [DEBUG] Registering named export ${exportName} from ${file} as ${source} node`);
             await this.register(exportValue as typeof WorkflowNode, { source });
           }
         }

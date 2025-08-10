@@ -42,8 +42,8 @@ export class WorkflowService {
       return;
     }
 
-    console.log('🔧 Initializing WorkflowService...');
-    console.log('🔍 Current working directory:', process.cwd());
+    //console.log('🔧 Initializing WorkflowService...');
+    //console.log('🔍 Current working directory:', process.cwd());
     
     try {
       // Debug: Log the paths that will be searched
@@ -54,22 +54,22 @@ export class WorkflowService {
       const sharedPath = path.join(monorepoRoot, 'shared/nodes');
       const serverPath = path.join(monorepoRoot, 'server/nodes');
       
-      console.log('📂 Searching for nodes in:');
-      console.log(`   - Shared: ${sharedPath}`);
-      console.log(`   - Server: ${serverPath}`);
+   //   console.log('📂 Searching for nodes in:');
+     // console.log(`   - Shared: ${sharedPath}`);
+   //   console.log(`   - Server: ${serverPath}`);
       
       // Check if directories exist
       const fs = require('fs').promises;
       try {
         await fs.access(sharedPath);
-        console.log('✅ Shared nodes directory exists');
+     //   console.log('✅ Shared nodes directory exists');
       } catch {
         console.log('❌ Shared nodes directory not found');
       }
       
       try {
         await fs.access(serverPath);
-        console.log('✅ Server nodes directory exists');
+     //   console.log('✅ Server nodes directory exists');
       } catch {
         console.log('❌ Server nodes directory not found');
       }
