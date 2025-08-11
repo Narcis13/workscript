@@ -109,6 +109,65 @@ workflows.post('/store', async (c) => {
   }
 })
 
+// Run workflow by ID endpoint
+workflows.post('/run/:workflowId', async (c) => {
+  try {
+    const workflowId = c.req.param('workflowId')
+    
+    if (!workflowId) {
+      return c.json({
+        error: 'Workflow ID is required',
+        status: 'failed'
+      }, { status: 400 })
+    }
+
+    // Find the workflow file
+    const workflowData = await findWorkflowById(workflowId)
+    
+    if (!workflowData) {
+      return c.json({
+        error: `Workflow with ID '${workflowId}' not found in workflows directory`,
+        status: 'failed',
+        searchedIn: 'server/workflows (including subfolders)'
+      }, { status: 404 })
+    }
+
+    const { definition, filePath, subfolder } = workflowData
+
+    // Validate the workflow before execution
+    const workflowService = await WorkflowService.getInstance()
+    const validationResult = workflowService.validateWorkflow(definition)
+    
+    if (!validationResult.valid) {
+      return c.json({
+        error: 'Workflow validation failed',
+        status: 'failed',
+        validationErrors: validationResult.errors,
+        workflowFile: filePath,
+        subfolder
+      }, { status: 400 })
+    }
+
+    // Execute the workflow
+    const result = await workflowService.executeWorkflow(definition)
+
+    return c.json({
+      ...result,
+      workflowId,
+      workflowFile: filePath,
+      subfolder,
+      loadedFrom: `workflows/${filePath}`
+    }, { status: 202 })
+    
+  } catch (error) {
+    console.error('Workflow execution error:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      status: 'failed'
+    }, { status: 500 })
+  }
+})
+
 // Get all workflows endpoint
 workflows.get('/all', async (c) => {
   try {
@@ -129,6 +188,78 @@ workflows.get('/all', async (c) => {
     }, { status: 500 })
   }
 })
+
+// Helper function to find a specific workflow file by ID
+async function findWorkflowById(workflowId: string): Promise<{
+  definition: WorkflowDefinition,
+  filePath: string,
+  subfolder: string | null
+} | null> {
+  const workflowsDir = join(process.cwd(), 'workflows')
+  
+  try {
+    // Search for the workflow file recursively
+    const result = await searchWorkflowRecursively(workflowsDir, workflowId)
+    return result
+  } catch (error) {
+    console.warn(`Error searching for workflow ${workflowId}:`, error)
+    return null
+  }
+}
+
+// Recursive search function for workflow files
+async function searchWorkflowRecursively(dir: string, workflowId: string, baseDir?: string): Promise<{
+  definition: WorkflowDefinition,
+  filePath: string,
+  subfolder: string | null
+} | null> {
+  if (!baseDir) baseDir = dir
+
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      
+      if (entry.isDirectory()) {
+        // Recursively search subdirectories
+        const result = await searchWorkflowRecursively(fullPath, workflowId, baseDir)
+        if (result) return result
+      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+        // Check if filename matches (with or without .json extension)
+        const fileBaseName = entry.name.replace('.json', '')
+        
+        if (fileBaseName === workflowId || entry.name === `${workflowId}.json`) {
+          try {
+            const fileContent = await readFile(fullPath, 'utf-8')
+            const workflowDefinition: WorkflowDefinition = JSON.parse(fileContent)
+            
+            // Also check if the workflow's ID field matches
+            if (workflowDefinition.id === workflowId || fileBaseName === workflowId) {
+              // Determine subfolder relative to workflows directory
+              const relativePath = fullPath.replace(baseDir, '').replace(/^\//, '')
+              const pathParts = relativePath.split('/')
+              const subfolder = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null
+              
+              return {
+                definition: workflowDefinition,
+                filePath: relativePath,
+                subfolder
+              }
+            }
+          } catch (parseError) {
+            console.warn(`Failed to parse workflow file ${fullPath}:`, parseError)
+            // Continue searching other files
+          }
+        }
+      }
+    }
+  } catch (readdirError) {
+    console.warn(`Failed to read directory ${dir}:`, readdirError)
+  }
+  
+  return null
+}
 
 // Helper function to recursively find all workflow JSON files
 async function getAllWorkflows(dir: string): Promise<Array<{
