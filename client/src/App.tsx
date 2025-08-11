@@ -17,6 +17,9 @@ interface WorkflowResult {
   result?: any
   error?: string
   validation?: ValidationResult
+  stored?: boolean
+  storePath?: string
+  storeError?: string
 }
 
 function App() {
@@ -40,7 +43,7 @@ function App() {
         id: 'test-workflow',
         name: 'Simple Test Workflow',
         version: '1.0.0',
-        description: 'Generate token and save to file',
+        description: 'Generate token and save to file!',
         workflow: [
           {
             'auth': {
@@ -90,6 +93,29 @@ function App() {
       })
 
       const result: WorkflowResult = await response.json()
+      
+      // If workflow executed successfully, store it
+      if (result.status === 'completed') {
+        try {
+          const storeResponse = await fetch(`${SERVER_URL}/workflows/store?subfolder=tests`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(workflow)
+          })
+          
+          const storeResult = await storeResponse.json()
+          console.log('Workflow stored:', storeResult)
+          
+          // Add store result to the workflow result
+          result.stored = storeResult.success
+          result.storePath = storeResult.filePath
+        } catch (storeError) {
+          console.error('Failed to store workflow:', storeError)
+          result.storeError = storeError instanceof Error ? storeError.message : 'Unknown store error'
+        }
+      }
       
       // Prepend validation result to execution result
       result.validation = validationResult
