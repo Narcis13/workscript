@@ -3,6 +3,13 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./nodes": "./nodes/index.ts",
+    "./services/*": "./src/services/*",
+    "./hooks/*": "./src/hooks/*"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

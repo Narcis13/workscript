@@ -1,6 +1,12 @@
 import { WorkflowNode } from 'shared';
 import type { ExecutionContext, EdgeMap } from 'shared';
 
+interface LocalStorageNodeConfig {
+  operation?: string;
+  key?: string;
+  value?: string;
+}
+
 export class LocalStorageNode extends WorkflowNode {
   metadata = {
     id: 'localStorage',
@@ -11,8 +17,8 @@ export class LocalStorageNode extends WorkflowNode {
     outputs: ['result', 'found', 'not_found']
   };
 
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, key, value } = config || {};
+  async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {
+    const { operation, key, value } = (config as LocalStorageNodeConfig) || {};
     
     if (!operation || !key) {
       return {
@@ -88,7 +94,7 @@ export class LocalStorageNode extends WorkflowNode {
         }
         
         case 'keys': {
-          const keys = [];
+          const keys: string[] = [];
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key !== null) keys.push(key);

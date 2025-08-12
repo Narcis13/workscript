@@ -1,6 +1,13 @@
 import { WorkflowNode } from 'shared';
 import type { ExecutionContext, EdgeMap } from 'shared';
 
+interface FetchNodeConfig {
+  url?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
 export class FetchNode extends WorkflowNode {
   metadata = {
     id: 'fetch',
@@ -11,8 +18,8 @@ export class FetchNode extends WorkflowNode {
     outputs: ['result', 'success', 'error']
   };
 
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { url, method = 'GET', headers = {}, body } = config || {};
+  async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {
+    const { url, method = 'GET', headers = {}, body } = (config as FetchNodeConfig) || {};
     
     if (!url) {
       return {

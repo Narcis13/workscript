@@ -1,6 +1,13 @@
 import { WorkflowNode } from 'shared';
 import type { ExecutionContext, EdgeMap } from 'shared';
 
+interface DOMNodeConfig {
+  operation?: string;
+  selector?: string;
+  content?: string;
+  attribute?: string;
+}
+
 export class DOMNode extends WorkflowNode {
   metadata = {
     id: 'dom',
@@ -11,8 +18,8 @@ export class DOMNode extends WorkflowNode {
     outputs: ['result', 'found', 'not_found']
   };
 
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, selector, content, attribute } = config || {};
+  async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {
+    const { operation, selector, content, attribute } = (config as DOMNodeConfig) || {};
     
     if (!operation) {
       return {

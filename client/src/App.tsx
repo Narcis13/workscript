@@ -3,6 +3,7 @@ import beaver from './assets/beaver.svg'
 import { ApiResponse, WorkflowDefinition } from 'shared'
 import { Button } from './components/ui/button'
 import { WorkflowDemo } from './components/WorkflowDemo'
+import { useWorkflowService } from './hooks/useWorkflowService'
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
 
@@ -14,7 +15,7 @@ interface ValidationResult {
 
 interface WorkflowResult {
   status: string
-  result?: any
+  result?: unknown
   error?: string
   validation?: ValidationResult
   stored?: boolean
@@ -25,6 +26,16 @@ interface WorkflowResult {
 function App() {
   const [data, setData] = useState<ApiResponse | undefined>()
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | undefined>()
+  const [executionMode, setExecutionMode] = useState<'server' | 'client'>('server')
+  const [clientLoading, setClientLoading] = useState(false)
+  
+  // Client-side workflow service
+  const { 
+    executeWorkflow: executeClientWorkflow, 
+    validateWorkflow: validateClientWorkflow,
+    initialized: clientInitialized,
+    loading: clientServiceLoading 
+  } = useWorkflowService()
 
   async function sendRequest() {
     try {
@@ -37,11 +48,82 @@ function App() {
   }
 
   async function runWorkflow() {
+    if (executionMode === 'client') {
+      return await runClientWorkflow();
+    } else {
+      return await runServerWorkflow();
+    }
+  }
+
+  async function runClientWorkflow() {
+    if (!clientInitialized || !executeClientWorkflow) {
+      setWorkflowResult({
+        status: 'failed',
+        error: 'Client workflow service not initialized'
+      });
+      return;
+    }
+
+    setClientLoading(true);
     try {
-      // Define a simple workflow using auth and filesystem nodes
+      // Define a client-compatible workflow using localStorage and fetch nodes
       const workflow: WorkflowDefinition = {
-        id: 'test-workflow',
-        name: 'Simple Test Workflow',
+        id: 'client-test-workflow',
+        name: 'Client Test Workflow',
+        version: '1.0.0',
+        description: 'Fetch data and store in localStorage!',
+        workflow: [
+          {
+            'fetch': {
+              url: 'http://localhost:3000/hello',
+              'success?': {
+                'localStorage': {
+                  operation: 'set',
+                  key: 'workflow-result',
+                  value: 'Workflow executed successfully in browser!'
+                }
+              }
+            }
+          }
+        ]
+      };
+
+      // Validate workflow client-side
+      const validation = validateClientWorkflow?.(workflow);
+      if (!validation?.valid) {
+        setWorkflowResult({
+          status: 'validation_failed',
+          error: 'Client workflow validation failed',
+          validation
+        });
+        return;
+      }
+
+      // Execute workflow client-side
+      const result = await executeClientWorkflow(workflow);
+      
+      setWorkflowResult({
+        status: result.status || 'completed',
+        result: result,
+        validation: { valid: true, message: 'Client-side validation passed' }
+      });
+    } catch (error) {
+      console.error('Client workflow error:', error);
+      setWorkflowResult({
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown client error'
+      });
+    } finally {
+      setClientLoading(false);
+    }
+  }
+
+  async function runServerWorkflow() {
+    try {
+      // Define a server workflow using auth and filesystem nodes
+      const workflow: WorkflowDefinition = {
+        id: 'server-test-workflow',
+        name: 'Server Test Workflow',
         version: '1.0.0',
         description: 'Generate token and save to file!',
         workflow: [
@@ -50,15 +132,14 @@ function App() {
               operation: 'generate_token',
               data: 'test-data',
               'success?': {
-                            'filesystem': {
-                              operation: 'write',
-                              path: '/tmp/workflow-token.txt',
-                              content: 'Token generated successfully!'
-                            }
-                          }
+                'filesystem': {
+                  operation: 'write',
+                  path: '/tmp/workflow-token.txt',
+                  content: 'Token generated successfully!'
+                }
+              }
             }
           }
-          
         ]
       }
 
@@ -142,6 +223,34 @@ function App() {
       <h1 className="text-5xl font-black">bhvr</h1>
       <h2 className="text-2xl font-bold">Bun + Hono + Vite + React</h2>
       <p>A typesafe fullstack monorepo</p>
+      {/* Execution Mode Toggle */}
+      <div className="flex items-center gap-4 mb-4">
+        <span className="text-sm font-medium">Execution Mode:</span>
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setExecutionMode('server')}
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              executionMode === 'server' 
+                ? 'bg-white shadow-sm text-gray-900' 
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Server API
+          </button>
+          <button
+            onClick={() => setExecutionMode('client')}
+            disabled={clientServiceLoading}
+            className={`px-3 py-1 rounded text-sm transition-colors ${
+              executionMode === 'client' 
+                ? 'bg-white shadow-sm text-gray-900' 
+                : 'text-gray-600 hover:text-gray-900'
+            } ${clientServiceLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Client Browser {clientServiceLoading && '(loading...)'}
+          </button>
+        </div>
+      </div>
+
       <div className='flex items-center gap-4'>
         <Button
           onClick={sendRequest}
@@ -151,8 +260,9 @@ function App() {
         <Button
           onClick={runWorkflow}
           variant='outline'
+          disabled={clientLoading || (executionMode === 'client' && (!clientInitialized || clientServiceLoading))}
         >
-          Run Workflow
+          {clientLoading ? 'Executing...' : `Run ${executionMode === 'server' ? 'Server' : 'Client'} Workflow`}
         </Button>
         <Button
           variant='secondary'
@@ -163,6 +273,19 @@ function App() {
           </a>
         </Button>
       </div>
+
+      {/* Show client service status when in client mode */}
+      {executionMode === 'client' && !clientServiceLoading && (
+        <div className={`mt-4 p-3 rounded-lg text-sm ${
+          clientInitialized 
+            ? 'bg-green-50 text-green-800 border border-green-200' 
+            : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+        }`}>
+          {clientInitialized 
+            ? '✅ Client workflow service ready for browser execution' 
+            : '⚠️ Client workflow service not initialized'}
+        </div>
+      )}
         {data && (
           <pre className="bg-gray-100 p-4 rounded-md">
             <code>
@@ -174,12 +297,26 @@ function App() {
         
         {workflowResult && (
           <div className="w-full max-w-lg">
-            <h3 className="font-bold mb-2">Workflow Result:</h3>
-            <pre className="bg-gray-100 p-4 rounded-md text-sm overflow-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="font-bold">Workflow Result</h3>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                executionMode === 'server' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {executionMode === 'server' ? 'Server API' : 'Client Browser'}
+              </span>
+            </div>
+            <pre className="bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-96">
               <code>
                 {JSON.stringify(workflowResult, null, 2)}
               </code>
             </pre>
+            {executionMode === 'client' && workflowResult.status === 'completed' && (
+              <div className="mt-2 text-sm text-green-600">
+                💡 This workflow executed entirely in your browser using the shared workflow engine!
+              </div>
+            )}
           </div>
         )}
         
