@@ -1,5 +1,6 @@
 import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry } from 'shared';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
+import { UNIVERSAL_NODES } from 'shared/nodes';
 import { CLIENT_NODES } from '../../nodes';
 
 /**
@@ -50,18 +51,16 @@ export class ClientWorkflowService {
     console.log('🌐 Running in browser environment - using manual node registration');
     
     try {
-      // In browser environment, we manually register client nodes from the central index
+      // In browser environment, we manually register nodes from central indexes
       // This replaces the file-based discovery used on the server
-      await this.registry.registerClientNodes(CLIENT_NODES);
-
-      // Also attempt to discover any shared nodes if running in a universal context
-      // The NodeRegistry will handle browser environment detection gracefully
-      try {
-        await this.registry.discoverFromPackages('client');
-      } catch {
-        // Expected in browser - file system discovery not available
-        console.log('📁 File-based discovery not available in browser (this is expected)');
+      
+      // Register universal nodes from shared package
+      for (const nodeClass of UNIVERSAL_NODES) {
+        await this.registry.register(nodeClass, { source: 'universal' });
       }
+      
+      // Register client-specific nodes
+      await this.registry.registerClientNodes(CLIENT_NODES);
 
       const nodeCount = this.registry.size;
       const universalNodes = this.registry.listNodesBySource('universal');

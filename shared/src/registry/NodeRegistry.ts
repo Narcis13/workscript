@@ -242,7 +242,7 @@ export class NodeRegistry {
         }
 
       //  console.log(`📂 [DEBUG] Importing ${file}...`);
-        const module = await import(file);
+        const module = await import(/* @vite-ignore */ file);
      //   console.log(`📦 [DEBUG] Module exports:`, Object.keys(module));
         
         // Check for default export

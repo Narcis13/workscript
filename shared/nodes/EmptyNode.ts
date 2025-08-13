@@ -12,7 +12,7 @@ export class EmptyNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    
+     console.warn('Executing EmptyNode - this node does nothing');
       return {
         nothing: () => ({  })
       };

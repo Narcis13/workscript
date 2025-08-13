@@ -28,6 +28,7 @@ function App() {
   const [workflowResult, setWorkflowResult] = useState<WorkflowResult | undefined>()
   const [executionMode, setExecutionMode] = useState<'server' | 'client'>('server')
   const [clientLoading, setClientLoading] = useState(false)
+  const [runByIdLoading, setRunByIdLoading] = useState(false)
   
   // Client-side workflow service
   const { 
@@ -211,6 +212,35 @@ function App() {
     }
   }
 
+  async function runWorkflowById() {
+    setRunByIdLoading(true);
+    try {
+      // Test running workflow by ID using the server endpoint
+      const response = await fetch(`${SERVER_URL}/workflows/run/test-workflow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result: WorkflowResult = await response.json();
+      
+      setWorkflowResult({
+        ...result,
+        validation: { valid: true, message: 'Workflow executed by ID' }
+      });
+    } catch (error) {
+      console.error('Run by ID error:', error);
+      setWorkflowResult({
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        validation: { valid: false, message: 'Failed to run workflow by ID' }
+      });
+    } finally {
+      setRunByIdLoading(false);
+    }
+  }
+
   return (
     <div className="max-w-xl mx-auto flex flex-col gap-6 items-center justify-center min-h-screen">
       <a href="https://github.com/stevedylandev/bhvr" target="_blank">
@@ -263,6 +293,13 @@ function App() {
           disabled={clientLoading || (executionMode === 'client' && (!clientInitialized || clientServiceLoading))}
         >
           {clientLoading ? 'Executing...' : `Run ${executionMode === 'server' ? 'Server' : 'Client'} Workflow`}
+        </Button>
+        <Button
+          onClick={runWorkflowById}
+          variant='destructive'
+          disabled={runByIdLoading}
+        >
+          {runByIdLoading ? 'Running...' : 'Run by ID (test-workflow)'}
         </Button>
         <Button
           variant='secondary'

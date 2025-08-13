@@ -118,11 +118,13 @@ export function WorkflowDemo() {
         {loading ? 'Executing...' : 'Run Client Workflow'}
       </Button>
 
-      {result && (
+      {result !== null && (
         <div className="bg-gray-100 p-4 rounded-md">
           <h3 className="font-bold mb-2">Execution Result:</h3>
           <pre className="text-sm overflow-auto max-h-96">
-            {JSON.stringify(result, null, 2)}
+            {typeof result === 'string'
+              ? result
+              : JSON.stringify(result, null, 2)}
           </pre>
         </div>
       )}
