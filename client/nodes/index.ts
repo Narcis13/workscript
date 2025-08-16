@@ -14,6 +14,8 @@ export { DOMNode } from './DOMNode';
 
 // Import utility nodes
 export { LogInputNode } from './utils/LogInputNode';
+export { ContainerNode } from './utils/ContainerNode';
+export { ButtonNode } from './utils/ButtonNode';
 
 // Import UI nodes
 export * from './ui';
@@ -23,6 +25,8 @@ import { LocalStorageNode } from './LocalStorageNode';
 import { FetchNode } from './FetchNode';
 import { DOMNode } from './DOMNode';
 import { LogInputNode } from './utils/LogInputNode';
+import { ContainerNode } from './utils/ContainerNode';
+import { ButtonNode } from './utils/ButtonNode';
 // Import UI nodes
 import { FormUINode } from './ui/FormUINode';
 import { DashboardUINode } from './ui/DashboardUINode';
@@ -41,6 +45,8 @@ export const CLIENT_NODES: Array<typeof WorkflowNode> = [
   FetchNode,
   DOMNode,
   LogInputNode,
+  ContainerNode,
+  ButtonNode,
   // UI Nodes
   FormUINode,
   DashboardUINode,

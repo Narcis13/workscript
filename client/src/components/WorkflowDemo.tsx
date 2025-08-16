@@ -40,7 +40,8 @@ export function WorkflowDemo() {
               url: 'http://localhost:3000/hello'
             }
           },
-          'log-input'
+          'log-input',
+          'empty'
         ]
       };
 

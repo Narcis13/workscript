@@ -1,5 +1,11 @@
+import {AdvancedWorkflowDemo} from './AdvancedWorkflowDemo';
+
+
+
 export function Advanced() {
   return (
-    <div>Advanced...</div>
+    <div id="advanced-workflow-demo">
+      <AdvancedWorkflowDemo />
+    </div>
   )
 }
