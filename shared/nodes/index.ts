@@ -17,7 +17,7 @@ import { MathNode } from './MathNode';
 import { LogicNode } from './LogicNode';
 import { DataTransformNode } from './DataTransformNode';
 import { EmptyNode } from './EmptyNode';
-import type { WorkflowNode } from '../types';
+import type { WorkflowNode } from '../src/types';
 
 /**
  * Array of all universal node classes for automatic registration

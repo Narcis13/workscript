@@ -1,6 +1,6 @@
 // UI Workflow Security Validation Framework
 
-import { 
+import type { 
   UIWorkflowDefinition, 
   UISecurityConfig, 
   UIValidationResult, 

@@ -1,6 +1,6 @@
 // UI Workflow Infrastructure - Event System and Utilities
 
-import { UIInteractionEvent, UIEventEmitter } from '../types';
+import type { UIInteractionEvent, UIEventEmitter } from '../types';
 
 // UI Event System Implementation
 export class UIWorkflowEventEmitter implements UIEventEmitter {

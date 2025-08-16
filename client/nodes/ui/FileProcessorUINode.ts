@@ -1,7 +1,7 @@
 // File Processor UI Node - File upload and processing
 
-import { 
-  UINode, 
+import { UINode } from 'shared';
+import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 

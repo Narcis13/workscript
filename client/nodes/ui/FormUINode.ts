@@ -1,7 +1,7 @@
 // Form UI Node - Dynamic form generation and handling
 
-import { 
-  UINode, 
+import { UINode } from 'shared';
+import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 

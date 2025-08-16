@@ -1,7 +1,7 @@
 // Data Table UI Node - Interactive data tables
 
-import { 
-  UINode, 
+import { UINode } from 'shared';
+import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 

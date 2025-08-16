@@ -1,7 +1,7 @@
 // Action Button Group UI Node - Interactive button groups
 
-import { 
-  UINode, 
+import { UINode } from 'shared';
+import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 
@@ -88,7 +88,7 @@ export class ActionButtonGroupUINode extends UINode {
         this.handleButtonGroupEnable(context);
         break;
       case 'button_group_disable':
-        this.handleButtonGroupDisable(context);
+        this.handleButtonGroupDisabled(context);
         break;
       case 'button_update':
         this.handleButtonUpdate(event.data, context);

@@ -1,7 +1,7 @@
 // Chart UI Node - Data visualization components
 
-import { 
-  UINode, 
+import { UINode } from 'shared';
+import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 

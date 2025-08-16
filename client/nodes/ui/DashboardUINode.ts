@@ -1,7 +1,7 @@
 // Dashboard UI Node - Interactive dashboard container
 
-import { 
-  UINode, 
+import { UINode } from 'shared';
+import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 
