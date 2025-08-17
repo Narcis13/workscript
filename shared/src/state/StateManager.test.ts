@@ -7,7 +7,9 @@ import {
 } from './StateManager';
 import type {
   StatePersistenceAdapter,
-  WorkflowState
+  WorkflowState,
+  StateChange,
+  StateWatcher
 } from './StateManager';
 
 // Mock persistence adapter for testing
@@ -448,6 +450,411 @@ describe('StateManager', () => {
       const state = await stateManager.getState(testExecutionId);
       expect(state.message).toBe('updated');
       expect(state.counter).toBe(0); // Should remain unchanged
+    });
+  });
+
+  // Phase 3: State Change Detection and Watchers Tests
+  describe('Phase 3: State Change Detection', () => {
+    beforeEach(async () => {
+      await stateManager.initialize(testExecutionId, testInitialState);
+    });
+
+    describe('State Change Detection', () => {
+      it('should detect state changes and calculate diffs', async () => {
+        await stateManager.updateState(testExecutionId, { counter: 5, newField: 'hello' });
+        
+        const diff = stateManager.getCurrentDiff(testExecutionId);
+        expect(diff).toBeDefined();
+        expect(diff?.added).toEqual({ newField: 'hello' });
+        expect(diff?.updated).toEqual({ counter: { oldValue: 0, newValue: 5 } });
+        expect(diff?.removed).toEqual([]);
+      });
+
+      it('should handle removed keys in state diff', async () => {
+        await stateManager.updateState(testExecutionId, { counter: 1, message: undefined });
+        
+        const diff = stateManager.getCurrentDiff(testExecutionId);
+        expect(diff?.updated).toEqual({ 
+          counter: { oldValue: 0, newValue: 1 },
+          message: { oldValue: 'hello', newValue: undefined }
+        });
+      });
+    });
+
+    describe('State Watchers', () => {
+      it('should register and trigger state watchers', async () => {
+        const changes: StateChange[] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: ['counter'],
+          callback: (changesReceived) => {
+            changes.push(...changesReceived);
+          }
+        });
+
+        await stateManager.updateState(testExecutionId, { counter: 5 });
+        
+        expect(changes).toHaveLength(1);
+        expect(changes[0]?.key).toBe('counter');
+        expect(changes[0]?.oldValue).toBe(0);
+        expect(changes[0]?.newValue).toBe(5);
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+
+      it('should filter changes by watched keys', async () => {
+        const changes: StateChange[] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: ['counter'], // Only watching counter
+          callback: (changesReceived) => {
+            changes.push(...changesReceived);
+          }
+        });
+
+        await stateManager.updateState(testExecutionId, { 
+          counter: 5, 
+          message: 'updated',
+          newField: 'ignored'
+        });
+        
+        expect(changes).toHaveLength(1);
+        expect(changes[0]?.key).toBe('counter');
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+
+      it('should support wildcard watchers for all keys', async () => {
+        const changes: StateChange[] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: '*', // Watch all keys
+          callback: (changesReceived) => {
+            changes.push(...changesReceived);
+          }
+        });
+
+        await stateManager.updateState(testExecutionId, { 
+          counter: 5, 
+          message: 'updated',
+          newField: 'added'
+        });
+        
+        expect(changes).toHaveLength(3);
+        const keys = changes.map(c => c.key);
+        expect(keys).toContain('counter');
+        expect(keys).toContain('message');
+        expect(keys).toContain('newField');
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+
+      it('should support conditional watchers', async () => {
+        const changes: StateChange[] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: '*',
+          condition: (change) => change.key === 'counter' && typeof change.newValue === 'number' && change.newValue > 10,
+          callback: (changesReceived) => {
+            changes.push(...changesReceived);
+          }
+        });
+
+        // This should not trigger (counter <= 10)
+        await stateManager.updateState(testExecutionId, { counter: 5 });
+        expect(changes).toHaveLength(0);
+
+        // This should trigger (counter > 10)
+        await stateManager.updateState(testExecutionId, { counter: 15 });
+        expect(changes).toHaveLength(1);
+        expect(changes[0]?.newValue).toBe(15);
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+
+      it('should support debounced watchers', async () => {
+        const changes: StateChange[][] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: '*',
+          debounceMs: 50,
+          callback: (changesReceived) => {
+            changes.push([...changesReceived]);
+          }
+        });
+
+        // Rapid updates
+        await stateManager.updateState(testExecutionId, { counter: 1 });
+        await stateManager.updateState(testExecutionId, { counter: 2 });
+        await stateManager.updateState(testExecutionId, { counter: 3 });
+        
+        // Should not have triggered yet
+        expect(changes).toHaveLength(0);
+        
+        // Wait for debounce
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Should have triggered once with the last update
+        expect(changes).toHaveLength(1);
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+
+      it('should enable and disable watchers', async () => {
+        const changes: StateChange[] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: ['counter'],
+          callback: (changesReceived) => {
+            changes.push(...changesReceived);
+          }
+        });
+
+        // Enabled by default
+        await stateManager.updateState(testExecutionId, { counter: 1 });
+        expect(changes).toHaveLength(1);
+
+        // Disable watcher
+        stateManager.setWatcherEnabled(watcherId, false);
+        await stateManager.updateState(testExecutionId, { counter: 2 });
+        expect(changes).toHaveLength(1); // No new changes
+
+        // Re-enable watcher
+        stateManager.setWatcherEnabled(watcherId, true);
+        await stateManager.updateState(testExecutionId, { counter: 3 });
+        expect(changes).toHaveLength(2); // New change recorded
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+    });
+
+    describe('State Triggers', () => {
+      it('should create conditional state triggers', async () => {
+        let triggered = false;
+        
+        const triggerId = stateManager.createStateTrigger(
+          testExecutionId,
+          (changes) => changes.some(c => c.key === 'counter' && typeof c.newValue === 'number' && c.newValue >= 10),
+          () => { triggered = true; }
+        );
+
+        // Should not trigger
+        await stateManager.updateState(testExecutionId, { counter: 5 });
+        expect(triggered).toBe(false);
+
+        // Should trigger
+        await stateManager.updateState(testExecutionId, { counter: 15 });
+        expect(triggered).toBe(true);
+        
+        stateManager.unregisterWatcher(triggerId);
+      });
+
+      it('should support one-time triggers', async () => {
+        let triggerCount = 0;
+        
+        const triggerId = stateManager.createStateTrigger(
+          testExecutionId,
+          (changes) => changes.some(c => c.key === 'counter'),
+          () => { triggerCount++; },
+          { once: true }
+        );
+
+        // First trigger
+        await stateManager.updateState(testExecutionId, { counter: 5 });
+        expect(triggerCount).toBe(1);
+
+        // Should not trigger again
+        await stateManager.updateState(testExecutionId, { counter: 10 });
+        expect(triggerCount).toBe(1);
+      });
+
+      it('should support key-specific triggers', async () => {
+        let triggered = false;
+        
+        const triggerId = stateManager.createStateTrigger(
+          testExecutionId,
+          (changes) => changes.some(c => c.key === 'counter'),
+          () => { triggered = true; },
+          { keys: ['counter'] }
+        );
+
+        // Should not trigger for other keys
+        await stateManager.updateState(testExecutionId, { message: 'updated' });
+        expect(triggered).toBe(false);
+
+        // Should trigger for watched key
+        await stateManager.updateState(testExecutionId, { counter: 5 });
+        expect(triggered).toBe(true);
+        
+        stateManager.unregisterWatcher(triggerId);
+      });
+    });
+
+    describe('Performance Optimizations', () => {
+      it('should batch state updates when enabled', async () => {
+        const stateManagerWithBatching = new StateManager(undefined, undefined, {
+          enableBatching: true,
+          batchWindowMs: 20
+        });
+        
+        await stateManagerWithBatching.initialize(testExecutionId, {});
+        
+        // Rapid updates should be batched
+        const updatePromises = [
+          stateManagerWithBatching.updateState(testExecutionId, { a: 1 }),
+          stateManagerWithBatching.updateState(testExecutionId, { b: 2 }),
+          stateManagerWithBatching.updateState(testExecutionId, { c: 3 })
+        ];
+        
+        await Promise.all(updatePromises);
+        
+        // Wait for batch window
+        await new Promise(resolve => setTimeout(resolve, 30));
+        
+        const state = await stateManagerWithBatching.getState(testExecutionId);
+        expect(state).toEqual({ a: 1, b: 2, c: 3 });
+        
+        await stateManagerWithBatching.cleanup(testExecutionId);
+      });
+
+      it('should provide performance metrics', () => {
+        const metrics = stateManager.getPerformanceMetrics();
+        
+        expect(metrics).toHaveProperty('activeStates');
+        expect(metrics).toHaveProperty('activeWatchers');
+        expect(metrics).toHaveProperty('cacheSize');
+        expect(metrics).toHaveProperty('pendingBatches');
+        expect(metrics).toHaveProperty('activeDebouncers');
+        
+        expect(metrics.activeStates).toBeGreaterThan(0);
+      });
+
+      it('should allow runtime performance configuration', async () => {
+        stateManager.configurePerformance({
+          enableBatching: false,
+          maxCacheSize: 50,
+          batchWindowMs: 100
+        });
+
+        // Configuration should take effect immediately
+        await stateManager.updateState(testExecutionId, { test: 'value' });
+        
+        const metrics = stateManager.getPerformanceMetrics();
+        expect(metrics.pendingBatches).toBe(0); // Batching disabled
+      });
+
+      it('should clear caches on demand', () => {
+        stateManager.clearCaches();
+        
+        const metrics = stateManager.getPerformanceMetrics();
+        expect(metrics.cacheSize).toBe(0);
+      });
+
+      it('should flush batched updates', async () => {
+        const stateManagerWithBatching = new StateManager(undefined, undefined, {
+          enableBatching: true,
+          batchWindowMs: 1000 // Long window
+        });
+        
+        await stateManagerWithBatching.initialize(testExecutionId, {});
+        
+        // Add update to batch
+        await stateManagerWithBatching.updateState(testExecutionId, { test: 'value' });
+        
+        // Force flush
+        await stateManagerWithBatching.flushBatchedUpdates();
+        
+        const state = await stateManagerWithBatching.getState(testExecutionId);
+        expect(state.test).toBe('value');
+        
+        await stateManagerWithBatching.cleanup(testExecutionId);
+      });
+    });
+
+    describe('Deep Equality and Diff Calculation', () => {
+      it('should correctly detect deep object changes', async () => {
+        await stateManager.updateState(testExecutionId, {
+          nested: { a: 1, b: { c: 2 } }
+        });
+
+        await stateManager.updateState(testExecutionId, {
+          nested: { a: 1, b: { c: 3 } } // Deep change
+        });
+
+        const diff = stateManager.getCurrentDiff(testExecutionId);
+        expect(diff?.updated).toHaveProperty('nested');
+      });
+
+      it('should detect changes for objects with same content but different references', async () => {
+        const changes: StateChange[] = [];
+        
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: '*',
+          callback: (changesReceived) => {
+            changes.push(...changesReceived);
+          }
+        });
+
+        await stateManager.updateState(testExecutionId, { complex: { nested: [1, 2, 3] } });
+        const changeCount1 = changes.length;
+
+        // Same content, different object reference - our deep equality should detect this as the same
+        await stateManager.updateState(testExecutionId, { complex: { nested: [1, 2, 3] } });
+        const changeCount2 = changes.length;
+
+        // Should NOT register a new change since content is identical (deep equality)
+        expect(changeCount2).toBe(changeCount1);
+        
+        stateManager.unregisterWatcher(watcherId);
+      });
+    });
+
+    describe('Cleanup and Memory Management', () => {
+      it('should clean up watchers during execution cleanup', async () => {
+        const watcherId = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: '*',
+          callback: () => {}
+        });
+
+        const watchers = stateManager.getWatchers(testExecutionId);
+        expect(watchers).toHaveLength(1);
+
+        await stateManager.cleanup(testExecutionId);
+
+        const watchersAfterCleanup = stateManager.getWatchers(testExecutionId);
+        expect(watchersAfterCleanup).toHaveLength(0);
+      });
+
+      it('should track watchers by execution ID', async () => {
+        const anotherExecutionId = 'another-execution';
+        await stateManager.initialize(anotherExecutionId, {});
+
+        const watcher1 = stateManager.registerWatcher({
+          executionId: testExecutionId,
+          keys: '*',
+          callback: () => {}
+        });
+
+        const watcher2 = stateManager.registerWatcher({
+          executionId: anotherExecutionId,
+          keys: '*',
+          callback: () => {}
+        });
+
+        expect(stateManager.getWatchers(testExecutionId)).toHaveLength(1);
+        expect(stateManager.getWatchers(anotherExecutionId)).toHaveLength(1);
+        expect(stateManager.getWatchers()).toHaveLength(2);
+
+        await stateManager.cleanup(anotherExecutionId);
+      });
     });
   });
 });

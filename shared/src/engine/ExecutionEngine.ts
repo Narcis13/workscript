@@ -23,6 +23,8 @@ import type {
 import type { ParsedWorkflow, ParsedNode, ParsedEdge } from '../parser/WorkflowParser';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import { StateManager } from '../state/StateManager';
+import { HookManager } from '../hooks/HookManager';
+import type { HookContext } from '../hooks/types';
 
 export interface NodeExecutionResult {
   edge: string | null;
@@ -67,7 +69,8 @@ export class ExecutionEngine {
 
   constructor(
     private registry: NodeRegistry,
-    private stateManager: StateManager
+    private stateManager: StateManager,
+    private hookManager: HookManager = new HookManager()
   ) {}
 
   /**
@@ -79,19 +82,39 @@ export class ExecutionEngine {
     const startTime = new Date();
     
     try {
+      // Execute workflow:before-start hooks
+      await this.executeHooks('workflow:before-start', {
+        workflowId: workflow.id,
+        data: { workflow }
+      });
+
       // Initialize state with workflow initial state
       await this.stateManager.initialize(executionId, workflow.initialState || {});
 
       // Create initial execution context
       const context = this.createInitialContext(workflow, executionId);
 
+      // Execute workflow:after-start hooks
+      await this.executeHooks('workflow:after-start', {
+        workflowId: workflow.id,
+        executionContext: context,
+        data: { initialState: workflow.initialState }
+      });
+
       // Execute nodes sequentially with edge routing
       await this.executeWorkflowSequence(workflow, context);
 
       // Get final state
       const finalState = await this.stateManager.getState(executionId);
+
+      // Execute workflow:before-end hooks
+      await this.executeHooks('workflow:before-end', {
+        workflowId: workflow.id,
+        executionContext: context,
+        data: { finalState }
+      });
       
-      return {
+      const result: ExecutionResult = {
         executionId,
         workflowId: workflow.id,
         status: 'completed',
@@ -100,7 +123,28 @@ export class ExecutionEngine {
         endTime: new Date()
       };
 
+      // Execute workflow:after-end hooks
+      await this.executeHooks('workflow:after-end', {
+        workflowId: workflow.id,
+        executionContext: context,
+        data: { 
+          result,
+          duration: result.endTime ? result.endTime.getTime() - startTime.getTime() : 0
+        }
+      });
+
+      return result;
+
     } catch (error) {
+      // Execute workflow:on-error hooks
+      await this.executeHooks('workflow:on-error', {
+        workflowId: workflow.id,
+        data: { 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        }
+      });
+
       return {
         executionId,
         workflowId: workflow.id,
@@ -203,10 +247,6 @@ export class ExecutionEngine {
     context: ExecutionContext
   ): Promise<NodeExecutionResult> {
     try {
-      // Get node instance from registry (strip ... suffix for loop nodes)
-      const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
-      const instance = this.registry.getInstance(nodeTypeId);
-      
       // Update context for this node execution
       const nodeContext: ExecutionContext = {
         ...context,
@@ -215,6 +255,18 @@ export class ExecutionEngine {
         inputs: await this.prepareNodeInputs(context.executionId, node)
       };
 
+      // Execute node:before-execute hooks
+      await this.executeHooks('node:before-execute', {
+        workflowId: context.workflowId,
+        nodeId: node.nodeId,
+        executionContext: nodeContext,
+        data: { nodeConfig: node.config }
+      });
+
+      // Get node instance from registry (strip ... suffix for loop nodes)
+      const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
+      const instance = this.registry.getInstance(nodeTypeId);
+
       // Execute the node
       const edgeMap = await instance.execute(nodeContext, node.config);
       
@@ -222,11 +274,62 @@ export class ExecutionEngine {
       const edgeResult = await this.processEdgeMap(edgeMap, nodeContext);
       
       // Update state with any changes from node execution
+      const stateBefore = await this.stateManager.getState(context.executionId);
       await this.updateStateFromContext(context.executionId, nodeContext);
+      const stateAfter = await this.stateManager.getState(context.executionId);
+
+      // Execute node:after-execute hooks
+      await this.executeHooks('node:after-execute', {
+        workflowId: context.workflowId,
+        nodeId: node.nodeId,
+        executionContext: nodeContext,
+        data: { 
+          edgeResult,
+          stateBefore,
+          stateAfter
+        }
+      });
+
+      // Execute node:on-edge-taken hook if an edge was taken
+      if (edgeResult.edge) {
+        await this.executeHooks('node:on-edge-taken', {
+          workflowId: context.workflowId,
+          nodeId: node.nodeId,
+          executionContext: nodeContext,
+          data: { 
+            edge: edgeResult.edge,
+            edgeData: edgeResult.data
+          }
+        });
+      }
+
+      // Execute node:on-state-change hook if state changed
+      if (JSON.stringify(stateBefore) !== JSON.stringify(stateAfter)) {
+        await this.executeHooks('node:on-state-change', {
+          workflowId: context.workflowId,
+          nodeId: node.nodeId,
+          executionContext: nodeContext,
+          data: { 
+            stateBefore,
+            stateAfter,
+            changes: this.calculateStateChanges(stateBefore, stateAfter)
+          }
+        });
+      }
 
       return edgeResult;
 
     } catch (error) {
+      // Execute node:on-error hooks
+      await this.executeHooks('node:on-error', {
+        workflowId: context.workflowId,
+        nodeId: node.nodeId,
+        data: { 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        }
+      });
+
       // Check if node has error edge route
       if (node.edges.error && node.edges.error.type === 'simple' && node.edges.error.target) {
         return { 
@@ -550,6 +653,66 @@ export class ExecutionEngine {
     if (context.state && typeof context.state === 'object') {
       await this.stateManager.updateState(executionId, context.state);
     }
+  }
+
+  /**
+   * Execute hooks for a specific event type
+   */
+  private async executeHooks(
+    eventType: string,
+    contextData: Partial<HookContext>
+  ): Promise<void> {
+    const hookContext: HookContext = {
+      eventType,
+      timestamp: new Date(),
+      ...contextData
+    };
+
+    try {
+      await this.hookManager.executeHooks(eventType, hookContext);
+    } catch (error) {
+      // Log hook execution errors but don't stop workflow execution
+      console.error(`Hook execution failed for event ${eventType}:`, error);
+    }
+  }
+
+  /**
+   * Calculate state changes between two state objects
+   */
+  private calculateStateChanges(
+    stateBefore: Record<string, any>,
+    stateAfter: Record<string, any>
+  ): Record<string, { before: any; after: any }> {
+    const changes: Record<string, { before: any; after: any }> = {};
+    
+    // Check for changed and new keys
+    for (const key in stateAfter) {
+      if (stateBefore[key] !== stateAfter[key]) {
+        changes[key] = {
+          before: stateBefore[key],
+          after: stateAfter[key]
+        };
+      }
+    }
+    
+    // Check for deleted keys
+    for (const key in stateBefore) {
+      if (!(key in stateAfter)) {
+        changes[key] = {
+          before: stateBefore[key],
+          after: undefined
+        };
+      }
+    }
+    
+    return changes;
+  }
+
+  /**
+   * Get the hook manager for external hook registration
+   */
+  public getHookManager(): HookManager {
+    return this.hookManager;
   }
 
   /**

@@ -35,11 +35,6 @@ export function WorkflowDemo() {
         version: '1.0.0',
         description: 'Demo workflow running in browser with client nodes',
         workflow: [
-          {
-            'fetch': {
-              url: 'http://localhost:3000/hello'
-            }
-          },
           'log-input',
           'empty'
         ]

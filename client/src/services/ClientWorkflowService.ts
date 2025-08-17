@@ -1,4 +1,4 @@
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry } from 'shared';
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
 import { UNIVERSAL_NODES } from 'shared/nodes';
 import { CLIENT_NODES } from '../../nodes';
@@ -15,6 +15,7 @@ export class ClientWorkflowService {
   
   private registry: NodeRegistry;
   private stateManager: StateManager;
+  private hookManager: HookManager;
   private executionEngine: ExecutionEngine;
   private parser: WorkflowParser;
   private initialized: boolean = false;
@@ -22,7 +23,8 @@ export class ClientWorkflowService {
   private constructor() {
     this.registry = new NodeRegistry();
     this.stateManager = new StateManager();
-    this.executionEngine = new ExecutionEngine(this.registry, this.stateManager);
+    this.hookManager = new HookManager();
+    this.executionEngine = new ExecutionEngine(this.registry, this.stateManager, this.hookManager);
     this.parser = new WorkflowParser(this.registry);
   }
 
@@ -75,12 +77,55 @@ export class ClientWorkflowService {
       if (clientNodes.length > 0) {
         console.log('🔧 Available client nodes:', clientNodes.map(n => n.id).join(', '));
       }
+
+      // Register hooks for demonstration
+      this.setupHooks();
       
       this.initialized = true;
     } catch (error) {
       console.error('❌ Failed to initialize ClientWorkflowService:', error);
       throw new Error(`ClientWorkflowService initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Setup demo hooks to show the hook system in action
+   */
+  private setupHooks(): void {
+    console.log('🎣 Setting up workflow hooks for demonstration...');
+
+    // Register a hook that logs before workflow execution starts
+    this.hookManager.register('workflow:before-start', {
+      name: 'demo-before-start-logger',
+      handler: async (context) => {
+        console.log('🚀 HOOK TRIGGERED: Workflow is about to start!');
+        console.log('📋 Workflow ID:', context.workflowId);
+        console.log('📊 Workflow data:', context.data);
+        console.log('⏰ Timestamp:', context.timestamp);
+      }
+    });
+
+    // Register a hook that logs after workflow execution completes
+    this.hookManager.register('workflow:after-end', {
+      name: 'demo-after-end-logger',
+      handler: async (context) => {
+        console.log('✅ HOOK TRIGGERED: Workflow has completed!');
+        console.log('📋 Workflow ID:', context.workflowId);
+        console.log('📊 Execution result:', context.data);
+        console.log('⏰ Timestamp:', context.timestamp);
+      }
+    });
+
+    // Register a hook that logs before each node execution
+    this.hookManager.register('node:before-execute', {
+      name: 'demo-node-logger',
+      handler: async (context) => {
+        console.log(`🔧 HOOK TRIGGERED: About to execute node: ${context.nodeId}`);
+        console.log('📊 Node data:', context.data);
+      }
+    });
+
+    console.log('✅ Demo hooks registered successfully!');
   }
 
   /**

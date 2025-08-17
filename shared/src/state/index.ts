@@ -5,5 +5,8 @@ export {
   type StatePersistenceAdapter,
   StateNotFoundError,
   StateLockError,
-  SnapshotNotFoundError
+  SnapshotNotFoundError,
+  type StateChange,
+  type StateDiff,
+  type StateWatcher
 } from './StateManager';
