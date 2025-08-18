@@ -42,7 +42,8 @@ export function AdvancedWorkflowDemo() {
                         'button': {
                           caption: 'Click Me!',
                           variant: 'default',
-                          size: 'lg'
+                          size: 'lg',
+                          onClick:['log-input', 'empty']
                         }
                         },
                         {
@@ -54,7 +55,9 @@ export function AdvancedWorkflowDemo() {
                         }
                       ]
             }
-          }
+          }//,
+       //    'log-input',
+       //   'empty'
           
         ]
       };

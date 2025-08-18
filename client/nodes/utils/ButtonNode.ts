@@ -3,6 +3,8 @@ import type { ExecutionContext, EdgeMap } from 'shared';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Button } from '../../src/components/ui/button';
+import { ClientWorkflowService } from '../../src/services/ClientWorkflowService';
+import type { WorkflowDefinition } from 'shared';
 
 export class ButtonNode extends WorkflowNode {
   metadata = {
@@ -15,6 +17,8 @@ export class ButtonNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+
+     const serviceInstance = await ClientWorkflowService.getInstance();
     try {
       // Check if there's a container ID in the context
       const containerId = context.state.containerId;
@@ -31,8 +35,12 @@ export class ButtonNode extends WorkflowNode {
 
       // Create the React Button component
       const ButtonComponent = () => {
-        const handleClick = () => {
-          console.log('Button clicked:', context);
+        const handleClick = async () => {
+          console.log('Button clicked:', context, config?.onClick);
+          if (config?.onClick) {
+            const workflow : WorkflowDefinition = {id:Date.now().toString(), name: 'Button Click Workflow', version: '1.0.0', description: 'Workflow triggered by button click', workflow: config.onClick};
+            const result = await serviceInstance.executeWorkflow(workflow);
+          }
           // Store click event in context state
           context.state.buttonClicked = {
             nodeId: context.nodeId,
