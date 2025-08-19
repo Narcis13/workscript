@@ -294,3 +294,391 @@ export interface SecurityWarning {
   path: string;
   recommendation?: string;
 }
+
+// WebSocket Message Types and Communication Protocol
+
+/**
+ * Base WebSocket message structure
+ */
+export interface WebSocketMessage<T = any> {
+  type: string;
+  payload?: T;
+  timestamp?: number;
+  requestId?: string;
+  correlationId?: string;
+}
+
+/**
+ * WebSocket connection lifecycle messages
+ */
+export interface ConnectionOpenMessage extends WebSocketMessage {
+  type: 'connection:open';
+  payload: {
+    timestamp: number;
+    clientId?: string;
+    protocols?: string[];
+  };
+}
+
+export interface ConnectionCloseMessage extends WebSocketMessage {
+  type: 'connection:close';
+  payload: {
+    code: number;
+    reason: string;
+    timestamp: number;
+  };
+}
+
+export interface ConnectionErrorMessage extends WebSocketMessage {
+  type: 'connection:error';
+  payload: {
+    error: string;
+    timestamp: number;
+  };
+}
+
+/**
+ * System health and ping messages
+ */
+export interface SystemPingMessage extends WebSocketMessage {
+  type: 'system:ping';
+  payload: {
+    timestamp: number;
+    clientId?: string;
+  };
+}
+
+export interface SystemPongMessage extends WebSocketMessage {
+  type: 'system:pong';
+  payload: {
+    timestamp: number;
+    serverId?: string;
+  };
+}
+
+/**
+ * Workflow execution messages
+ */
+export interface WorkflowExecuteMessage extends WebSocketMessage {
+  type: 'workflow:execute';
+  payload: {
+    workflowDefinition: WorkflowDefinition;
+    executionId: string;
+    initialState?: Record<string, any>;
+    options?: {
+      timeout?: number;
+      debug?: boolean;
+      skipValidation?: boolean;
+    };
+  };
+}
+
+export interface WorkflowResultMessage extends WebSocketMessage {
+  type: 'workflow:result';
+  payload: {
+    executionId: string;
+    success: true;
+    result: ExecutionResult;
+    timestamp: number;
+    duration?: number;
+  };
+}
+
+export interface WorkflowErrorMessage extends WebSocketMessage {
+  type: 'workflow:error';
+  payload: {
+    executionId: string;
+    success: false;
+    error: string;
+    timestamp: number;
+    details?: {
+      nodeId?: string;
+      step?: number;
+      stackTrace?: string;
+    };
+  };
+}
+
+/**
+ * Workflow validation messages
+ */
+export interface WorkflowValidateMessage extends WebSocketMessage {
+  type: 'workflow:validate';
+  payload: {
+    workflowDefinition: WorkflowDefinition | unknown;
+    validationId: string;
+    options?: {
+      strict?: boolean;
+      checkNodeAvailability?: boolean;
+    };
+  };
+}
+
+export interface WorkflowValidationResultMessage extends WebSocketMessage {
+  type: 'workflow:validation-result';
+  payload: {
+    validationId: string;
+    result: ValidationResult;
+    timestamp: number;
+  };
+}
+
+export interface WorkflowValidationErrorMessage extends WebSocketMessage {
+  type: 'workflow:validation-error';
+  payload: {
+    validationId: string;
+    error: string;
+    timestamp: number;
+  };
+}
+
+/**
+ * Workflow status and progress messages
+ */
+export interface WorkflowStatusMessage extends WebSocketMessage {
+  type: 'workflow:status';
+  payload: {
+    executionId: string;
+    status: 'queued' | 'running' | 'paused' | 'completed' | 'failed';
+    currentNode?: string;
+    progress?: {
+      completed: number;
+      total: number;
+      percentage: number;
+    };
+    timestamp: number;
+  };
+}
+
+export interface WorkflowProgressMessage extends WebSocketMessage {
+  type: 'workflow:progress';
+  payload: {
+    executionId: string;
+    nodeId: string;
+    nodeStatus: 'starting' | 'executing' | 'completed' | 'failed';
+    timestamp: number;
+    data?: Record<string, any>;
+  };
+}
+
+/**
+ * Node registry and discovery messages
+ */
+export interface NodeListRequestMessage extends WebSocketMessage {
+  type: 'node:list-request';
+  payload: {
+    requestId: string;
+    environment?: 'universal' | 'server' | 'client';
+    category?: string;
+  };
+}
+
+export interface NodeListResponseMessage extends WebSocketMessage {
+  type: 'node:list-response';
+  payload: {
+    requestId: string;
+    nodes: Array<NodeMetadata & { source: string }>;
+    timestamp: number;
+  };
+}
+
+/**
+ * Error and notification messages
+ */
+export interface ErrorMessage extends WebSocketMessage {
+  type: 'error';
+  payload: {
+    code: string;
+    message: string;
+    details?: Record<string, any>;
+    timestamp: number;
+  };
+}
+
+export interface NotificationMessage extends WebSocketMessage {
+  type: 'notification';
+  payload: {
+    level: 'info' | 'warning' | 'error' | 'success';
+    title: string;
+    message: string;
+    timestamp: number;
+    actions?: Array<{
+      label: string;
+      action: string;
+      data?: any;
+    }>;
+  };
+}
+
+/**
+ * Custom and raw message types
+ */
+export interface CustomMessage extends WebSocketMessage {
+  type: string; // Any custom type
+  payload?: any;
+}
+
+export interface RawMessage extends WebSocketMessage {
+  type: 'raw';
+  payload: string | ArrayBuffer | Blob;
+}
+
+/**
+ * Union type for all possible WebSocket messages
+ */
+export type AnyWebSocketMessage = 
+  | ConnectionOpenMessage
+  | ConnectionCloseMessage
+  | ConnectionErrorMessage
+  | SystemPingMessage
+  | SystemPongMessage
+  | WorkflowExecuteMessage
+  | WorkflowResultMessage
+  | WorkflowErrorMessage
+  | WorkflowValidateMessage
+  | WorkflowValidationResultMessage
+  | WorkflowValidationErrorMessage
+  | WorkflowStatusMessage
+  | WorkflowProgressMessage
+  | NodeListRequestMessage
+  | NodeListResponseMessage
+  | ErrorMessage
+  | NotificationMessage
+  | CustomMessage
+  | RawMessage;
+
+/**
+ * WebSocket message type guards for type-safe handling
+ */
+export const isConnectionMessage = (msg: WebSocketMessage): msg is ConnectionOpenMessage | ConnectionCloseMessage | ConnectionErrorMessage => {
+  return msg.type.startsWith('connection:');
+};
+
+export const isSystemMessage = (msg: WebSocketMessage): msg is SystemPingMessage | SystemPongMessage => {
+  return msg.type.startsWith('system:');
+};
+
+export const isWorkflowMessage = (msg: WebSocketMessage): msg is 
+  | WorkflowExecuteMessage 
+  | WorkflowResultMessage 
+  | WorkflowErrorMessage 
+  | WorkflowValidateMessage 
+  | WorkflowValidationResultMessage
+  | WorkflowValidationErrorMessage
+  | WorkflowStatusMessage
+  | WorkflowProgressMessage => {
+  return msg.type.startsWith('workflow:');
+};
+
+export const isNodeMessage = (msg: WebSocketMessage): msg is NodeListRequestMessage | NodeListResponseMessage => {
+  return msg.type.startsWith('node:');
+};
+
+/**
+ * WebSocket serialization/deserialization utilities
+ */
+export class WebSocketMessageSerializer {
+  /**
+   * Serialize a WebSocket message to JSON string
+   */
+  static serialize<T>(message: WebSocketMessage<T>): string {
+    try {
+      // Ensure timestamp is set
+      const messageWithTimestamp: WebSocketMessage<T> = {
+        timestamp: Date.now(),
+        ...message
+      };
+      
+      return JSON.stringify(messageWithTimestamp);
+    } catch (error) {
+      throw new Error(`Failed to serialize WebSocket message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Deserialize a JSON string to WebSocket message
+   */
+  static deserialize<T = any>(data: string): WebSocketMessage<T> {
+    try {
+      const parsed = JSON.parse(data);
+      
+      // Validate basic message structure
+      if (!parsed.type || typeof parsed.type !== 'string') {
+        throw new Error('Invalid message format: missing or invalid type field');
+      }
+      
+      return parsed as WebSocketMessage<T>;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error('Failed to parse WebSocket message: Invalid JSON');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Create a typed message with automatic timestamp and ID generation
+   */
+  static createMessage<T>(type: string, payload?: T, options?: {
+    requestId?: string;
+    correlationId?: string;
+  }): WebSocketMessage<T> {
+    return {
+      type,
+      payload,
+      timestamp: Date.now(),
+      requestId: options?.requestId || crypto.randomUUID?.() || Math.random().toString(36),
+      correlationId: options?.correlationId
+    };
+  }
+
+  /**
+   * Validate message structure
+   */
+  static isValidMessage(data: unknown): data is WebSocketMessage {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+    
+    const msg = data as any;
+    return typeof msg.type === 'string' && msg.type.length > 0;
+  }
+
+  /**
+   * Create error response message
+   */
+  static createErrorResponse(originalMessage: WebSocketMessage, error: string, code?: string): ErrorMessage {
+    return this.createMessage('error', {
+      code: code || 'UNKNOWN_ERROR',
+      message: error,
+      timestamp: Date.now(),
+      details: {
+        originalType: originalMessage.type,
+        originalRequestId: originalMessage.requestId
+      }
+    }, {
+      correlationId: originalMessage.requestId
+    }) as ErrorMessage;
+  }
+
+  /**
+   * Create success response message for workflow operations
+   */
+  static createWorkflowSuccessResponse(
+    executionId: string, 
+    result: ExecutionResult, 
+    originalMessage?: WebSocketMessage
+  ): WorkflowResultMessage {
+    return this.createMessage('workflow:result', {
+      executionId,
+      success: true as const,
+      result,
+      timestamp: Date.now(),
+      duration: result.endTime && result.startTime 
+        ? result.endTime.getTime() - result.startTime.getTime() 
+        : undefined
+    }, {
+      correlationId: originalMessage?.requestId
+    }) as WorkflowResultMessage;
+  }
+}

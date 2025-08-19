@@ -2,6 +2,16 @@ import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManage
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
 import { UNIVERSAL_NODES } from 'shared/nodes';
 import { CLIENT_NODES } from '../../nodes';
+import { useWebSocket, type WebSocketMessage, type WebSocketOptions } from '../hooks/useWebSocket';
+
+export interface WebSocketWorkflowOptions {
+  enabled?: boolean;
+  url?: string;
+  protocols?: string | string[];
+  autoExecute?: boolean;
+  reconnect?: boolean;
+  maxReconnectAttempts?: number;
+}
 
 /**
  * Singleton service for workflow engine components in browser environments
@@ -9,6 +19,8 @@ import { CLIENT_NODES } from '../../nodes';
  * 
  * This service provides the same API as the server WorkflowService but is optimized
  * for browser environments where file-based node discovery is not available.
+ * 
+ * Now includes WebSocket integration for real-time workflow triggering and communication.
  */
 export class ClientWorkflowService {
   private static instance: ClientWorkflowService | null = null;
@@ -19,6 +31,11 @@ export class ClientWorkflowService {
   private executionEngine: ExecutionEngine;
   private parser: WorkflowParser;
   private initialized: boolean = false;
+  
+  // WebSocket integration properties
+  private webSocketOptions: WebSocketWorkflowOptions | null = null;
+  private webSocketConnection: any = null;
+  private webSocketEventHandlers: Map<string, (message: WebSocketMessage) => void> = new Map();
 
   private constructor() {
     this.registry = new NodeRegistry();
@@ -276,5 +293,285 @@ export class ClientWorkflowService {
    */
   public getParser(): WorkflowParser {
     return this.parser;
+  }
+
+  /**
+   * Enable WebSocket integration for real-time workflow communication
+   * @param options WebSocket configuration options
+   */
+  public enableWebSocket(options: WebSocketWorkflowOptions): void {
+    if (!this.initialized) {
+      throw new Error('ClientWorkflowService not initialized. Call getInstance() first.');
+    }
+
+    this.webSocketOptions = {
+      enabled: true,
+      autoExecute: true,
+      reconnect: true,
+      maxReconnectAttempts: 5,
+      ...options
+    };
+
+    if (this.webSocketOptions.enabled && this.webSocketOptions.url) {
+      this.connectWebSocket();
+    }
+  }
+
+  /**
+   * Disable WebSocket integration and close any active connections
+   */
+  public disableWebSocket(): void {
+    this.webSocketOptions = null;
+    if (this.webSocketConnection) {
+      this.webSocketConnection.disconnect();
+      this.webSocketConnection = null;
+    }
+    this.webSocketEventHandlers.clear();
+  }
+
+  /**
+   * Connect to WebSocket server
+   */
+  private connectWebSocket(): void {
+    if (!this.webSocketOptions?.url) {
+      console.error('❌ Cannot connect WebSocket: No URL provided');
+      return;
+    }
+
+    console.log('🔌 Connecting to WebSocket for workflow communication...');
+
+    // Note: Since useWebSocket is a React hook, we need to create a WebSocket manually here
+    // or restructure to use the hook in a React component context
+    const socket = new WebSocket(this.webSocketOptions.url, this.webSocketOptions.protocols);
+
+    socket.onopen = (event) => {
+      console.log('✅ WebSocket connected for workflow service');
+      this.handleWebSocketMessage({
+        type: 'connection:open',
+        payload: { timestamp: Date.now() },
+        timestamp: Date.now()
+      });
+    };
+
+    socket.onclose = (event) => {
+      console.log('🔌 WebSocket disconnected from workflow service');
+      this.handleWebSocketMessage({
+        type: 'connection:close',
+        payload: { code: event.code, reason: event.reason, timestamp: Date.now() },
+        timestamp: Date.now()
+      });
+      
+      // Handle reconnection if enabled
+      if (this.webSocketOptions?.reconnect && this.webSocketOptions?.maxReconnectAttempts) {
+        setTimeout(() => this.connectWebSocket(), 1000);
+      }
+    };
+
+    socket.onerror = (event) => {
+      console.error('❌ WebSocket error in workflow service:', event);
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message: WebSocketMessage = JSON.parse(event.data);
+        this.handleWebSocketMessage(message);
+      } catch (error) {
+        // Handle non-JSON messages
+        this.handleWebSocketMessage({
+          type: 'raw',
+          payload: event.data,
+          timestamp: Date.now()
+        });
+      }
+    };
+
+    this.webSocketConnection = {
+      socket,
+      disconnect: () => socket.close(),
+      send: (message: WebSocketMessage) => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify(message));
+          return true;
+        }
+        return false;
+      }
+    };
+  }
+
+  /**
+   * Handle incoming WebSocket messages
+   * @param message The received WebSocket message
+   */
+  private async handleWebSocketMessage(message: WebSocketMessage): Promise<void> {
+    console.log('📨 WebSocket message received:', message.type, message.payload);
+
+    // Check for registered event handlers
+    const handler = this.webSocketEventHandlers.get(message.type);
+    if (handler) {
+      handler(message);
+      return;
+    }
+
+    // Handle built-in message types
+    switch (message.type) {
+      case 'workflow:execute':
+        await this.handleWebSocketWorkflowExecution(message);
+        break;
+      
+      case 'workflow:validate':
+        this.handleWebSocketWorkflowValidation(message);
+        break;
+      
+      case 'system:ping':
+        this.sendWebSocketMessage({
+          type: 'system:pong',
+          payload: { timestamp: Date.now() },
+          timestamp: Date.now()
+        });
+        break;
+      
+      default:
+        console.log('📨 Unhandled WebSocket message type:', message.type);
+    }
+  }
+
+  /**
+   * Handle WebSocket-triggered workflow execution
+   * @param message The workflow execution message
+   */
+  private async handleWebSocketWorkflowExecution(message: WebSocketMessage): Promise<void> {
+    if (!this.webSocketOptions?.autoExecute) {
+      console.log('⚠️ WebSocket workflow execution disabled');
+      return;
+    }
+
+    try {
+      const { workflowDefinition, executionId } = message.payload;
+      
+      if (!workflowDefinition) {
+        throw new Error('No workflow definition provided in WebSocket message');
+      }
+
+      console.log('🚀 Executing workflow via WebSocket trigger:', executionId);
+      
+      // Execute the workflow
+      const result = await this.executeWorkflow(workflowDefinition);
+      
+      // Send result back via WebSocket
+      this.sendWebSocketMessage({
+        type: 'workflow:result',
+        payload: {
+          executionId,
+          success: true,
+          result,
+          timestamp: Date.now()
+        },
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      console.error('❌ WebSocket workflow execution failed:', error);
+      
+      // Send error back via WebSocket
+      this.sendWebSocketMessage({
+        type: 'workflow:error',
+        payload: {
+          executionId: message.payload?.executionId,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: Date.now()
+        },
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * Handle WebSocket-triggered workflow validation
+   * @param message The workflow validation message
+   */
+  private handleWebSocketWorkflowValidation(message: WebSocketMessage): void {
+    try {
+      const { workflowDefinition, validationId } = message.payload;
+      
+      if (!workflowDefinition) {
+        throw new Error('No workflow definition provided in WebSocket message');
+      }
+
+      console.log('🔍 Validating workflow via WebSocket trigger:', validationId);
+      
+      // Validate the workflow
+      const result = this.validateWorkflow(workflowDefinition);
+      
+      // Send result back via WebSocket
+      this.sendWebSocketMessage({
+        type: 'workflow:validation-result',
+        payload: {
+          validationId,
+          result,
+          timestamp: Date.now()
+        },
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      console.error('❌ WebSocket workflow validation failed:', error);
+      
+      // Send error back via WebSocket
+      this.sendWebSocketMessage({
+        type: 'workflow:validation-error',
+        payload: {
+          validationId: message.payload?.validationId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: Date.now()
+        },
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * Send a message via WebSocket connection
+   * @param message The message to send
+   * @returns True if message was sent successfully
+   */
+  public sendWebSocketMessage(message: WebSocketMessage): boolean {
+    if (!this.webSocketConnection) {
+      console.warn('⚠️ No WebSocket connection available');
+      return false;
+    }
+
+    return this.webSocketConnection.send(message);
+  }
+
+  /**
+   * Register a custom WebSocket event handler
+   * @param messageType The message type to handle
+   * @param handler The handler function
+   */
+  public onWebSocketMessage(messageType: string, handler: (message: WebSocketMessage) => void): void {
+    this.webSocketEventHandlers.set(messageType, handler);
+  }
+
+  /**
+   * Remove a WebSocket event handler
+   * @param messageType The message type to remove handler for
+   */
+  public offWebSocketMessage(messageType: string): void {
+    this.webSocketEventHandlers.delete(messageType);
+  }
+
+  /**
+   * Get WebSocket connection status
+   * @returns WebSocket connection information
+   */
+  public getWebSocketStatus() {
+    return {
+      enabled: this.webSocketOptions?.enabled || false,
+      connected: this.webSocketConnection?.socket?.readyState === WebSocket.OPEN,
+      url: this.webSocketOptions?.url || null,
+      autoExecute: this.webSocketOptions?.autoExecute || false,
+      eventHandlers: Array.from(this.webSocketEventHandlers.keys())
+    };
   }
 }

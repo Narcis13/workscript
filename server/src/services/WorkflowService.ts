@@ -1,5 +1,6 @@
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry } from 'shared';
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
+import { WebSocketManager } from './WebSocketManager';
 
 /**
  * Singleton service for workflow engine components
@@ -11,14 +12,18 @@ export class WorkflowService {
   private registry: NodeRegistry;
   private stateManager: StateManager;
   private executionEngine: ExecutionEngine;
+  private hookManager: HookManager;
   private parser: WorkflowParser;
+  private webSocketManager: WebSocketManager;
   private initialized: boolean = false;
 
   private constructor() {
     this.registry = new NodeRegistry();
     this.stateManager = new StateManager();
-    this.executionEngine = new ExecutionEngine(this.registry, this.stateManager);
+    this.hookManager = new HookManager();
+    this.executionEngine = new ExecutionEngine(this.registry, this.stateManager, this.hookManager);
     this.parser = new WorkflowParser(this.registry);
+    this.webSocketManager = WebSocketManager.getInstance();
   }
 
   /**
@@ -88,14 +93,161 @@ export class WorkflowService {
       console.log(`📦 Registered ${nodeCount} nodes total:`);
       console.log(`   - ${universalNodes.length} universal nodes from shared package`);
       console.log(`   - ${serverNodes.length} server-specific nodes`);
-      
+      this.setupHooks();
       this.initialized = true;
     } catch (error) {
       console.error('❌ Failed to initialize WorkflowService:', error);
       throw new Error(`WorkflowService initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+
+  
   }
 
+  /**
+   * Setup workflow hooks to broadcast events via WebSocket
+   */
+  private setupHooks(): void {
+    console.log('🎣 Setting up workflow hooks for server with WebSocket broadcasting..');
+
+    // Hook: Workflow execution started
+    this.hookManager.register('workflow:before-start', {
+      name: 'websocket-workflow-start-broadcaster',
+      handler: async (context) => {
+        console.log('🚀 HOOK TRIGGERED: Workflow is about to start!');
+        console.log('📋 Workflow ID:', context.workflowId);
+
+        // Broadcast to WebSocket clients
+        this.webSocketManager.broadcastToChannel('workflow-events', {
+          type: 'workflow:started',
+          payload: {
+            workflowId: context.workflowId,
+            timestamp: Date.now(),
+            state: 'starting'
+          },
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Hook: Workflow execution completed
+    this.hookManager.register('workflow:after-end', {
+      name: 'websocket-workflow-end-broadcaster',
+      handler: async (context) => {
+        console.log('✅ HOOK TRIGGERED: Workflow has completed!');
+        console.log('📋 Workflow ID:', context.workflowId);
+
+        // Broadcast to WebSocket clients
+        this.webSocketManager.broadcastToChannel('workflow-events', {
+          type: 'workflow:completed',
+          payload: {
+            workflowId: context.workflowId,
+            result: context.data?.result,
+            timestamp: Date.now(),
+            state: 'completed'
+          },
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Hook: Node execution started
+    this.hookManager.register('node:before-execute', {
+      name: 'websocket-node-start-broadcaster',
+      handler: async (context) => {
+        console.log(`🔧 HOOK TRIGGERED: About to execute node: ${context.nodeId}`);
+        console.log('📊 Node data:', context.data);
+
+        // Broadcast to WebSocket clients
+        this.webSocketManager.broadcastToChannel('workflow-events', {
+          type: 'node:started',
+          payload: {
+            workflowId: context.workflowId,
+            nodeId: context.nodeId,
+            nodeType: context.data?.nodeType,
+            data: context.data,
+            timestamp: Date.now(),
+            state: 'executing'
+          },
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Hook: Node execution completed
+    this.hookManager.register('node:after-execute', {
+      name: 'websocket-node-end-broadcaster',
+      handler: async (context) => {
+        console.log(`✅ HOOK TRIGGERED: Node execution completed: ${context.nodeId}`);
+
+        // Broadcast to WebSocket clients
+        this.webSocketManager.broadcastToChannel('workflow-events', {
+          type: 'node:completed',
+          payload: {
+            workflowId: context.workflowId,
+            nodeId: context.nodeId,
+            nodeType: context.data?.nodeType,
+            result: context.data?.result,
+            timestamp: Date.now(),
+            state: 'completed'
+          },
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Hook: Workflow error
+    this.hookManager.register('workflow:error', {
+      name: 'websocket-workflow-error-broadcaster',
+      handler: async (context) => {
+        console.log('❌ HOOK TRIGGERED: Workflow error occurred!');
+        console.log('📋 Workflow ID:', context.workflowId);
+        console.log('❌ Error:', context.data?.error);
+
+        // Broadcast to WebSocket clients
+        this.webSocketManager.broadcastToChannel('workflow-events', {
+          type: 'workflow:error',
+          payload: {
+            workflowId: context.workflowId,
+            error: context.data?.error instanceof Error ? {
+              message: context.data.error.message,
+              stack: context.data.error.stack
+            } : context.data?.error,
+            timestamp: Date.now(),
+            state: 'error'
+          },
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Hook: Node error
+    this.hookManager.register('node:error', {
+      name: 'websocket-node-error-broadcaster',
+      handler: async (context) => {
+        console.log(`❌ HOOK TRIGGERED: Node execution error: ${context.nodeId}`);
+        console.log('❌ Error:', context.data?.error);
+
+        // Broadcast to WebSocket clients
+        this.webSocketManager.broadcastToChannel('workflow-events', {
+          type: 'node:error',
+          payload: {
+            workflowId: context.workflowId,
+            nodeId: context.nodeId,
+            nodeType: context.data?.nodeType,
+            error: context.data?.error instanceof Error ? {
+              message: context.data.error.message,
+              stack: context.data.error.stack
+            } : context.data?.error,
+            timestamp: Date.now(),
+            state: 'error'
+          },
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    console.log('✅ WebSocket workflow hooks registered successfully!');
+  }
   /**
    * Execute a workflow definition
    * @param workflowDefinition The workflow to execute
