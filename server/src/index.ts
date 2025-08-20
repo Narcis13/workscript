@@ -145,17 +145,108 @@ export default {
     return app.fetch(request);
   },
   websocket: {
-    message(ws: any, message: any) {
+    async message(ws: any, message: any) {
       try {
         const parsedMessage = JSON.parse(message.toString());
         console.log('WebSocket message received:', parsedMessage);
         
-        // For now, just echo the message back
-        ws.send(JSON.stringify({
-          type: 'echo',
-          payload: parsedMessage,
-          timestamp: Date.now()
-        }));
+        // Handle workflow execution messages
+        if (parsedMessage.type === 'workflow:execute') {
+          try {
+            const { workflowDefinition, executionId, options } = parsedMessage.payload;
+            console.log(`🚀 Executing workflow via WebSocket: ${executionId}`);
+            
+            // Get workflow service and execute
+            const workflowService = await WorkflowService.getInstance();
+            const startTime = Date.now();
+            const result = await workflowService.executeWorkflow(workflowDefinition);
+            const duration = Date.now() - startTime;
+            
+            // Send success response
+            ws.send(JSON.stringify({
+              type: 'workflow:result',
+              payload: {
+                executionId,
+                success: true,
+                result,
+                duration,
+                timestamp: Date.now()
+              },
+              timestamp: Date.now()
+            }));
+            
+            console.log(`✅ Workflow ${executionId} completed successfully in ${duration}ms`);
+            
+          } catch (executionError) {
+            console.error(`❌ Workflow execution failed:`, executionError);
+            
+            ws.send(JSON.stringify({
+              type: 'workflow:error',
+              payload: {
+                executionId: parsedMessage.payload?.executionId,
+                success: false,
+                error: executionError instanceof Error ? executionError.message : 'Unknown execution error',
+                timestamp: Date.now()
+              },
+              timestamp: Date.now()
+            }));
+          }
+        }
+        // Handle workflow validation messages
+        else if (parsedMessage.type === 'workflow:validate') {
+          try {
+            const { workflowDefinition, validationId } = parsedMessage.payload;
+            console.log(`🔍 Validating workflow via WebSocket: ${validationId}`);
+            
+            const workflowService = await WorkflowService.getInstance();
+            const validation = workflowService.validateWorkflow(workflowDefinition);
+            
+            ws.send(JSON.stringify({
+              type: 'workflow:validation-result',
+              payload: {
+                validationId,
+                result: validation,
+                timestamp: Date.now()
+              },
+              timestamp: Date.now()
+            }));
+            
+            console.log(`✅ Workflow validation ${validationId} completed`);
+            
+          } catch (validationError) {
+            console.error(`❌ Workflow validation failed:`, validationError);
+            
+            ws.send(JSON.stringify({
+              type: 'workflow:validation-error',
+              payload: {
+                validationId: parsedMessage.payload?.validationId,
+                error: validationError instanceof Error ? validationError.message : 'Unknown validation error',
+                timestamp: Date.now()
+              },
+              timestamp: Date.now()
+            }));
+          }
+        }
+        // Handle ping messages
+        else if (parsedMessage.type === 'ping' || parsedMessage.type === 'system:ping') {
+          ws.send(JSON.stringify({
+            type: 'pong',
+            payload: { 
+              timestamp: Date.now(),
+              serverId: process.env.SERVER_ID || 'workflow-server'
+            },
+            timestamp: Date.now()
+          }));
+        }
+        // Echo other messages for debugging
+        else {
+          ws.send(JSON.stringify({
+            type: 'echo',
+            payload: parsedMessage,
+            timestamp: Date.now()
+          }));
+        }
+        
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
         ws.send(JSON.stringify({

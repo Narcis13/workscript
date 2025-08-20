@@ -23,62 +23,20 @@ const TEST_WORKFLOW: WorkflowDefinition = {
     "processingSteps": []
   },
   "workflow": [
-    {
-      "start-timer": {
-        "operation": "set",
-        "key": "startTime", 
-        "value": "{{timestamp}}",
-        "success?": "math-calculation"
+   {
+      "auth": {
+        "operation": "generate_token",
+        "data": "test-data",
+        "success?": {
+          "filesystem": {
+            "operation": "write",
+            "path": "/tmp/workflow-token.txt",
+            "content": "Token generated successfully!"
+          }
+        }
       }
     },
-    {
-      "math-calculation": {
-        "operation": "add",
-        "values": [10, 25, 5],
-        "success?": "logic-check"
-      }
-    },
-    {
-      "logic-check": {
-        "condition": "{{math_result}} > 30",
-        "success?": "data-transform",
-        "failure?": "error-handler"
-      }
-    },
-    {
-      "data-transform": {
-        "operation": "map",
-        "source": ["apple", "banana", "cherry"],
-        "transform": "uppercase", 
-        "success?": "final-summary"
-      }
-    },
-    {
-      "final-summary": {
-        "operation": "combine",
-        "data": {
-          "mathResult": "{{math_result}}",
-          "transformedData": "{{data_transform_result}}",
-          "processingComplete": true
-        },
-        "success?": "complete"
-      }
-    },
-    {
-      "complete": {
-        "message": "Workflow completed successfully!",
-        "finalData": "{{final_summary_result}}",
-        "success?": null
-      }
-    },
-    {
-      "error-handler": {
-        "message": "Handling error gracefully",
-        "error": "PROCESSING_ERROR",
-        "recovery": "Setting default values",
-        "success?": "complete"
-      }
-    }
+      "empty"
   ]
 };
 
@@ -157,6 +115,18 @@ export const WebSocketWorkflowDemo: React.FC = () => {
 
     initService();
   }, [addLog]);
+
+  // Connection deduplication - ensure single WebSocket connection
+  useEffect(() => {
+    // Only connect once
+    if (!isConnected) {
+      connect();
+    }
+    
+    return () => {
+      disconnect(); // Always cleanup on unmount
+    };
+  }, []); // Empty deps - connect only once
 
   // Handle WebSocket messages
   function handleWebSocketMessage(message: WebSocketMessage): void {
