@@ -120,22 +120,66 @@ app.get('/ws/clients', async (c) => {
 const PORT = process.env.PORT || 3000;
 
 console.log(`🚀 Server starting on http://localhost:${PORT}`);
-console.log(`🔌 WebSocket functionality available - will be implemented using Bun's native WebSocket support`);
+console.log(`🔌 WebSocket server available at ws://localhost:${PORT}/ws`);
 
 export default {
   port: PORT,
-  fetch: app.fetch,
-  // Bun WebSocket support would go here in the future
+  fetch(request: Request, server: any) {
+    // Handle WebSocket upgrade requests specifically for /ws path
+    const url = new URL(request.url);
+    if (request.headers.get('upgrade') === 'websocket' && url.pathname === '/ws') {
+      const success = server.upgrade(request, {
+        data: {
+          clientId: Math.random().toString(36).substring(7),
+          path: url.pathname,
+        },
+      });
+      
+      if (!success) {
+        return new Response('WebSocket upgrade failed', { status: 400 });
+      }
+      return; // Connection is handled by websocket handlers below
+    }
+    
+    // Handle regular HTTP requests
+    return app.fetch(request);
+  },
   websocket: {
     message(ws: any, message: any) {
-      // WebSocket message handling would go here
-      console.log('WebSocket message received:', message);
+      try {
+        const parsedMessage = JSON.parse(message.toString());
+        console.log('WebSocket message received:', parsedMessage);
+        
+        // For now, just echo the message back
+        ws.send(JSON.stringify({
+          type: 'echo',
+          payload: parsedMessage,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          payload: { message: 'Invalid message format' },
+          timestamp: Date.now()
+        }));
+      }
     },
     open(ws: any) {
-      console.log('WebSocket connection opened');
+      console.log('WebSocket connection opened for client:', ws.data?.clientId);
+      
+      // Send welcome message
+      ws.send(JSON.stringify({
+        type: 'connection:open',
+        payload: { 
+          clientId: ws.data?.clientId,
+          message: 'Connected to workflow service'
+        },
+        timestamp: Date.now()
+      }));
     },
-    close(ws: any) {
-      console.log('WebSocket connection closed');
+    close(ws: any, code: number, reason: string) {
+      console.log('WebSocket connection closed for client:', ws.data?.clientId, 'Code:', code, 'Reason:', reason);
     },
   },
 }

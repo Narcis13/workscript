@@ -7,15 +7,10 @@ import {
   type WorkflowExecuteMessage,
   type WorkflowValidateMessage,
   isWorkflowMessage,
-  type WorkflowDefinition
+  type WorkflowDefinition,
+  type WebSocketMessage
 } from 'shared';
 
-export interface WebSocketMessage {
-  type: string;
-  payload?: any;
-  timestamp: number;
-  clientId?: string;
-}
 
 export interface WebSocketClient {
   id: string;
@@ -74,8 +69,6 @@ export class WebSocketManager {
       ws.on('message', (data: Buffer) => {
         try {
           const message: WebSocketMessage = JSON.parse(data.toString());
-          message.clientId = clientId;
-          message.timestamp = Date.now();
           
           this.handleMessage(client, message);
         } catch (error) {
@@ -195,7 +188,7 @@ export class WebSocketManager {
 
       // Execute workflow
       const startTime = Date.now();
-      const result = await this.workflowService.executeWorkflow(workflowDefinition, initialState);
+      const result = await this.workflowService.executeWorkflow(workflowDefinition);
       const duration = Date.now() - startTime;
 
       // Send success response

@@ -129,20 +129,29 @@ export const WebSocketWorkflowDemo: React.FC = () => {
   useEffect(() => {
     const initService = async () => {
       try {
+        addLog('🔧 Initializing ClientWorkflowService...');
         const service = await ClientWorkflowService.getInstance();
         
-        // Enable WebSocket integration
-        service.enableWebSocket({
-          url: 'ws://localhost:3000/ws',
-          autoExecute: false, // We'll handle execution manually
-          reconnect: true
-        });
-
+        addLog('✅ ClientWorkflowService initialized');
         setWorkflowService(service);
         setIsServiceInitialized(true);
-        addLog('✅ ClientWorkflowService initialized');
+        
+        // Enable WebSocket integration after service is fully initialized
+        try {
+          service.enableWebSocket({
+            url: 'ws://localhost:3000/ws',
+            autoExecute: false, // We'll handle execution manually
+            reconnect: true
+          });
+          addLog('✅ WebSocket integration enabled');
+        } catch (wsError) {
+          addLog(`⚠️ WebSocket integration failed: ${wsError}`);
+          // Service is still usable for local execution
+        }
+        
       } catch (error) {
         addLog(`❌ Failed to initialize ClientWorkflowService: ${error}`);
+        console.error('ClientWorkflowService initialization error:', error);
       }
     };
 

@@ -73,13 +73,25 @@ export class ClientWorkflowService {
       // In browser environment, we manually register nodes from central indexes
       // This replaces the file-based discovery used on the server
       
+      console.log('📦 Registering universal nodes...');
       // Register universal nodes from shared package
       for (const nodeClass of UNIVERSAL_NODES) {
-        await this.registry.register(nodeClass, { source: 'universal' });
+        try {
+          await this.registry.register(nodeClass, { source: 'universal' });
+        } catch (nodeError) {
+          console.error(`❌ Failed to register universal node:`, nodeClass, nodeError);
+          throw nodeError;
+        }
       }
       
+      console.log('🎯 Registering client-specific nodes...');
       // Register client-specific nodes
-      await this.registry.registerClientNodes(CLIENT_NODES);
+      try {
+        await this.registry.registerClientNodes(CLIENT_NODES);
+      } catch (clientNodesError) {
+        console.error(`❌ Failed to register client nodes:`, clientNodesError);
+        throw clientNodesError;
+      }
 
       const nodeCount = this.registry.size;
       const universalNodes = this.registry.listNodesBySource('universal');
@@ -96,7 +108,13 @@ export class ClientWorkflowService {
       }
 
       // Register hooks for demonstration
-      this.setupHooks();
+      console.log('🎣 Setting up workflow hooks...');
+      try {
+        this.setupHooks();
+      } catch (hookError) {
+        console.error(`❌ Failed to setup hooks:`, hookError);
+        throw hookError;
+      }
       
       this.initialized = true;
     } catch (error) {
