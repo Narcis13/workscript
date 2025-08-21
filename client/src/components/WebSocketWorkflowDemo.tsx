@@ -70,7 +70,7 @@ export const WebSocketWorkflowDemo: React.FC = () => {
     connect,
     disconnect
   } = useWebSocket({
-    url: 'ws://localhost:3000/ws', // WebSocket server on same port as HTTP
+    url: 'ws://localhost:3013/ws', // WebSocket server on same port as HTTP
     onOpen: () => addLog('🔌 WebSocket connected'),
     onClose: () => addLog('🔌 WebSocket disconnected'),
     onError: (error) => addLog(`❌ WebSocket error: ${error}`),
@@ -97,7 +97,7 @@ export const WebSocketWorkflowDemo: React.FC = () => {
         // Enable WebSocket integration after service is fully initialized
         try {
           service.enableWebSocket({
-            url: 'ws://localhost:3000/ws',
+            url: 'ws://localhost:3013/ws',
             autoExecute: false, // We'll handle execution manually
             reconnect: true
           });

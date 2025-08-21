@@ -103,7 +103,7 @@ import beaver from './assets/beaver.svg'
 import { ApiResponse } from 'shared'
 import './App.css'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3013"
 
 function App() {
   const [data, setData] = useState<ApiResponse | undefined>()

@@ -4,8 +4,10 @@ import type { ApiResponse } from 'shared/dist'
 import { securityHeaders, logger, errorHandler } from './middleware'
 import { WorkflowService } from './services/WorkflowService'
 import { WebSocketManager } from './services/WebSocketManager'
+import { initializeTokenStorage } from './lib/token-storage';
 import workflows from './api/workflows'
 
+initializeTokenStorage();    
 const app = new Hono()
 const wsManager = WebSocketManager.getInstance()
 
@@ -117,7 +119,7 @@ app.get('/ws/clients', async (c) => {
 // Simple Hono server with basic WebSocket note for now
 // WebSocket functionality can be added later using Bun's native WebSocket support
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3013;
 
 console.log(`🚀 Server starting on http://localhost:${PORT}`);
 console.log(`🔌 WebSocket server available at ws://localhost:${PORT}/ws`);

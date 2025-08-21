@@ -167,7 +167,7 @@ const {
   sendMessage,
   lastMessage
 } = useWebSocket({
-  url: 'ws://localhost:3000/ws',
+  url: 'ws://localhost:3013/ws',
   onMessage: (message) => {
     if (message.type === 'workflow:result') {
       handleWorkflowCompletion(message.payload);
@@ -235,7 +235,7 @@ const workflowService = await ClientWorkflowService.getInstance();
 
 // Enable WebSocket for remote execution capability
 workflowService.enableWebSocket({
-  url: 'ws://localhost:3000/ws',
+  url: 'ws://localhost:3013/ws',
   autoExecute: true,  // Automatically handle incoming execution requests
   reconnect: true,
   maxReconnectAttempts: 5

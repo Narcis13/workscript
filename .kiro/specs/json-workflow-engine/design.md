@@ -2226,7 +2226,7 @@ class DistributedExecutor {
 // Development configuration
 export const devConfig = {
   server: {
-    port: process.env.PORT || 3000,
+    port: process.env.PORT || 3013,
     host: 'localhost',
     cors: {
       origin: '*',

@@ -39,3 +39,7 @@ pnpm-debug.log*
 
 # Bun
 bun.lockb
+
+# Database files
+server/secret.sqlite
+*.sqlite

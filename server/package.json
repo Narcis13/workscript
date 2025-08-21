@@ -12,6 +12,7 @@
     "@types/glob": "^9.0.0",
     "ajv": "^8.17.1",
     "glob": "^11.0.3",
+    "googleapis": "135.1.0",
     "hono": "^4.7.11",
     "shared": "workspace:*"
   },

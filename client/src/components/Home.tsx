@@ -5,7 +5,7 @@ import { Button } from './ui/button'
 import { WorkflowDemo } from './WorkflowDemo'
 import { useWorkflowService } from '../hooks/useWorkflowService'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3000"
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3013"
 
 interface ValidationResult {
   valid: boolean
@@ -76,7 +76,7 @@ export function Home() {
         workflow: [
           {
             'fetch': {
-              url: 'http://localhost:3000/hello',
+              url: 'http://localhost:3013/hello',
               'success?': {
                 'localStorage': {
                   operation: 'set',

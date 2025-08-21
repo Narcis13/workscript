@@ -126,7 +126,7 @@
 
 ### Development Servers Running:
 - **Client:** http://localhost:5173/ (Vite dev server)
-- **Server:** http://localhost:3000/ (Hono API server)
+- **Server:** http://localhost:3013/ (Hono API server)
 - **Status:** Both servers operational and tested
 
 ### Next Steps for Production:
