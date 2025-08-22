@@ -4,7 +4,12 @@ export type ApiResponse = {
 }
 
 // Core workflow types and interfaces
-
+export interface AIHints {
+  purpose: string;
+  when_to_use: string;
+  expected_edges: string[];
+  example_usage?: string;
+}
 export interface NodeMetadata {
   id: string;
   name: string;
@@ -12,6 +17,7 @@ export interface NodeMetadata {
   version?: string;
   inputs?: string[];
   outputs?: string[];
+  ai_hints?: AIHints;
 }
 
 export interface ExecutionContext {
