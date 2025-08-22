@@ -6,6 +6,7 @@ import { WorkflowService } from './services/WorkflowService'
 import { WebSocketManager } from './services/WebSocketManager'
 import { initializeTokenStorage } from './lib/token-storage';
 import workflows from './api/workflows'
+import googleAuthRoutes from './api/google'
 
 initializeTokenStorage();    
 const app = new Hono()
@@ -23,7 +24,7 @@ app.onError(errorHandler)
 
 // API routes
 app.route('/workflows', workflows)
-
+app.route('/auth', googleAuthRoutes)
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
