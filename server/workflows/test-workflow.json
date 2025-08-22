@@ -4,19 +4,13 @@
   "version": "1.0.0",
   "description": "Generate token and save to file!",
   "workflow": [
-    {
-      "auth": {
-        "operation": "generate_token",
-        "data": "test-data",
-        "success?": {
-          "filesystem": {
-            "operation": "write",
-            "path": "/tmp/workflow-token.txt",
-            "content": "Token generated successfully!"
-          }
-        }
-      }
+    { "googleConnect":{"email":"smupitesti2001@gmail.com"}},
+    {"listEmails": 
+                {
+                  "getFullDetails": true,
+                  "maxResults": 10
+                }
     },
-      "empty"
+    "log"
   ]
 }

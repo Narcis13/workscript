@@ -24,7 +24,7 @@ app.onError(errorHandler)
 
 // API routes
 app.route('/workflows', workflows)
-app.route('/auth', googleAuthRoutes)
+app.route('/api/auth', googleAuthRoutes)
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
