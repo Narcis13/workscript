@@ -19,8 +19,8 @@ import { RegisterNode } from '../../../registry';
 
 **New Implementation:**
 ```typescript
-import { WorkflowNode } from '../../../shared/src/types/index';
-import { ExecutionContext, EdgeMap, NodeMetadata } from '../../../shared/src/types/index';
+import { WorkflowNode } from 'shared';
+import { ExecutionContext, EdgeMap, NodeMetadata } from 'shared';
 ```
 
 ### 2. Update Class Declaration

@@ -228,6 +228,13 @@ export class ExecutionEngine {
         break;
       }
 
+      // For sequential execution (nextIndex = currentIndex + 1), ensure edge data
+      // is properly stored for the next node before continuing
+      if (nextIndex === currentIndex + 1 && result.data) {
+        // Force immediate storage of edge data for sequential nodes
+        await this.stateManager.setEdgeContext(context.executionId, result.data);
+      }
+
       // Reset loop counter if we're not returning to the same loop node
       if (isLoopNode && nextIndex !== currentIndex) {
         const baseNodeId = node.nodeId.slice(0, -3);

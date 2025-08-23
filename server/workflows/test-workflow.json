@@ -11,6 +11,13 @@
                   "maxResults": 10
                 }
     },
+    {"sendEmail": 
+                {
+                  "to": "narcis75@gmail.com",
+                  "subject": "Email de test from workscript",
+                  "body": "This is a test email sent from the workflow."
+                }
+    },
     "log"
   ]
 }
