@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const analyzeBtn = document.getElementById('analyzeBtn');
+    const getTableBtn = document.getElementById('getTableBtn');
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     const results = document.getElementById('results');
@@ -52,6 +53,31 @@ document.addEventListener('DOMContentLoaded', function() {
         } finally {
             loading.style.display = 'none';
             analyzeBtn.disabled = false;
+        }
+    });
+
+    getTableBtn.addEventListener('click', async function() {
+        try {
+            // Get current active tab
+            const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+            
+            // Inject script to extract table data
+            const [result] = await chrome.scripting.executeScript({
+                target: {tabId: tab.id},
+                function: extractTableData
+            });
+
+            if (result.result.error) {
+                console.error('Table extraction failed:', result.result.error);
+            } else if (result.result.csv) {
+                console.log('CSV Data from first table:');
+                console.log(result.result.csv);
+            } else {
+                console.log('No table found on the page');
+            }
+            
+        } catch (err) {
+            console.error('Table extraction failed:', err);
         }
     });
 
@@ -186,6 +212,58 @@ function analyzePage() {
             internalLinks,
             externalLinks,
             loadTime
+        };
+
+    } catch (error) {
+        return { error: error.message };
+    }
+}
+
+// Function to extract CSV data from the first table on the page
+function extractTableData() {
+    try {
+        const table = document.querySelector('table');
+        
+        if (!table) {
+            return { error: 'No table found on the page' };
+        }
+
+        const rows = table.querySelectorAll('tr');
+        if (rows.length === 0) {
+            return { error: 'Table has no rows' };
+        }
+
+        const csvRows = [];
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td, th');
+            const cellValues = Array.from(cells).map(cell => {
+                // Clean cell text and handle CSV escaping
+                let text = cell.textContent.trim();
+                // Escape quotes and wrap in quotes if contains comma, quote, or newline
+                if (text.includes('"')) {
+                    text = text.replace(/"/g, '""');
+                }
+                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                    text = `"${text}"`;
+                }
+                return text;
+            });
+            
+            if (cellValues.length > 0) {
+                csvRows.push(cellValues.join(','));
+            }
+        });
+
+        const csv = csvRows.join('\n');
+        
+        return {
+            csv: csv,
+            rowCount: csvRows.length,
+            tableInfo: {
+                rows: rows.length,
+                columns: rows[0] ? rows[0].querySelectorAll('td, th').length : 0
+            }
         };
 
     } catch (error) {
