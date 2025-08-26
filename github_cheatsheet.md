@@ -1,4 +1,4 @@
-# GitHub Cheatsheet for Solo Developers
+# GitHub Cheatsheet for Solo Developers!
 
 ## Basic Git Operations
 
