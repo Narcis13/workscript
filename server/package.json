@@ -6,19 +6,27 @@
   "scripts": {
     "build": "tsc",
     "dev": "bun --watch run src/index.ts",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "db:generate": "npx drizzle-kit generate",
+    "db:migrate": "npx drizzle-kit migrate",
+    "db:push": "npx drizzle-kit push",
+    "db:studio": "npx drizzle-kit studio"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^2.2.2",
     "@types/glob": "^9.0.0",
     "ajv": "^8.17.1",
+    "drizzle-orm": "^0.37.0",
     "glob": "^11.0.3",
     "googleapis": "135.1.0",
     "hono": "^4.7.11",
+    "mysql2": "^3.11.5",
     "shared": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^24.0.14",
+    "drizzle-kit": "^0.27.1",
     "vitest": "^3.2.4"
   }
 }
