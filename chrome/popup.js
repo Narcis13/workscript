@@ -58,6 +58,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     getTableBtn.addEventListener('click', async function() {
         try {
+            // Show loading state
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+            getTableBtn.disabled = true;
+
             // Get current active tab
             const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
             
@@ -68,16 +74,56 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             if (result.result.error) {
-                console.error('Table extraction failed:', result.result.error);
-            } else if (result.result.csv) {
-                console.log('CSV Data from first table:');
-                console.log(result.result.csv);
+                error.textContent = 'Table extraction failed: ' + result.result.error;
+                error.style.display = 'block';
+            } else if (result.result.json) {
+                // Create a downloadable JSON file
+                const jsonString = JSON.stringify(result.result.json, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'table-data.json';
+                a.click();
+                URL.revokeObjectURL(url);
+
+                // Show success message with column names
+                const columnsList = result.result.tableInfo.columnNames.join(', ');
+                const successDiv = document.createElement('div');
+                successDiv.className = 'results';
+                successDiv.innerHTML = `
+                    <div class="metric">
+                        <span class="metric-label">Table found!</span>
+                        <span class="metric-value">${result.result.rowCount} data rows extracted</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Columns:</span>
+                        <span class="metric-value">${result.result.tableInfo.columns}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Fields:</span>
+                        <span class="metric-value" style="font-size: 11px;">${columnsList}</span>
+                    </div>
+                    <div style="margin-top: 10px; padding: 10px; background: #e8f5e8; border-radius: 4px; font-size: 12px;">
+                        JSON file downloaded automatically - Ready for database insertion
+                    </div>
+                `;
+                
+                // Clear existing results and show table data
+                results.innerHTML = '';
+                results.appendChild(successDiv);
+                results.style.display = 'block';
             } else {
-                console.log('No table found on the page');
+                error.textContent = 'No table found on the page';
+                error.style.display = 'block';
             }
             
         } catch (err) {
-            console.error('Table extraction failed:', err);
+            error.textContent = 'Table extraction failed: ' + err.message;
+            error.style.display = 'block';
+        } finally {
+            loading.style.display = 'none';
+            getTableBtn.disabled = false;
         }
     });
 
@@ -219,7 +265,7 @@ function analyzePage() {
     }
 }
 
-// Function to extract CSV data from the first table on the page
+// Function to extract clean JSON data from the first table on the page (without header row)
 function extractTableData() {
     try {
         const table = document.querySelector('table');
@@ -233,36 +279,70 @@ function extractTableData() {
             return { error: 'Table has no rows' };
         }
 
-        const csvRows = [];
-        
-        rows.forEach(row => {
+        // Get header row to determine column names
+        const headerRow = rows[0];
+        const headerCells = headerRow.querySelectorAll('td, th');
+        const columnNames = Array.from(headerCells).map((cell, index) => {
+            let headerText = cell.textContent.trim();
+            // Clean header text and use as property name
+            headerText = headerText.replace(/\s+/g, ' ').replace(/[^\w\s]/g, '').trim();
+            return headerText || `column_${index}`;
+        });
+
+        // Extract data rows (skip header row)
+        const dataRows = Array.from(rows).slice(1);
+        const jsonData = [];
+
+        dataRows.forEach(row => {
             const cells = row.querySelectorAll('td, th');
-            const cellValues = Array.from(cells).map(cell => {
-                // Clean cell text and handle CSV escaping
-                let text = cell.textContent.trim();
-                // Escape quotes and wrap in quotes if contains comma, quote, or newline
-                if (text.includes('"')) {
-                    text = text.replace(/"/g, '""');
+            const rowData = {};
+            
+            Array.from(cells).forEach((cell, index) => {
+                // Clean cell text - remove all newlines, extra spaces, and special characters
+                let text = cell.textContent || cell.innerText || '';
+                
+                // Replace multiple whitespace (including newlines, tabs) with single space
+                text = text.replace(/\s+/g, ' ').trim();
+                
+                // Remove invisible characters and phone number formatting
+                text = text.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+                text = text.replace(/[‪‬]/g, ''); // Remove specific invisible chars
+                
+                // Remove header text from beginning of cell value if present
+                const headerName = columnNames[index];
+                if (headerName && text.toLowerCase().startsWith(headerName.toLowerCase())) {
+                    text = text.substring(headerName.length).trim();
+                } else {
+                    // Try to remove specific known header patterns only
+                    const knownHeaders = ['Poza', 'Nume', 'E-mail', 'Email', 'Telefon', 'Grup', 'Activ', 'Actiuni'];
+                    for (const header of knownHeaders) {
+                        if (text.toLowerCase().startsWith(header.toLowerCase() + ' ')) {
+                            text = text.substring(header.length).trim();
+                            break;
+                        }
+                    }
                 }
-                if (text.includes(',') || text.includes('"') || text.includes('\n')) {
-                    text = `"${text}"`;
-                }
-                return text;
+                
+                // Use header name as property key, fallback to column index
+                const propertyName = columnNames[index] || `column_${index}`;
+                rowData[propertyName] = text;
             });
             
-            if (cellValues.length > 0) {
-                csvRows.push(cellValues.join(','));
+            // Only add row if it has at least one non-empty cell
+            const hasData = Object.values(rowData).some(value => value && value.length > 0);
+            if (hasData) {
+                jsonData.push(rowData);
             }
         });
 
-        const csv = csvRows.join('\n');
-        
         return {
-            csv: csv,
-            rowCount: csvRows.length,
+            json: jsonData,
+            rowCount: jsonData.length,
             tableInfo: {
-                rows: rows.length,
-                columns: rows[0] ? rows[0].querySelectorAll('td, th').length : 0
+                totalRows: rows.length,
+                dataRows: jsonData.length,
+                columns: columnNames.length,
+                columnNames: columnNames
             }
         };
 
