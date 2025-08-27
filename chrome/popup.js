@@ -67,7 +67,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get current active tab
             const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
             
-            // Inject script to extract table data
+            // First get the h1 text for the filename
+            const [h1Result] = await chrome.scripting.executeScript({
+                target: {tabId: tab.id},
+                function: getH1Text
+            });
+
+            // Then extract table data
             const [result] = await chrome.scripting.executeScript({
                 target: {tabId: tab.id},
                 function: extractTableData
@@ -77,16 +83,60 @@ document.addEventListener('DOMContentLoaded', function() {
                 error.textContent = 'Table extraction failed: ' + result.result.error;
                 error.style.display = 'block';
             } else if (result.result.json) {
+                // Create filename from h1 text, fallback to 'table-data' if no h1
+                let filename = 'table-data';
+                if (h1Result.result && h1Result.result.h1Text) {
+                    // Clean the h1 text to make it a valid filename
+                    filename = h1Result.result.h1Text
+                        .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
+                        .replace(/\s+/g, '-') // Replace spaces with hyphens
+                        .toLowerCase()
+                        .trim();
+                    
+                    // Ensure filename is not empty after cleaning
+                    if (!filename) {
+                        filename = 'table-data';
+                    }
+                }
+
                 // Create a downloadable JSON file
                 const jsonString = JSON.stringify(result.result.json, null, 2);
                 const blob = new Blob([jsonString], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = 'table-data.json';
-                a.click();
+                a.download = `${filename}.json`;
+               // a.click();
                 URL.revokeObjectURL(url);
-
+              //make a post request to the import endpoint
+              if(filename == 'agenti-adauga'){
+                fetch('http://localhost:3013/api/zoca/agents/import', {
+                    method: 'POST',
+                    body: jsonString
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('Import response:', data)
+                  })
+                  .catch(error => {
+                    console.error('Import error:', error)
+                  })
+    
+              }
+              if(filename == 'contacte-adauga'){
+                fetch('http://localhost:3013/api/zoca/contacts/import', {
+                    method: 'POST',
+                    body: jsonString
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('Import response:', data)
+                  })
+                  .catch(error => {
+                    console.error('Import error:', error)
+                  })
+    
+              }
                 // Show success message with column names
                 const columnsList = result.result.tableInfo.columnNames.join(', ');
                 const successDiv = document.createElement('div');
@@ -260,6 +310,21 @@ function analyzePage() {
             loadTime
         };
 
+    } catch (error) {
+        return { error: error.message };
+    }
+}
+
+// Function to get the text content of the first h1 element
+function getH1Text() {
+    try {
+        const h1Element = document.querySelector('h1');
+        if (h1Element) {
+            const h1Text = h1Element.textContent || h1Element.innerText || '';
+            return { h1Text: h1Text.trim() };
+        } else {
+            return { h1Text: null };
+        }
     } catch (error) {
         return { error: error.message };
     }

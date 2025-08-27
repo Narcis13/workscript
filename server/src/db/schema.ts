@@ -1,6 +1,6 @@
 import { 
   mysqlTable, varchar, text, timestamp, json, boolean, serial, decimal, 
-  int, mysqlEnum, index, uniqueIndex, bigint 
+  int, mysqlEnum, index, uniqueIndex, bigint, datetime 
 } from 'drizzle-orm/mysql-core';
 import { relations } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
@@ -57,8 +57,8 @@ export const agencies = mysqlTable('agencies', {
   isActive: boolean('is_active').default(true).notNull(),
   subscriptionPlan: mysqlEnum('subscription_plan', ['basic', 'premium', 'enterprise']).default('basic').notNull(),
   subscriptionExpiresAt: timestamp('subscription_expires_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   emailIdx: uniqueIndex('agencies_email_idx').on(table.email),
   nameIdx: index('agencies_name_idx').on(table.name),
@@ -83,8 +83,8 @@ export const agents = mysqlTable('agents', {
   bio: text('bio'),
   languages: json('languages').default('["romanian"]').notNull(),
   lastLoginAt: timestamp('last_login_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   emailIdx: uniqueIndex('agents_email_idx').on(table.email),
   agencyIdx: index('agents_agency_idx').on(table.agencyId),
@@ -151,8 +151,8 @@ export const contacts = mysqlTable('contacts', {
   gdprConsent: boolean('gdpr_consent').default(false).notNull(),
   marketingConsent: boolean('marketing_consent').default(false).notNull(),
   
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   agencyIdx: index('contacts_agency_idx').on(table.agencyId),
   agentIdx: index('contacts_agent_idx').on(table.assignedAgentId),
@@ -236,8 +236,8 @@ export const properties = mysqlTable('properties', {
   isPromoted: boolean('is_promoted').default(false).notNull(),
   promotedUntil: timestamp('promoted_until'),
   
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   agencyIdx: index('properties_agency_idx').on(table.agencyId),
   agentIdx: index('properties_agent_idx').on(table.agentId),
@@ -311,8 +311,8 @@ export const clientRequests = mysqlTable('client_requests', {
   ]).default('website_form').notNull(),
   sourceDetails: varchar('source_details', { length: 255 }),
   
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   contactIdx: index('client_requests_contact_idx').on(table.contactId),
   agencyIdx: index('client_requests_agency_idx').on(table.agencyId),
@@ -326,8 +326,8 @@ export const clientRequests = mysqlTable('client_requests', {
   autoMatchIdx: index('client_requests_auto_match_idx').on(table.autoMatchEnabled),
 }));
 
-// Activities Table
-export const activities = mysqlTable('activities', {
+// Activities Table - TEMPORARILY DISABLED DUE TO TIMESTAMP ISSUE
+/* export const activities = mysqlTable('activities', {
   id: serial('id').primaryKey(),
   agencyId: bigint('agency_id', { mode: 'number', unsigned: true }).references(() => agencies.id).notNull(),
   agentId: bigint('agent_id', { mode: 'number', unsigned: true }).references(() => agents.id).notNull(),
@@ -377,8 +377,8 @@ export const activities = mysqlTable('activities', {
   // Attachments
   attachments: json('attachments').default('[]').notNull(),
   
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: datetime('created_at', { mode: 'string' }),
+  updatedAt: datetime('updated_at', { mode: 'string' }),
 }, (table) => ({
   agencyIdx: index('activities_agency_idx').on(table.agencyId),
   agentIdx: index('activities_agent_idx').on(table.agentId),
@@ -389,7 +389,7 @@ export const activities = mysqlTable('activities', {
   statusIdx: index('activities_status_idx').on(table.status),
   scheduledIdx: index('activities_scheduled_idx').on(table.scheduledAt),
   followUpIdx: index('activities_followup_idx').on(table.followUpRequired, table.nextActionDate),
-}));
+})); */
 
 // Continue with remaining tables from the original schema...
 // AI Lead Scores Table
@@ -463,8 +463,8 @@ export const clientPropertyMatches = mysqlTable('client_property_matches', {
   // AI Model Info
   modelVersion: varchar('model_version', { length: 50 }),
   
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   contactIdx: index('client_property_matches_contact_idx').on(table.contactId),
   propertyIdx: index('client_property_matches_property_idx').on(table.propertyId),
@@ -498,8 +498,8 @@ export const emailTemplates = mysqlTable('email_templates', {
   clickRate: decimal('click_rate', { precision: 5, scale: 2 }),
   
   isActive: boolean('is_active').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   agencyIdx: index('email_templates_agency_idx').on(table.agencyId),
   typeIdx: index('email_templates_type_idx').on(table.type),
@@ -527,8 +527,8 @@ export const whatsappConversations = mysqlTable('whatsapp_conversations', {
   sessionData: json('session_data').default('{}').notNull(),
   
   lastMessageAt: timestamp('last_message_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp('created_at').$defaultFn(() => new Date()),
+  updatedAt: timestamp('updated_at').$defaultFn(() => new Date()),
 }, (table) => ({
   agencyIdx: index('whatsapp_conversations_agency_idx').on(table.agencyId),
   contactIdx: index('whatsapp_conversations_contact_idx').on(table.contactId),
@@ -593,8 +593,8 @@ export type NewProperty = typeof properties.$inferInsert;
 export type ClientRequest = typeof clientRequests.$inferSelect;
 export type NewClientRequest = typeof clientRequests.$inferInsert;
 
-export type Activity = typeof activities.$inferSelect;
-export type NewActivity = typeof activities.$inferInsert;
+// export type Activity = typeof activities.$inferSelect;
+// export type NewActivity = typeof activities.$inferInsert;
 
 export type AiLeadScore = typeof aiLeadScores.$inferSelect;
 export type NewAiLeadScore = typeof aiLeadScores.$inferInsert;
@@ -619,7 +619,7 @@ export const agenciesRelations = relations(agencies, ({ many }) => ({
   agents: many(agents),
   properties: many(properties),
   contacts: many(contacts),
-  activities: many(activities),
+  // activities: many(activities),
   clientRequests: many(clientRequests),
   emailTemplates: many(emailTemplates),
   whatsappConversations: many(whatsappConversations),
@@ -629,7 +629,7 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
   agency: one(agencies, { fields: [agents.agencyId], references: [agencies.id] }),
   properties: many(properties),
   assignedContacts: many(contacts),
-  activities: many(activities),
+  // activities: many(activities),
   assignedRequests: many(clientRequests),
   whatsappConversations: many(whatsappConversations),
 }));
@@ -637,7 +637,7 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
 export const contactsRelations = relations(contacts, ({ one, many }) => ({
   agency: one(agencies, { fields: [contacts.agencyId], references: [agencies.id] }),
   assignedAgent: one(agents, { fields: [contacts.assignedAgentId], references: [agents.id] }),
-  activities: many(activities),
+  // activities: many(activities),
   ownedProperties: many(properties),
   clientRequests: many(clientRequests),
   aiLeadScores: many(aiLeadScores),
@@ -649,7 +649,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   agency: one(agencies, { fields: [properties.agencyId], references: [agencies.id] }),
   agent: one(agents, { fields: [properties.agentId], references: [agents.id] }),
   ownerContact: one(contacts, { fields: [properties.ownerContactId], references: [contacts.id] }),
-  activities: many(activities),
+  // activities: many(activities),
   valuations: many(propertyValuations),
   matches: many(clientPropertyMatches),
 }));
@@ -658,17 +658,17 @@ export const clientRequestsRelations = relations(clientRequests, ({ one, many })
   contact: one(contacts, { fields: [clientRequests.contactId], references: [contacts.id] }),
   agency: one(agencies, { fields: [clientRequests.agencyId], references: [agencies.id] }),
   assignedAgent: one(agents, { fields: [clientRequests.assignedAgentId], references: [agents.id] }),
-  activities: many(activities),
+  // activities: many(activities),
   propertyMatches: many(clientPropertyMatches),
 }));
 
-export const activitiesRelations = relations(activities, ({ one }) => ({
+/* export const activitiesRelations = relations(activities, ({ one }) => ({
   agency: one(agencies, { fields: [activities.agencyId], references: [agencies.id] }),
   agent: one(agents, { fields: [activities.agentId], references: [agents.id] }),
   contact: one(contacts, { fields: [activities.contactId], references: [contacts.id] }),
   property: one(properties, { fields: [activities.propertyId], references: [properties.id] }),
   clientRequest: one(clientRequests, { fields: [activities.requestId], references: [clientRequests.id] }),
-}));
+})); */
 
 export const aiLeadScoresRelations = relations(aiLeadScores, ({ one }) => ({
   contact: one(contacts, { fields: [aiLeadScores.contactId], references: [contacts.id] }),
