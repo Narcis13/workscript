@@ -10,6 +10,7 @@ import googleAuthRoutes from './api/google'
 import agencies from './api/zoca/agencies'
 import agents from './api/zoca/agents'
 import contacts from './api/zoca/contacts'
+import properties from './api/zoca/properties'
 initializeTokenStorage();    
 const app = new Hono()
 const wsManager = WebSocketManager.getInstance()
@@ -30,6 +31,7 @@ app.route('/api/auth', googleAuthRoutes)
 app.route('/api/zoca/agencies', agencies)
 app.route('/api/zoca/agents', agents)
 app.route('/api/zoca/contacts', contacts)
+app.route('/api/zoca/properties', properties)
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })

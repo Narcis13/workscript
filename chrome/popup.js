@@ -72,32 +72,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 target: {tabId: tab.id},
                 function: getH1Text
             });
-
-            // Then extract table data
-            const [result] = await chrome.scripting.executeScript({
-                target: {tabId: tab.id},
-                function: extractTableData
-            });
+            let filename = 'table-data';
+            if (h1Result.result && h1Result.result.h1Text) {
+                // Clean the h1 text to make it a valid filename
+                filename = h1Result.result.h1Text
+                    .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
+                    .replace(/\s+/g, '-') // Replace spaces with hyphens
+                    .toLowerCase()
+                    .trim();
+                
+                // Ensure filename is not empty after cleaning
+                if (!filename) {
+                    filename = 'table-data';
+                }
+            }
+            let result;
+            if(filename == 'proprietati-adauga'){
+                [result] = await chrome.scripting.executeScript({
+                    target: {tabId: tab.id},
+                    function: extractPropertiesData
+                });
+            } else {
+                [result] = await chrome.scripting.executeScript({
+                    target: {tabId: tab.id},
+                    function: extractTableData
+                });
+            }
 
             if (result.result.error) {
                 error.textContent = 'Table extraction failed: ' + result.result.error;
                 error.style.display = 'block';
             } else if (result.result.json) {
                 // Create filename from h1 text, fallback to 'table-data' if no h1
-                let filename = 'table-data';
-                if (h1Result.result && h1Result.result.h1Text) {
-                    // Clean the h1 text to make it a valid filename
-                    filename = h1Result.result.h1Text
-                        .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
-                        .replace(/\s+/g, '-') // Replace spaces with hyphens
-                        .toLowerCase()
-                        .trim();
-                    
-                    // Ensure filename is not empty after cleaning
-                    if (!filename) {
-                        filename = 'table-data';
-                    }
-                }
+
 
                 // Create a downloadable JSON file
                 const jsonString = JSON.stringify(result.result.json, null, 2);
@@ -125,6 +132,20 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               if(filename == 'contacte-adauga'){
                 fetch('http://localhost:3013/api/zoca/contacts/import', {
+                    method: 'POST',
+                    body: jsonString
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('Import response:', data)
+                  })
+                  .catch(error => {
+                    console.error('Import error:', error)
+                  })
+    
+              }
+              if(filename == 'proprietati-adauga'){
+                  fetch('http://localhost:3013/api/zoca/properties/import', {
                     method: 'POST',
                     body: jsonString
                   })
@@ -330,6 +351,257 @@ function getH1Text() {
     }
 }
 
+function extractPropertiesData() {
+    try {
+        const table = document.querySelector('table');
+        
+        if (!table) {
+            return { error: 'No table found on the page' };
+        }
+
+        const rows = table.querySelectorAll('tbody tr');
+        if (rows.length === 0) {
+            return { error: 'Table has no data rows' };
+        }
+
+        const jsonData = [];
+        let currentProperty = null;
+
+        rows.forEach((row) => {
+            const isMainRow = row.classList.contains('model-item');
+            const isTagsRow = row.classList.contains('tags-row');
+
+            if (isMainRow) {
+                // Extract main property data
+                currentProperty = {
+                    id: null,
+                    propertyCode: null,
+                    image: null,
+                    status: null,
+                    transaction: null,
+                    propertyType: null,
+                    price: null,
+                    pricePerSqm: null,
+                    rooms: null,
+                    bedrooms: null,
+                    compartmentType: null,
+                    usefulSurface: null,
+                    constructedSurface: null,
+                    floor: null,
+                    zone: null,
+                    address: null,
+                    agent: null,
+                    landlord: null,
+                    landlordPhone: null,
+                    dateAdded: null,
+                    dateModified: null,
+                    dateRepublished: null,
+                    contractDocument: null,
+                    platforms: []
+                };
+
+                // Extract property ID from data attributes or checkbox value
+                const checkbox = row.querySelector('input[name="id[]"]');
+                if (checkbox) {
+                    currentProperty.id = checkbox.value;
+                }
+
+                // Extract image and status
+                const imageCell = row.querySelector('td img');
+                if (imageCell) {
+                    currentProperty.image = imageCell.src;
+                }
+                
+                const statusLabel = row.querySelector('td .label');
+                if (statusLabel) {
+                    currentProperty.status = statusLabel.textContent.trim();
+                }
+
+                // Extract transaction and property type
+                const transactionCell = row.querySelectorAll('td')[2];
+                if (transactionCell) {
+                    const cellText = transactionCell.textContent;
+                    const lines = cellText.split('\n').map(line => line.trim()).filter(line => line);
+                    if (lines.length >= 2) {
+                        currentProperty.transaction = lines[0];
+                        currentProperty.propertyType = lines[1];
+                    }
+                    // Extract property code (P######)
+                    const codeMatch = cellText.match(/P(\d{6})/);
+                    if (codeMatch) {
+                        currentProperty.propertyCode = codeMatch[0];
+                    }
+                }
+
+                // Extract price information
+                const priceCell = row.querySelectorAll('td')[3];
+                if (priceCell) {
+                    const priceStrong = priceCell.querySelector('strong');
+                    if (priceStrong) {
+                        currentProperty.price = priceStrong.textContent.trim();
+                    }
+                    const pricePerSqm = priceCell.textContent.match(/(\d+[.,]?\d*€\/mp)/);
+                    if (pricePerSqm) {
+                        currentProperty.pricePerSqm = pricePerSqm[1];
+                    }
+                }
+
+                // Extract rooms information
+                const roomsCell = row.querySelectorAll('td')[4];
+                if (roomsCell) {
+                    const roomsStrong = roomsCell.querySelector('strong');
+                    if (roomsStrong) {
+                        currentProperty.rooms = roomsStrong.textContent.trim();
+                    }
+                    const bedroomsDiv = roomsCell.querySelector('.text-table-small');
+                    if (bedroomsDiv && bedroomsDiv.textContent.includes('dorm')) {
+                        currentProperty.bedrooms = bedroomsDiv.textContent.trim();
+                    }
+                    const compartmentDiv = roomsCell.querySelector('.text-muted.text-table-small');
+                    if (compartmentDiv) {
+                        currentProperty.compartmentType = compartmentDiv.textContent.trim();
+                    }
+                }
+
+                // Extract surface information
+                const surfaceCell = row.querySelectorAll('td')[5];
+                if (surfaceCell) {
+                    const surfaceText = surfaceCell.textContent;
+                    const usefulMatch = surfaceText.match(/SU.*?(\d+[.,]?\d*\s*m²?)/);
+                    if (usefulMatch) {
+                        currentProperty.usefulSurface = usefulMatch[1].trim();
+                    }
+                    const constructedMatch = surfaceText.match(/SC.*?(\d+[.,]?\d*\s*m²?)/);
+                    if (constructedMatch) {
+                        currentProperty.constructedSurface = constructedMatch[1].trim();
+                    }
+                }
+
+                // Extract floor
+                const floorCell = row.querySelectorAll('td')[6];
+                if (floorCell) {
+                    const floorStrong = floorCell.querySelector('strong');
+                    if (floorStrong) {
+                        currentProperty.floor = floorStrong.textContent.trim();
+                    }
+                }
+
+                // Extract zone and address
+                const zoneCell = row.querySelectorAll('td')[7];
+                if (zoneCell) {
+                    const cellText = zoneCell.textContent;
+                    const lines = cellText.split('\n').map(line => line.trim()).filter(line => line);
+                    if (lines.length > 0) {
+                        currentProperty.zone = lines[0];
+                    }
+                    const addressDiv = zoneCell.querySelector('.hide-on-private');
+                    if (addressDiv) {
+                        currentProperty.address = addressDiv.textContent.trim();
+                    }
+                }
+
+                // Extract agent and landlord information
+                const agentCell = row.querySelectorAll('td')[8];
+                if (agentCell) {
+                    const agentSpan = agentCell.querySelector('.labelish.purple-600');
+                    if (agentSpan) {
+                        currentProperty.agent = agentSpan.textContent.replace(/\s*\s*/, '').trim();
+                    }
+                    const landlordLink = agentCell.querySelector('a.labelish.text-primary');
+                    if (landlordLink) {
+                        currentProperty.landlord = landlordLink.textContent.replace(/\s*\s*/, '').trim();
+                    }
+                    const phoneLink = agentCell.querySelector('a[href^="tel:"]');
+                    if (phoneLink) {
+                        currentProperty.landlordPhone = phoneLink.href.replace('tel:', '');
+                    }
+                }
+
+                // Extract dates
+                const dateCell = row.querySelectorAll('td')[9];
+                if (dateCell) {
+                    const dateSpans = dateCell.querySelectorAll('span[data-tooltip]');
+                    if (dateSpans.length >= 2) {
+                        currentProperty.dateAdded = dateSpans[0].textContent.trim();
+                        currentProperty.dateModified = dateSpans[1].textContent.trim();
+                        if (dateSpans.length >= 3) {
+                            currentProperty.dateRepublished = dateSpans[2].textContent.trim();
+                        }
+                    }
+                }
+
+            } else if (isTagsRow && currentProperty) {
+                // Extract contract and platform information from tags row
+                const contractLink = row.querySelector('a[href*="files"]');
+                if (contractLink) {
+                    currentProperty.contractDocument = contractLink.href;
+                }
+
+                // Extract platform links
+                const platformLinks = row.querySelectorAll('a[target="_blank"]');
+                platformLinks.forEach(link => {
+                    const platformSpan = link.querySelector('span.label');
+                    if (platformSpan) {
+                        const platformTitle = platformSpan.getAttribute('data-original-title') || 
+                                            platformSpan.getAttribute('title') || 
+                                            platformSpan.textContent;
+                        currentProperty.platforms.push({
+                            name: platformTitle,
+                            url: link.href,
+                            code: platformSpan.textContent
+                        });
+                    }
+                });
+
+                // Extract additional labels (like LC - Luna Curenta)
+                const additionalLabels = row.querySelectorAll('span.label:not(a span)');
+                additionalLabels.forEach(label => {
+                    const title = label.getAttribute('data-original-title') || label.getAttribute('title');
+                    if (title) {
+                        currentProperty.platforms.push({
+                            name: title,
+                            code: label.textContent,
+                            url: null
+                        });
+                    }
+                });
+
+                // Push completed property and reset
+                if (currentProperty) {
+                    jsonData.push(currentProperty);
+                    currentProperty = null;
+                }
+            }
+        });
+
+        // Add the last property if it wasn't added (in case there's no tags row)
+        if (currentProperty) {
+            jsonData.push(currentProperty);
+        }
+
+        const extractedFields = [
+            'id', 'propertyCode', 'image', 'status', 'transaction', 'propertyType',
+            'price', 'pricePerSqm', 'rooms', 'bedrooms', 'compartmentType',
+            'usefulSurface', 'constructedSurface', 'floor', 'zone', 'address',
+            'agent', 'landlord', 'landlordPhone', 'dateAdded', 'dateModified',
+            'dateRepublished', 'contractDocument', 'platforms'
+        ];
+
+        return {
+            json: jsonData,
+            rowCount: jsonData.length,
+            tableInfo: {
+                totalRows: jsonData.length + 1, // +1 for header
+                dataRows: jsonData.length,
+                columns: extractedFields.length,
+                columnNames: extractedFields
+            }
+        };
+
+    } catch (error) {
+        return { error: error.message };
+    }
+}
 // Function to extract clean JSON data from the first table on the page (without header row)
 function extractTableData() {
     try {
