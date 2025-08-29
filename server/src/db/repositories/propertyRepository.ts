@@ -26,6 +26,15 @@ export class PropertyRepository {
     return property || null;
   }
 
+  async findByOriginalId(originalId: string): Promise<Property | null> {
+    // Check if a property exists with this original ID in the slug
+    const [property] = await db.select()
+      .from(properties)
+      .where(like(properties.slug, `%-${originalId}`))
+      .limit(1);
+    return property || null;
+  }
+
   async findByTitleAndAgency(title: string, agencyId: number): Promise<Property | null> {
     const [property] = await db.select()
       .from(properties)

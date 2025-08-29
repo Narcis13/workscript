@@ -42,6 +42,21 @@ properties.post('/import', async (c) => {
         
         for (const item of propertyData) {
             try {
+                // Check if property already exists by original ID (only if ID exists)
+                if (item.id) {
+                    const existingProperty = await propertiesRepository.findByOriginalId(item.id)
+                    if (existingProperty) {
+                        importResults.push({
+                            success: true,
+                            propertyId: existingProperty.id,
+                            originalId: item.id,
+                            title: existingProperty.title,
+                            status: 'already_exists'
+                        })
+                        continue
+                    }
+                }
+
                 // Transform incoming data to match database schema
                 const transformedProperty = await transformPropertyData(item)
                 
@@ -52,7 +67,8 @@ properties.post('/import', async (c) => {
                         success: true,
                         propertyId: createdProperty.id,
                         originalId: item.id,
-                        title: transformedProperty.title
+                        title: transformedProperty.title,
+                        status: 'created'
                     })
                 } else {
                     errors.push({
@@ -97,7 +113,7 @@ async function transformPropertyData(incomingData: any) {
         const builtArea = parseSurface(incomingData.constructedSurface)
         const rooms = parseRooms(incomingData.rooms)
         const bedrooms = parseRooms(incomingData.bedrooms)
-        const floor = parseFloor(incomingData.floor)
+        const { floor, totalFloors } = parseFloorData(incomingData.floor)
         const address = incomingData.address || ''
         const locationData = parseAddress(address)
         
@@ -120,8 +136,9 @@ async function transformPropertyData(incomingData: any) {
         const finalAgentId = agentId || 1 // Default agent if not found
         
         // Determine property and transaction types
-        const propertyType = determinePropertyType(incomingData.propertyType)
-        const transactionType = determineTransactionType(incomingData.transaction)
+        // The JSON seems to have generic values "Tip" and "Tranzactie", we need to infer from other data
+        const propertyType = inferPropertyType(incomingData)
+        const transactionType = inferTransactionType(incomingData)
         
         // Generate title if not provided
         const title = generateTitle(propertyType, transactionType, rooms, locationData.city || locationData.neighborhood || '')
@@ -157,7 +174,7 @@ async function transformPropertyData(incomingData: any) {
             bedrooms: bedrooms > 0 ? bedrooms : null,
             bathrooms: null,
             floor: floor !== null ? floor : null,
-            totalFloors: null,
+            totalFloors: totalFloors !== null ? totalFloors : null,
             constructionYear: null,
             condition: null,
             energyClass: null,
@@ -169,7 +186,7 @@ async function transformPropertyData(incomingData: any) {
             photos: JSON.stringify(extractPhotos(incomingData)),
             virtualTourUrl: null,
             floorPlanUrl: null,
-            documents: JSON.stringify([]),
+            documents: JSON.stringify(extractPlatformLinks(incomingData)),
             
             // Status
             status: mapStatus(incomingData.status),
@@ -185,7 +202,7 @@ async function transformPropertyData(incomingData: any) {
             inquiriesCount: 0,
             
             // SEO
-            slug: generateSlug(title),
+            slug: await generateUniqueSlug(title, incomingData.id),
             seoTitle: title,
             seoDescription: null,
             isPromoted: false,
@@ -203,10 +220,25 @@ async function transformPropertyData(incomingData: any) {
 // Helper functions for data parsing and transformation
 function parsePrice(priceStr: string): number {
     if (!priceStr) return 0
-    // Remove currency symbols and extract number
-    const numStr = priceStr.replace(/[€\s,]/g, '').replace(/\./g, '')
-    const num = parseInt(numStr, 10)
-    return isNaN(num) ? 0 : num
+    
+    // Handle formats like "10,00€/mp" or "121.000€" or "550€"
+    let cleanStr = priceStr.replace(/[€\/mp\s]/g, '')
+    
+    // Handle comma as decimal separator in smaller numbers (like "10,00") 
+    // vs period as thousands separator in larger numbers (like "121.000")
+    if (cleanStr.includes(',') && cleanStr.includes('.')) {
+        // Both comma and period - European format (123.456,78)
+        cleanStr = cleanStr.replace(/\./g, '').replace(',', '.')
+    } else if (cleanStr.includes(',') && (cleanStr.split(',')[1]?.length || 0) <= 2) {
+        // Only comma with <= 2 digits after - decimal separator
+        cleanStr = cleanStr.replace(',', '.')
+    } else if (cleanStr.includes('.') && (cleanStr.split('.')[1]?.length || 0) > 2) {
+        // Period with > 2 digits after - thousands separator
+        cleanStr = cleanStr.replace(/\./g, '')
+    }
+    
+    const num = parseFloat(cleanStr)
+    return isNaN(num) ? 0 : Math.round(num)
 }
 
 function parseSurface(surfaceStr: string | undefined): number {
@@ -223,10 +255,29 @@ function parseRooms(roomStr: string | undefined): number {
     return match ? parseInt(match[1], 10) : 0
 }
 
-function parseFloor(floorStr: string): number | null {
-    if (!floorStr) return null
+function parseFloorData(floorStr: string): { floor: number | null, totalFloors: number | null } {
+    if (!floorStr) return { floor: null, totalFloors: null }
+    
+    // Handle formats like "3/4", "3", "12/18"
+    if (floorStr.includes('/')) {
+        const parts = floorStr.split('/')
+        const floorPart = parts[0]?.trim()
+        const totalFloorsPart = parts[1]?.trim()
+        
+        const floor = floorPart ? parseInt(floorPart, 10) : null
+        const totalFloors = totalFloorsPart ? parseInt(totalFloorsPart, 10) : null
+        
+        return {
+            floor: isNaN(floor!) ? null : floor,
+            totalFloors: isNaN(totalFloors!) ? null : totalFloors
+        }
+    }
+    
     const num = parseInt(floorStr, 10)
-    return isNaN(num) ? null : num
+    return { 
+        floor: isNaN(num) ? null : num,
+        totalFloors: null
+    }
 }
 
 function parseAddress(address: string): { county?: string, city?: string, sector?: string, neighborhood?: string } {
@@ -266,32 +317,52 @@ async function findAgentByName(agentName: string) {
     return agents.length > 0 ? agents[0] : null
 }
 
-function determinePropertyType(propertyTypeStr: string): 'apartament' | 'casa' | 'vila' | 'duplex' | 'penthouse' | 'studio' | 'garsoniera' | 'teren' | 'spatiu_comercial' | 'birou' | 'hala' | 'depozit' {
-    if (!propertyTypeStr) return 'apartament'
+function inferPropertyType(incomingData: any): 'apartament' | 'casa' | 'vila' | 'duplex' | 'penthouse' | 'studio' | 'garsoniera' | 'teren' | 'spatiu_comercial' | 'birou' | 'hala' | 'depozit' {
+    const propertyTypeStr = incomingData.propertyType || ''
     
-    const typeStr = propertyTypeStr.toLowerCase()
-    if (typeStr.includes('casa')) return 'casa'
-    if (typeStr.includes('vila')) return 'vila'
-    if (typeStr.includes('studio')) return 'studio'
-    if (typeStr.includes('garsoniera')) return 'garsoniera'
-    if (typeStr.includes('duplex')) return 'duplex'
-    if (typeStr.includes('penthouse')) return 'penthouse'
-    if (typeStr.includes('teren')) return 'teren'
-    if (typeStr.includes('birou')) return 'birou'
-    if (typeStr.includes('comercial')) return 'spatiu_comercial'
-    if (typeStr.includes('hala')) return 'hala'
-    if (typeStr.includes('depozit')) return 'depozit'
+    // If we have the actual property type from the fixed Chrome extension
+    if (propertyTypeStr && propertyTypeStr !== 'Tip') {
+        const typeStr = propertyTypeStr.toLowerCase()
+        if (typeStr.includes('apartament')) return 'apartament'
+        if (typeStr.includes('casa')) return 'casa'
+        if (typeStr.includes('vila')) return 'vila'
+        if (typeStr.includes('studio')) return 'studio'
+        if (typeStr.includes('garsoniera')) return 'garsoniera'
+        if (typeStr.includes('duplex')) return 'duplex'
+        if (typeStr.includes('penthouse')) return 'penthouse'
+        if (typeStr.includes('teren')) return 'teren'
+        if (typeStr.includes('birou')) return 'birou'
+        if (typeStr.includes('comercial')) return 'spatiu_comercial'
+        if (typeStr.includes('hala')) return 'hala'
+        if (typeStr.includes('depozit')) return 'depozit'
+    }
+    
+    // Fallback inference logic
+    const rooms = parseRooms(incomingData.rooms)
+    if (rooms === 1) {
+        return 'studio'
+    }
     
     return 'apartament' // default
 }
 
-function determineTransactionType(transactionStr: string): 'vanzare' | 'inchiriere' {
-    if (!transactionStr) return 'inchiriere'
+function inferTransactionType(incomingData: any): 'vanzare' | 'inchiriere' {
+    const transactionStr = incomingData.transaction || ''
     
-    const transStr = transactionStr.toLowerCase()
-    if (transStr.includes('vanzare') || transStr.includes('cumpar')) return 'vanzare'
+    // If we have the actual transaction type from the fixed Chrome extension
+    if (transactionStr && transactionStr !== 'Tranzactie') {
+        const transStr = transactionStr.toLowerCase()
+        if (transStr.includes('vanzare') || transStr.includes('vanzari')) return 'vanzare'
+        if (transStr.includes('inchiriere') || transStr.includes('inchirieri')) return 'inchiriere'
+    }
     
-    return 'inchiriere' // default
+    // Fallback inference based on price
+    const price = parsePrice(incomingData.price || '0')
+    if (price > 50000) {
+        return 'vanzare'
+    }
+    
+    return 'inchiriere' // default for lower prices
 }
 
 function determineCurrency(priceStr: string): string {
@@ -352,6 +423,24 @@ function extractPhotos(incomingData: any): string[] {
     return photos
 }
 
+function extractPlatformLinks(incomingData: any): any[] {
+    const platformLinks = []
+    
+    if (incomingData.platforms && Array.isArray(incomingData.platforms)) {
+        for (const platform of incomingData.platforms) {
+            if (platform.url || platform.name) {
+                platformLinks.push({
+                    platform: platform.name || 'Unknown',
+                    code: platform.code || null,
+                    url: platform.url || null
+                })
+            }
+        }
+    }
+    
+    return platformLinks
+}
+
 function mapStatus(status: string): 'activ' | 'rezervat' | 'vandut' | 'inchiriat' | 'suspendat' | 'expirat' {
     if (!status) return 'activ'
     
@@ -366,7 +455,7 @@ function mapStatus(status: string): 'activ' | 'rezervat' | 'vandut' | 'inchiriat
     return 'activ' // default
 }
 
-function parseDate(dateStr: string): string | null {
+function parseDate(dateStr: string): Date | null {
     if (!dateStr) return null
     
     try {
@@ -377,11 +466,11 @@ function parseDate(dateStr: string): string | null {
             const month = parts[1]?.padStart(2, '0')
             const year = parts[2]
             if (day && month && year) {
-                return `${year}-${month}-${day}T00:00:00.000Z`
+                return new Date(`${year}-${month}-${day}T00:00:00.000Z`)
             }
         }
         
-        return new Date(dateStr).toISOString()
+        return new Date(dateStr)
     } catch {
         return null
     }
@@ -393,6 +482,14 @@ function generateSlug(title: string): string {
         .replace(/[^\w\s-]/g, '') // Remove special characters
         .replace(/\s+/g, '-') // Replace spaces with dashes
         .trim()
+}
+
+async function generateUniqueSlug(title: string, originalId?: string): Promise<string> {
+    const baseSlug = generateSlug(title)
+    
+    // Use original ID if provided, otherwise use timestamp
+    const uniqueId = originalId || Date.now().toString()
+    return `${baseSlug}-${uniqueId}`
 }
 
 export default properties

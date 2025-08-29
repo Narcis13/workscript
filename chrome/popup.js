@@ -420,16 +420,19 @@ function extractPropertiesData() {
                 // Extract transaction and property type
                 const transactionCell = row.querySelectorAll('td')[2];
                 if (transactionCell) {
-                    const cellText = transactionCell.textContent;
-                    const lines = cellText.split('\n').map(line => line.trim()).filter(line => line);
-                    if (lines.length >= 2) {
-                        currentProperty.transaction = lines[0];
-                        currentProperty.propertyType = lines[1];
-                    }
-                    // Extract property code (P######)
-                    const codeMatch = cellText.match(/P(\d{6})/);
-                    if (codeMatch) {
-                        currentProperty.propertyCode = codeMatch[0];
+                    const cellContent = transactionCell.querySelector('.tablesaw-cell-content');
+                    if (cellContent) {
+                        const cellText = cellContent.textContent;
+                        const lines = cellText.split('\n').map(line => line.trim()).filter(line => line && !line.includes('Tranzactie') && !line.includes('Tip'));
+                        if (lines.length >= 2) {
+                            currentProperty.transaction = lines[0];
+                            currentProperty.propertyType = lines[1];
+                        }
+                        // Extract property code (P######)
+                        const codeMatch = cellText.match(/P(\d{6})/);
+                        if (codeMatch) {
+                            currentProperty.propertyCode = codeMatch[0];
+                        }
                     }
                 }
 
