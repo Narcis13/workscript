@@ -36,6 +36,20 @@
       "when": 1756284202870,
       "tag": "0004_safe_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1756545460741,
+      "tag": "0005_chemical_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1756545800469,
+      "tag": "0006_mature_butterfly",
+      "breakpoints": true
     }
   ]
 }

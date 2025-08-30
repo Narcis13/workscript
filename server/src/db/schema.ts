@@ -170,6 +170,7 @@ export const properties = mysqlTable('properties', {
   agencyId: bigint('agency_id', { mode: 'number', unsigned: true }).references(() => agencies.id).notNull(),
   agentId: bigint('agent_id', { mode: 'number', unsigned: true }).references(() => agents.id).notNull(),
   ownerContactId: bigint('owner_contact_id', { mode: 'number', unsigned: true }).references(() => contacts.id),
+  internalCode: varchar('internal_code', { length: 24 }),
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   propertyType: mysqlEnum('property_type', [
@@ -241,6 +242,7 @@ export const properties = mysqlTable('properties', {
 }, (table) => ({
   agencyIdx: index('properties_agency_idx').on(table.agencyId),
   agentIdx: index('properties_agent_idx').on(table.agentId),
+  internalCodeIdx: index('properties_internal_code_idx').on(table.internalCode),
   typeIdx: index('properties_type_idx').on(table.propertyType),
   transactionIdx: index('properties_transaction_idx').on(table.transactionType),
   statusIdx: index('properties_status_idx').on(table.status),
@@ -280,8 +282,11 @@ export const clientRequests = mysqlTable('client_requests', {
   
   // Request Status & Priority
   status: mysqlEnum('status', ['nou', 'in_procesare', 'match_gasit', 'finalizat', 'anulat']).default('nou').notNull(),
+  statusColorCode: varchar('status_color_code', { length: 64 }),
+  requestCode: varchar('request_code', { length: 64 }),
   priority: mysqlEnum('priority', ['scazut', 'mediu', 'ridicat', 'urgent']).default('mediu').notNull(),
   urgencyLevel: mysqlEnum('urgency_level', ['flexibil', 'moderat', 'urgent', 'foarte_urgent']).default('flexibil').notNull(),
+  propertyId: bigint('property_id', { mode: 'number', unsigned: true }).references(() => properties.id),
   
   // Timeline
   expectedTimeframe: varchar('expected_timeframe', { length: 100 }),
@@ -318,6 +323,7 @@ export const clientRequests = mysqlTable('client_requests', {
   agencyIdx: index('client_requests_agency_idx').on(table.agencyId),
   agentIdx: index('client_requests_agent_idx').on(table.assignedAgentId),
   statusIdx: index('client_requests_status_idx').on(table.status),
+  propertyIdx: index('client_requests_property_idx').on(table.propertyId),
   typeIdx: index('client_requests_type_idx').on(table.requestType),
   priorityIdx: index('client_requests_priority_idx').on(table.priority),
   urgencyIdx: index('client_requests_urgency_idx').on(table.urgencyLevel),
@@ -650,6 +656,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   agent: one(agents, { fields: [properties.agentId], references: [agents.id] }),
   ownerContact: one(contacts, { fields: [properties.ownerContactId], references: [contacts.id] }),
   // activities: many(activities),
+  relatedRequests: many(clientRequests),
   valuations: many(propertyValuations),
   matches: many(clientPropertyMatches),
 }));
@@ -658,6 +665,7 @@ export const clientRequestsRelations = relations(clientRequests, ({ one, many })
   contact: one(contacts, { fields: [clientRequests.contactId], references: [contacts.id] }),
   agency: one(agencies, { fields: [clientRequests.agencyId], references: [agencies.id] }),
   assignedAgent: one(agents, { fields: [clientRequests.assignedAgentId], references: [agents.id] }),
+  sourceProperty: one(properties, { fields: [clientRequests.propertyId], references: [properties.id] }),
   // activities: many(activities),
   propertyMatches: many(clientPropertyMatches),
 }));

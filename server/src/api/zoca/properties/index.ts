@@ -131,9 +131,25 @@ async function transformPropertyData(incomingData: any) {
             ownerContactId = contact ? contact.id : null
         }
         
-        // Default values for required fields
+        // Default values for required fields - get actual existing agent
         const agencyId = 1 // Default agency - you might want to make this configurable
-        const finalAgentId = agentId || 1 // Default agent if not found
+        let finalAgentId = agentId
+        
+        // If no agent found, get the first available active agent
+        if (!finalAgentId) {
+            const activeAgents = await agentsRepository.findActiveByAgency(agencyId)
+            if (activeAgents.length > 0) {
+                finalAgentId = activeAgents[0].id
+            } else {
+                // Fallback: get any agent from the agency
+                const allAgents = await agentsRepository.findByAgency(agencyId)
+                if (allAgents.length > 0) {
+                    finalAgentId = allAgents[0].id
+                } else {
+                    throw new Error('No agents found in the agency. Please create at least one agent before importing properties.')
+                }
+            }
+        }
         
         // Determine property and transaction types
         // The JSON seems to have generic values "Tip" and "Tranzactie", we need to infer from other data
@@ -148,6 +164,7 @@ async function transformPropertyData(incomingData: any) {
             agencyId,
             agentId: finalAgentId,
             ownerContactId,
+            internalCode: incomingData.internalCode || null,
             title,
             description: generateDescription(incomingData),
             propertyType,

@@ -1,4 +1,4 @@
-import { eq, desc, like, and, or } from 'drizzle-orm';
+import { eq, desc, like, and, or, sql } from 'drizzle-orm';
 import { db } from '../index';
 import { contacts, type Contact, type NewContact } from '../schema';
 
@@ -29,7 +29,7 @@ export class ContactRepository {
   }
 
   async findByPhone(phone: string): Promise<Contact | null> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.phone, phone));
+    const [contact] = await db.select().from(contacts).where(sql`RIGHT(${contacts.phone}, 9) = RIGHT(${phone}, 9)`);
     return contact || null;
   }
 

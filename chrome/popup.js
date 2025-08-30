@@ -92,6 +92,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     target: {tabId: tab.id},
                     function: extractPropertiesData
                 });
+            } else if(filename == 'cereri-adauga'){
+                [result] = await chrome.scripting.executeScript({
+                    target: {tabId: tab.id},
+                    function: extractRequestData
+                });
             } else {
                 [result] = await chrome.scripting.executeScript({
                     target: {tabId: tab.id},
@@ -146,6 +151,20 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               if(filename == 'proprietati-adauga'){
                   fetch('http://localhost:3013/api/zoca/properties/import', {
+                    method: 'POST',
+                    body: jsonString
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('Import response:', data)
+                  })
+                  .catch(error => {
+                    console.error('Import error:', error)
+                  })
+    
+              }
+              if(filename == 'cereri-adauga'){
+                  fetch('http://localhost:3013/api/zoca/requests/import', {
                     method: 'POST',
                     body: jsonString
                   })
@@ -375,7 +394,7 @@ function extractPropertiesData() {
                 // Extract main property data
                 currentProperty = {
                     id: null,
-                    propertyCode: null,
+                    internalCode: null,
                     image: null,
                     status: null,
                     transaction: null,
@@ -431,7 +450,7 @@ function extractPropertiesData() {
                         // Extract property code (P######)
                         const codeMatch = cellText.match(/P(\d{6})/);
                         if (codeMatch) {
-                            currentProperty.propertyCode = codeMatch[0];
+                            currentProperty.internalCode = codeMatch[0];
                         }
                     }
                 }
@@ -583,7 +602,7 @@ function extractPropertiesData() {
         }
 
         const extractedFields = [
-            'id', 'propertyCode', 'image', 'status', 'transaction', 'propertyType',
+            'id', 'internalCode', 'image', 'status', 'transaction', 'propertyType',
             'price', 'pricePerSqm', 'rooms', 'bedrooms', 'compartmentType',
             'usefulSurface', 'constructedSurface', 'floor', 'zone', 'address',
             'agent', 'landlord', 'landlordPhone', 'dateAdded', 'dateModified',
@@ -605,6 +624,264 @@ function extractPropertiesData() {
         return { error: error.message };
     }
 }
+
+// Function to extract request data from the requests table
+function extractRequestData() {
+    try {
+        const table = document.querySelector('table');
+        
+        if (!table) {
+            return { error: 'No table found on the page' };
+        }
+        
+        const rows = table.querySelectorAll('tbody tr');
+        if (rows.length === 0) {
+            return { error: 'Table has no data rows' };
+        }
+        
+        const jsonData = [];
+        let currentRequest = null;
+        
+        rows.forEach((row) => {
+            const isMainRow = row.classList.contains('model-item');
+            const isTagsRow = row.classList.contains('tags-row');
+            
+            if (isMainRow) {
+                // Extract main request data
+                currentRequest = {
+                    id: null,
+                    requestCode: null,
+                    status: null,
+                    statusColor: null,
+                    contactName: null,
+                    contactPhone: null,
+                    contactId: null,
+                    transaction: null,
+                    propertyType: null,
+                    propertySubtype: null,
+                    budget: null,
+                    city: null,
+                    zones: null,
+                    source: null,
+                    syncStatus: null,
+                    sourcePropertyCode: null,
+                    sourcePropertyId: null,
+                    agent: null,
+                    dateAdded: null,
+                    dateModified: null,
+                    dateVerified: null
+                };
+                
+                // Extract request ID from checkbox value
+                const checkbox = row.querySelector('input[name="id[]"]');
+                if (checkbox) {
+                    currentRequest.id = checkbox.value;
+                }
+                
+                // Extract status and request code
+                const statusCell = row.querySelector('td[rowspan="2"]');
+                if (statusCell) {
+                    const statusLabel = statusCell.querySelector('.label');
+                    if (statusLabel) {
+                        currentRequest.status = statusLabel.textContent.trim();
+                        
+                        // Extract status background color class
+                        const classNames = statusLabel.className.split(' ');
+                        const colorClass = classNames.find(cls => cls.startsWith('bg-'));
+                        if (colorClass) {
+                            currentRequest.statusColor = colorClass;
+                        }
+                    }
+                    
+                    // Extract request code (R#####)
+                    const codeMatch = statusCell.textContent.match(/R(\d+)/);
+                    if (codeMatch) {
+                        currentRequest.requestCode = codeMatch[0];
+                    }
+                }
+                
+                // Extract contact information
+                const contactCell = row.querySelectorAll('td')[2];
+                if (contactCell) {
+                    const contactLink = contactCell.querySelector('a[data-has="popover"]');
+                    if (contactLink) {
+                        // Extract full contact name - get text content and remove icon by filtering out non-letter characters at start
+                        const fullText = contactLink.textContent.trim();
+                        const nameMatch = fullText.match(/[A-Za-z\s]+/);
+                        if (nameMatch) {
+                            currentRequest.contactName = nameMatch[0].trim();
+                        }
+                        
+                        // Extract contact ID from URL
+                        const idMatch = contactLink.href.match(/contacts\/(\d+)/);
+                        if (idMatch) {
+                            currentRequest.contactId = idMatch[1];
+                        }
+                    }
+                    
+                    // Extract phone number
+                    const phoneLink = contactCell.querySelector('a[href^="tel:"]');
+                    if (phoneLink) {
+                        currentRequest.contactPhone = phoneLink.getAttribute('href').replace('tel:', '');
+                    }
+                }
+                
+                // Extract transaction and property type
+                const transactionCell = row.querySelectorAll('td')[3];
+                if (transactionCell) {
+                    const cellContent = transactionCell.querySelector('.tablesaw-cell-content');
+                    if (cellContent) {
+                        const lines = cellContent.textContent.split('\n')
+                            .map(line => line.trim())
+                            .filter(line => line && !line.includes('Tranzactie') && !line.includes('Tip'));
+                        
+                        if (lines.length >= 1) {
+                            currentRequest.transaction = lines[0];
+                        }
+                        if (lines.length >= 2) {
+                            currentRequest.propertyType = lines[1];
+                        }
+                        if (lines.length >= 3) {
+                            currentRequest.propertySubtype = lines[2];
+                        }
+                    }
+                }
+                
+                // Extract budget
+                const budgetCell = row.querySelectorAll('td')[4];
+                if (budgetCell) {
+                    const budgetStrong = budgetCell.querySelector('strong');
+                    if (budgetStrong) {
+                        currentRequest.budget = budgetStrong.textContent.trim();
+                    }
+                }
+                
+                // Extract city and zones
+                const locationCell = row.querySelectorAll('td')[5];
+                if (locationCell) {
+                    const cellContent = locationCell.querySelector('.tablesaw-cell-content');
+                    if (cellContent) {
+                        const lines = cellContent.textContent.split('\n')
+                            .map(line => line.trim())
+                            .filter(line => line);
+                        
+                        if (lines.length >= 1) {
+                            currentRequest.city = lines[0];
+                        }
+                        if (lines.length >= 2) {
+                            currentRequest.zones = lines[1];
+                        }
+                    }
+                }
+                
+                // Extract source and sync status
+                const sourceCell = row.querySelectorAll('td')[6];
+                if (sourceCell) {
+                    // Extract property code if present (P followed by 6 digits)
+                    const propertyLink = sourceCell.querySelector('a[data-has="popover"]');
+                    if (propertyLink) {
+                        const propertyCodeMatch = propertyLink.textContent.match(/P(\d{6})/);
+                        if (propertyCodeMatch) {
+                            currentRequest.sourcePropertyCode = propertyCodeMatch[0];
+                        }
+                        
+                        // Extract property ID from URL
+                        const propertyIdMatch = propertyLink.href.match(/properties\/(\d+)/);
+                        if (propertyIdMatch) {
+                            currentRequest.sourcePropertyId = propertyIdMatch[1];
+                        }
+                    }
+                    
+                    const syncLabel = sourceCell.querySelector('.label');
+                    if (syncLabel) {
+                        currentRequest.source = syncLabel.textContent.trim();
+                        const tooltip = syncLabel.getAttribute('data-original-title');
+                        if (tooltip) {
+                            currentRequest.syncStatus = tooltip;
+                        }
+                    }
+                }
+                
+                // Extract agent
+                const agentCell = row.querySelectorAll('td')[7];
+                if (agentCell) {
+                    const agentSpan = agentCell.querySelector('span[data-has="popover"]');
+                    if (agentSpan) {
+                        // Extract full agent name - get text content and remove icon by filtering out non-letter characters at start
+                        const fullText = agentSpan.textContent.trim();
+                        const nameMatch = fullText.match(/[A-Za-z\s]+/);
+                        if (nameMatch) {
+                            currentRequest.agent = nameMatch[0].trim();
+                        }
+                    }
+                }
+                
+                // Extract dates
+                const dateCell = row.querySelectorAll('td')[8];
+                if (dateCell) {
+                    const cellContent = dateCell.querySelector('.tablesaw-cell-content');
+                    if (cellContent) {
+                        const dateSpans = cellContent.querySelectorAll('span[data-tooltip="true"]');
+                        
+                        if (dateSpans.length >= 1) {
+                            const addedTitle = dateSpans[0].getAttribute('title');
+                            if (addedTitle) {
+                                currentRequest.dateAdded = addedTitle;
+                            }
+                        }
+                        
+                        if (dateSpans.length >= 2) {
+                            const modifiedTitle = dateSpans[1].getAttribute('title');
+                            if (modifiedTitle) {
+                                currentRequest.dateModified = modifiedTitle;
+                            }
+                        }
+                        
+                        if (dateSpans.length >= 3) {
+                            const verifiedTitle = dateSpans[2].getAttribute('title');
+                            if (verifiedTitle) {
+                                currentRequest.dateVerified = verifiedTitle;
+                            }
+                        }
+                    }
+                }
+                
+                // Push completed request
+                if (currentRequest) {
+                    jsonData.push(currentRequest);
+                    currentRequest = null;
+                }
+            }
+        });
+        
+        // Add the last request if it wasn't added
+        if (currentRequest) {
+            jsonData.push(currentRequest);
+        }
+        
+        const extractedFields = [
+            'id', 'requestCode', 'status', 'statusColor', 'contactName', 'contactPhone', 'contactId',
+            'transaction', 'propertyType', 'propertySubtype', 'budget', 'city', 'zones',
+            'source', 'syncStatus', 'sourcePropertyCode', 'sourcePropertyId', 'agent', 
+            'dateAdded', 'dateModified', 'dateVerified'
+        ];
+        
+        return {
+            json: jsonData,
+            rowCount: jsonData.length,
+            tableInfo: {
+                totalRows: jsonData.length + 1, // +1 for header
+                dataRows: jsonData.length,
+                columns: extractedFields.length,
+                columnNames: extractedFields
+            }
+        };
+        
+    } catch (error) {
+        return { error: error.message };
+    }
+}
+
 // Function to extract clean JSON data from the first table on the page (without header row)
 function extractTableData() {
     try {

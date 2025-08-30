@@ -25,6 +25,14 @@ export class ClientRequestRepository {
     return request || null;
   }
 
+  async findByRequestCode(requestCode: string): Promise<ClientRequest | null> {
+    const [request] = await db.select()
+      .from(clientRequests)
+      .where(eq(clientRequests.requestCode, requestCode))
+      .limit(1);
+    return request || null;
+  }
+
   async findByContact(contactId: number): Promise<ClientRequest[]> {
     return db.select()
       .from(clientRequests)
