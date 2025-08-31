@@ -332,9 +332,12 @@ export const clientRequests = mysqlTable('client_requests', {
   autoMatchIdx: index('client_requests_auto_match_idx').on(table.autoMatchEnabled),
 }));
 
-// Activities Table - TEMPORARILY DISABLED DUE TO TIMESTAMP ISSUE
-/* export const activities = mysqlTable('activities', {
+// Activities Table - Real Estate Activities (Calls, Meetings, Viewings, etc.)
+export const activities = mysqlTable('activities', {
   id: serial('id').primaryKey(),
+  originalActivityId: varchar('original_activity_id', { length: 50 }), // From source system
+  
+  // References  
   agencyId: bigint('agency_id', { mode: 'number', unsigned: true }).references(() => agencies.id).notNull(),
   agentId: bigint('agent_id', { mode: 'number', unsigned: true }).references(() => agents.id).notNull(),
   contactId: bigint('contact_id', { mode: 'number', unsigned: true }).references(() => contacts.id),
@@ -342,49 +345,50 @@ export const clientRequests = mysqlTable('client_requests', {
   requestId: bigint('request_id', { mode: 'number', unsigned: true }).references(() => clientRequests.id),
   
   // Activity Details
+  name: varchar('name', { length: 255 }).notNull(),
+  memo: text('memo'),
   activityType: mysqlEnum('activity_type', [
-    'email', 'telefon', 'whatsapp', 'sms', 'intalnire', 
-    'vizionare', 'prezentare', 'negociere', 'contract', 'nota'
+    'call', 'meeting', 'viewing', 'task', 'other'
   ]).notNull(),
-  status: mysqlEnum('status', ['programat', 'in_desfasurare', 'finalizat', 'anulat', 'amanat']).default('programat').notNull(),
-  priority: mysqlEnum('priority', ['scazut', 'mediu', 'ridicat', 'urgent']).default('mediu').notNull(),
   
-  // Content
-  subject: varchar('subject', { length: 255 }).notNull(),
-  description: text('description'),
-  outcome: text('outcome'),
-  notes: text('notes'),
+  // Status & UI Data
+  status: mysqlEnum('status', ['future', 'inprogress', 'passed', 'completed', 'cancelled']).default('future').notNull(),
+  statusClass: varchar('status_class', { length: 100 }),
+  statusIcon: varchar('status_icon', { length: 100 }),
   
-  // Timing
-  scheduledAt: timestamp('scheduled_at'),
-  startedAt: timestamp('started_at'),
-  completedAt: timestamp('completed_at'),
-  duration: int('duration'),
+  // Type Metadata
+  typeColor: varchar('type_color', { length: 50 }),
+  typeIcon: varchar('type_icon', { length: 100 }),
+  typeDuration: int('type_duration'), // in minutes
   
-  // AI & Automation
-  isAiGenerated: boolean('is_ai_generated').default(false).notNull(),
-  aiTemplate: varchar('ai_template', { length: 100 }),
-  sentimentAnalysisScore: decimal('sentiment_analysis_score', { precision: 3, scale: 2 }),
+  // Scheduling
+  scheduledDate: varchar('scheduled_date', { length: 50 }), // Store as received: "18-09-2025"
+  scheduledTime: varchar('scheduled_time', { length: 50 }), // Store as received: "09:00:00"
+  scheduledDateTime: timestamp('scheduled_datetime'), // Parsed datetime for queries
   
-  // Follow-up
-  followUpRequired: boolean('follow_up_required').default(false).notNull(),
-  nextAction: varchar('next_action', { length: 255 }),
-  nextActionDate: timestamp('next_action_date'),
+  // Contact Information (for lookups and denormalization)
+  contactName: varchar('contact_name', { length: 255 }),
+  contactPhone: varchar('contact_phone', { length: 20 }),
   
-  // Communication specific
-  emailSubject: varchar('email_subject', { length: 255 }),
-  emailDelivered: boolean('email_delivered'),
-  emailOpened: boolean('email_opened'),
-  emailClicked: boolean('email_clicked'),
-  callDirection: mysqlEnum('call_direction', ['inbound', 'outbound']),
-  callDuration: int('call_duration'),
-  callRecordingUrl: varchar('call_recording_url', { length: 500 }),
+  // Property Information (for lookups and denormalization)
+  propertyCode: varchar('property_code', { length: 20 }),
   
-  // Attachments
-  attachments: json('attachments').default('[]').notNull(),
+  // Request Information (for lookups and denormalization) 
+  requestCode: varchar('request_code', { length: 20 }),
   
-  createdAt: datetime('created_at', { mode: 'string' }),
-  updatedAt: datetime('updated_at', { mode: 'string' }),
+  // Agent Information (denormalized for performance)
+  agentName: varchar('agent_name', { length: 255 }),
+  
+  // URLs and External References
+  editUrl: varchar('edit_url', { length: 500 }),
+  slideUrl: varchar('slide_url', { length: 500 }),
+  
+  // Metadata
+  isImported: boolean('is_imported').default(true).notNull(),
+  importedAt: timestamp('imported_at').defaultNow(),
+  
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
 }, (table) => ({
   agencyIdx: index('activities_agency_idx').on(table.agencyId),
   agentIdx: index('activities_agent_idx').on(table.agentId),
@@ -393,9 +397,12 @@ export const clientRequests = mysqlTable('client_requests', {
   requestIdx: index('activities_request_idx').on(table.requestId),
   typeIdx: index('activities_type_idx').on(table.activityType),
   statusIdx: index('activities_status_idx').on(table.status),
-  scheduledIdx: index('activities_scheduled_idx').on(table.scheduledAt),
-  followUpIdx: index('activities_followup_idx').on(table.followUpRequired, table.nextActionDate),
-})); */
+  scheduledIdx: index('activities_scheduled_idx').on(table.scheduledDateTime),
+  originalIdIdx: index('activities_original_id_idx').on(table.originalActivityId),
+  phoneIdx: index('activities_phone_idx').on(table.contactPhone),
+  propertyCodeIdx: index('activities_property_code_idx').on(table.propertyCode),
+  requestCodeIdx: index('activities_request_code_idx').on(table.requestCode),
+}));
 
 // Continue with remaining tables from the original schema...
 // AI Lead Scores Table
@@ -599,8 +606,8 @@ export type NewProperty = typeof properties.$inferInsert;
 export type ClientRequest = typeof clientRequests.$inferSelect;
 export type NewClientRequest = typeof clientRequests.$inferInsert;
 
-// export type Activity = typeof activities.$inferSelect;
-// export type NewActivity = typeof activities.$inferInsert;
+export type Activity = typeof activities.$inferSelect;
+export type NewActivity = typeof activities.$inferInsert;
 
 export type AiLeadScore = typeof aiLeadScores.$inferSelect;
 export type NewAiLeadScore = typeof aiLeadScores.$inferInsert;
@@ -625,7 +632,7 @@ export const agenciesRelations = relations(agencies, ({ many }) => ({
   agents: many(agents),
   properties: many(properties),
   contacts: many(contacts),
-  // activities: many(activities),
+  activities: many(activities),
   clientRequests: many(clientRequests),
   emailTemplates: many(emailTemplates),
   whatsappConversations: many(whatsappConversations),
@@ -635,7 +642,7 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
   agency: one(agencies, { fields: [agents.agencyId], references: [agencies.id] }),
   properties: many(properties),
   assignedContacts: many(contacts),
-  // activities: many(activities),
+  activities: many(activities),
   assignedRequests: many(clientRequests),
   whatsappConversations: many(whatsappConversations),
 }));
@@ -643,7 +650,7 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
 export const contactsRelations = relations(contacts, ({ one, many }) => ({
   agency: one(agencies, { fields: [contacts.agencyId], references: [agencies.id] }),
   assignedAgent: one(agents, { fields: [contacts.assignedAgentId], references: [agents.id] }),
-  // activities: many(activities),
+  activities: many(activities),
   ownedProperties: many(properties),
   clientRequests: many(clientRequests),
   aiLeadScores: many(aiLeadScores),
@@ -655,7 +662,7 @@ export const propertiesRelations = relations(properties, ({ one, many }) => ({
   agency: one(agencies, { fields: [properties.agencyId], references: [agencies.id] }),
   agent: one(agents, { fields: [properties.agentId], references: [agents.id] }),
   ownerContact: one(contacts, { fields: [properties.ownerContactId], references: [contacts.id] }),
-  // activities: many(activities),
+  activities: many(activities),
   relatedRequests: many(clientRequests),
   valuations: many(propertyValuations),
   matches: many(clientPropertyMatches),
@@ -666,17 +673,17 @@ export const clientRequestsRelations = relations(clientRequests, ({ one, many })
   agency: one(agencies, { fields: [clientRequests.agencyId], references: [agencies.id] }),
   assignedAgent: one(agents, { fields: [clientRequests.assignedAgentId], references: [agents.id] }),
   sourceProperty: one(properties, { fields: [clientRequests.propertyId], references: [properties.id] }),
-  // activities: many(activities),
+  activities: many(activities),
   propertyMatches: many(clientPropertyMatches),
 }));
 
-/* export const activitiesRelations = relations(activities, ({ one }) => ({
+export const activitiesRelations = relations(activities, ({ one }) => ({
   agency: one(agencies, { fields: [activities.agencyId], references: [agencies.id] }),
   agent: one(agents, { fields: [activities.agentId], references: [agents.id] }),
   contact: one(contacts, { fields: [activities.contactId], references: [contacts.id] }),
   property: one(properties, { fields: [activities.propertyId], references: [properties.id] }),
   clientRequest: one(clientRequests, { fields: [activities.requestId], references: [clientRequests.id] }),
-})); */
+}));
 
 export const aiLeadScoresRelations = relations(aiLeadScores, ({ one }) => ({
   contact: one(contacts, { fields: [aiLeadScores.contactId], references: [contacts.id] }),

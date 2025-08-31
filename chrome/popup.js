@@ -97,6 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     target: {tabId: tab.id},
                     function: extractRequestData
                 });
+            } else if(filename == 'activitati-adauga'){
+                [result] = await chrome.scripting.executeScript({
+                    target: {tabId: tab.id},
+                    function: extractActivitiesData
+                });
             } else {
                 [result] = await chrome.scripting.executeScript({
                     target: {tabId: tab.id},
@@ -118,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `${filename}.json`;
-               // a.click();
+                a.click();
                 URL.revokeObjectURL(url);
               //make a post request to the import endpoint
               if(filename == 'agenti-adauga'){
@@ -165,6 +170,20 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               if(filename == 'cereri-adauga'){
                   fetch('http://localhost:3013/api/zoca/requests/import', {
+                    method: 'POST',
+                    body: jsonString
+                  })
+                  .then(response => response.json())
+                  .then(data => {
+                    console.log('Import response:', data)
+                  })
+                  .catch(error => {
+                    console.error('Import error:', error)
+                  })
+    
+              }
+              if(filename == 'activitati-adauga'){
+                  fetch('http://localhost:3013/api/zoca/activities/import', {
                     method: 'POST',
                     body: jsonString
                   })
@@ -864,6 +883,389 @@ function extractRequestData() {
             'transaction', 'propertyType', 'propertySubtype', 'budget', 'city', 'zones',
             'source', 'syncStatus', 'sourcePropertyCode', 'sourcePropertyId', 'agent', 
             'dateAdded', 'dateModified', 'dateVerified'
+        ];
+        
+        return {
+            json: jsonData,
+            rowCount: jsonData.length,
+            tableInfo: {
+                totalRows: jsonData.length + 1, // +1 for header
+                dataRows: jsonData.length,
+                columns: extractedFields.length,
+                columnNames: extractedFields
+            }
+        };
+        
+    } catch (error) {
+        return { error: error.message };
+    }
+}
+
+// Function to extract activities data from the activities table
+async function extractActivitiesData() {
+    try {
+        const table = document.querySelector('table');
+        
+        if (!table) {
+            return { error: 'No table found on the page' };
+        }
+        
+        const rows = table.querySelectorAll('tbody tr');
+        if (rows.length === 0) {
+            return { error: 'Table has no data rows' };
+        }
+        
+        const jsonData = [];
+        
+        // Helper function to extract phone number from popover
+        const extractPhoneFromPopover = async (contactElement) => {
+            return new Promise((resolve) => {
+                if (!contactElement) {
+                    resolve(null);
+                    return;
+                }
+                
+                // Create hover events
+                const mouseEnterEvent = new MouseEvent('mouseenter', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                
+                const mouseOverEvent = new MouseEvent('mouseover', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                
+                // Function to check for popover and extract phone
+                const checkForPopover = () => {
+                    // Look for popover content that might contain phone number
+                    const popovers = document.querySelectorAll('.popover, .tooltip, [class*="popover"], [class*="tooltip"]');
+                    
+                    for (const popover of popovers) {
+                        if (popover.style.display !== 'none' && popover.offsetHeight > 0) {
+                            // Look for phone number in various formats
+                            const popoverText = popover.textContent || popover.innerText || '';
+                            
+                            // Match phone patterns (Romanian format and international)
+                            const phonePatterns = [
+                                /\+40[0-9\s\-\.]{9,}/g,  // +40 format
+                                /07[0-9\s\-\.]{8,}/g,    // 07xx format
+                                /\b[0-9\s\-\.]{10,}\b/g  // General 10+ digit format
+                            ];
+                            
+                            for (const pattern of phonePatterns) {
+                                const matches = popoverText.match(pattern);
+                                if (matches && matches.length > 0) {
+                                    // Clean the phone number
+                                    const phone = matches[0].replace(/[\s\-\.]/g, '').trim();
+                                    if (phone.length >= 10) {
+                                        return phone;
+                                    }
+                                }
+                            }
+                            
+                            // Also look for tel: links in popover
+                            const telLinks = popover.querySelectorAll('a[href^="tel:"]');
+                            if (telLinks.length > 0) {
+                                return telLinks[0].getAttribute('href').replace('tel:', '').replace(/[\s\-\.]/g, '');
+                            }
+                        }
+                    }
+                    
+                    return null;
+                };
+                
+                // Trigger hover events
+                contactElement.dispatchEvent(mouseEnterEvent);
+                contactElement.dispatchEvent(mouseOverEvent);
+                
+                // Wait for popover to appear and extract phone
+                setTimeout(() => {
+                    const phone = checkForPopover();
+                    
+                    // Create mouse leave event to hide popover
+                    const mouseLeaveEvent = new MouseEvent('mouseleave', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    contactElement.dispatchEvent(mouseLeaveEvent);
+                    
+                    resolve(phone);
+                }, 300); // Wait 300ms for popover to load
+            });
+        };
+        
+        // Process rows sequentially to avoid overwhelming the page
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            // Skip non-activity rows (like headers)
+            if (!row.classList.contains('model-item')) {
+                continue;
+            }
+            
+            const activity = {
+                id: null,
+                status: null,
+                statusIcon: null,
+                statusClass: null,
+                type: null,
+                typeColor: null,
+                typeIcon: null,
+                typeDuration: null,
+                name: null,
+                memo: null,
+                date: null,
+                time: null,
+                contact: null,
+                contactId: null,
+                contactPhone: null,
+                properties: null,
+                propertyId: null,
+                requests: null,
+                requestId: null,
+                agent: null,
+                agentId: null,
+                editUrl: null,
+                slideUrl: null
+            };
+            
+            // Extract activity ID from checkbox value
+            const checkbox = row.querySelector('input.selectable-item');
+            if (checkbox) {
+                activity.id = checkbox.value;
+            }
+            
+            // Extract slide panel URL from row data attribute
+            const slideUrl = row.getAttribute('data-url');
+            if (slideUrl) {
+                activity.slideUrl = slideUrl;
+            }
+            
+            const cells = row.querySelectorAll('td');
+            
+            // Extract status (second cell - index 1)
+            if (cells[1]) {
+                const statusSpan = cells[1].querySelector('.activity-status');
+                if (statusSpan) {
+                    // Extract status class for styling
+                    const statusClasses = statusSpan.className.split(' ');
+                    const statusClass = statusClasses.find(cls => cls.startsWith('activity-status-'));
+                    if (statusClass) {
+                        activity.statusClass = statusClass;
+                    }
+                    
+                    const timeframeClass = statusClasses.find(cls => cls.startsWith('activity-timeframe-'));
+                    if (timeframeClass) {
+                        activity.status = timeframeClass.replace('activity-timeframe-', '');
+                    }
+                }
+                
+                const statusIcon = cells[1].querySelector('i');
+                if (statusIcon) {
+                    activity.statusIcon = statusIcon.className;
+                }
+            }
+            
+            // Extract type (third cell - index 2)
+            if (cells[2]) {
+                const typeLabel = cells[2].querySelector('label.btn');
+                if (typeLabel) {
+                    // Extract type color from button class
+                    const typeClasses = typeLabel.className.split(' ');
+                    const colorClass = typeClasses.find(cls => cls.startsWith('btn-') && cls !== 'btn');
+                    if (colorClass) {
+                        activity.typeColor = colorClass;
+                    }
+                    
+                    // Extract duration from data attribute
+                    const duration = typeLabel.getAttribute('data-duration');
+                    if (duration) {
+                        activity.typeDuration = duration;
+                    }
+                }
+                
+                const typeIcon = cells[2].querySelector('i');
+                if (typeIcon) {
+                    activity.typeIcon = typeIcon.className;
+                    
+                    // Determine type based on icon
+                    if (typeIcon.classList.contains('fa-group')) {
+                        activity.type = 'meeting';
+                    } else if (typeIcon.classList.contains('ti-check')) {
+                        activity.type = 'task';
+                    } else if (typeIcon.classList.contains('fa-phone')) {
+                        activity.type = 'call';
+                    } else if (typeIcon.classList.contains('ti-eye')) {
+                        activity.type = 'viewing';
+                    } else {
+                        activity.type = 'other';
+                    }
+                }
+            }
+            
+            // Extract name and memo (fourth cell - index 3)
+            if (cells[3]) {
+                const cellContent = cells[3].querySelector('.tablesaw-cell-content');
+                if (cellContent) {
+                    const strong = cellContent.querySelector('strong');
+                    if (strong) {
+                        activity.name = strong.textContent.trim();
+                    }
+                    
+                    // Extract memo from the text after the strong element
+                    const memoSpan = cellContent.querySelector('span.text-muted');
+                    if (memoSpan) {
+                        const memoText = memoSpan.textContent || memoSpan.innerText || '';
+                        // Remove "Memo:" prefix if present
+                        activity.memo = memoText.replace(/^Memo:\s*/i, '').trim();
+                    }
+                }
+            }
+            
+            // Extract date and time (fifth cell - index 4)
+            if (cells[4]) {
+                const cellContent = cells[4].querySelector('.tablesaw-cell-content');
+                if (cellContent) {
+                    const textMuted = cellContent.querySelector('.text-muted');
+                    if (textMuted) {
+                        const dateTimeText = textMuted.textContent.trim();
+                        const lines = dateTimeText.split('\n').map(line => line.trim()).filter(line => line);
+                        
+                        if (lines.length >= 1) {
+                            activity.date = lines[0];
+                        }
+                        if (lines.length >= 2) {
+                            activity.time = lines[1];
+                        }
+                    }
+                }
+            }
+            
+            // Extract contact (sixth cell - index 5)
+            if (cells[5]) {
+                const contactSpan = cells[5].querySelector('span.labelish.text-primary');
+                if (contactSpan) {
+                    // Extract contact name - remove icon text
+                    const fullText = contactSpan.textContent.trim();
+                    const nameMatch = fullText.match(/[A-Za-z\s]+/);
+                    if (nameMatch) {
+                        activity.contact = nameMatch[0].trim();
+                    }
+                    
+                    // Extract contact ID from popover href
+                    const popoverHref = contactSpan.getAttribute('data-pophref');
+                    if (popoverHref) {
+                        const idMatch = popoverHref.match(/contacts\/(\d+)/);
+                        if (idMatch) {
+                            activity.contactId = idMatch[1];
+                        }
+                    }
+                    
+                    // Extract phone number from popover
+                    try {
+                        const phone = await extractPhoneFromPopover(contactSpan);
+                        if (phone) {
+                            activity.contactPhone = phone;
+                        }
+                    } catch (error) {
+                        console.log('Error extracting phone for contact:', activity.contact, error);
+                    }
+                }
+            }
+            
+            // Extract properties (seventh cell - index 6)
+            if (cells[6]) {
+                const propertyLink = cells[6].querySelector('a.labelish.cyan-600');
+                if (propertyLink) {
+                    activity.properties = propertyLink.textContent.trim();
+                    
+                    // Extract property ID from URL
+                    const href = propertyLink.getAttribute('href');
+                    if (href) {
+                        const idMatch = href.match(/properties\/(\d+)/);
+                        if (idMatch) {
+                            activity.propertyId = idMatch[1];
+                        }
+                    }
+                } else {
+                    // Check for red property link (different color class)
+                    const redPropertyLink = cells[6].querySelector('a.labelish.red-600');
+                    if (redPropertyLink) {
+                        activity.properties = redPropertyLink.textContent.trim();
+                        
+                        const href = redPropertyLink.getAttribute('href');
+                        if (href) {
+                            const idMatch = href.match(/properties\/(\d+)/);
+                            if (idMatch) {
+                                activity.propertyId = idMatch[1];
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Extract requests (eighth cell - index 7)
+            if (cells[7]) {
+                const requestLink = cells[7].querySelector('a.labelish.blue-grey-400');
+                if (requestLink) {
+                    activity.requests = requestLink.textContent.trim();
+                    
+                    // Extract request ID from URL
+                    const href = requestLink.getAttribute('href');
+                    if (href) {
+                        const idMatch = href.match(/requests\/(\d+)/);
+                        if (idMatch) {
+                            activity.requestId = idMatch[1];
+                        }
+                    }
+                }
+            }
+            
+            // Extract agent (ninth cell - index 8)
+            if (cells[8]) {
+                const agentSpan = cells[8].querySelector('span.labelish.purple-600');
+                if (agentSpan) {
+                    // Extract agent name - remove icon text
+                    const fullText = agentSpan.textContent.trim();
+                    const nameMatch = fullText.match(/[A-Za-z\s]+/);
+                    if (nameMatch) {
+                        activity.agent = nameMatch[0].trim();
+                    }
+                    
+                    // Extract agent ID from popover href
+                    const popoverHref = agentSpan.getAttribute('data-pophref');
+                    if (popoverHref) {
+                        const idMatch = popoverHref.match(/agents\/(\d+)/);
+                        if (idMatch) {
+                            activity.agentId = idMatch[1];
+                        }
+                    }
+                }
+            }
+            
+            // Extract edit URL (last cell - index 9)
+            if (cells[9]) {
+                const editLink = cells[9].querySelector('a[data-url*="/edit"]');
+                if (editLink) {
+                    activity.editUrl = editLink.getAttribute('data-url');
+                }
+            }
+            
+            jsonData.push(activity);
+            
+            // Add small delay between rows to ensure popovers are processed correctly
+            if (i < rows.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        
+        const extractedFields = [
+            'id', 'status', 'statusIcon', 'statusClass', 'type', 'typeColor', 'typeIcon', 'typeDuration',
+            'name', 'memo', 'date', 'time', 'contact', 'contactId', 'contactPhone', 'properties', 'propertyId',
+            'requests', 'requestId', 'agent', 'agentId', 'editUrl', 'slideUrl'
         ];
         
         return {

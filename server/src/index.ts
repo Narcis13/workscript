@@ -12,6 +12,7 @@ import agents from './api/zoca/agents'
 import contacts from './api/zoca/contacts'
 import properties from './api/zoca/properties'
 import requests from './api/zoca/requests'
+import activities from './api/zoca/activities'
 initializeTokenStorage();    
 const app = new Hono()
 const wsManager = WebSocketManager.getInstance()
@@ -34,6 +35,7 @@ app.route('/api/zoca/agents', agents)
 app.route('/api/zoca/contacts', contacts)
 app.route('/api/zoca/properties', properties)
 app.route('/api/zoca/requests', requests)
+app.route('/api/zoca/activities', activities)
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })
