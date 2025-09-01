@@ -103,42 +103,42 @@ export class ActivitiesRepository {
   /**
    * Get activities for a specific agency
    */
-  async findByAgency(agencyId: number, filters: Omit<ActivityFilters, 'agencyId') = {}): Promise<Activity[]> {
+  async findByAgency(agencyId: number, filters: Omit<ActivityFilters, 'agencyId'> = {}): Promise<Activity[]> {
     return this.findAll({ ...filters, agencyId });
   }
 
   /**
    * Get activities for a specific agent
    */
-  async findByAgent(agentId: number, filters: Omit<ActivityFilters, 'agentId') = {}): Promise<Activity[]> {
+  async findByAgent(agentId: number, filters: Omit<ActivityFilters, 'agentId'> = {}): Promise<Activity[]> {
     return this.findAll({ ...filters, agentId });
   }
 
   /**
    * Get activities for a specific contact
    */
-  async findByContact(contactId: number, filters: Omit<ActivityFilters, 'contactId') = {}): Promise<Activity[]> {
+  async findByContact(contactId: number, filters: Omit<ActivityFilters, 'contactId'> = {}): Promise<Activity[]> {
     return this.findAll({ ...filters, contactId });
   }
 
   /**
    * Get activities for a specific property
    */
-  async findByProperty(propertyId: number, filters: Omit<ActivityFilters, 'propertyId') = {}): Promise<Activity[]> {
+  async findByProperty(propertyId: number, filters: Omit<ActivityFilters, 'propertyId'> = {}): Promise<Activity[]> {
     return this.findAll({ ...filters, propertyId });
   }
 
   /**
    * Get activities for a specific client request
    */
-  async findByRequest(requestId: number, filters: Omit<ActivityFilters, 'requestId') = {}): Promise<Activity[]> {
+  async findByRequest(requestId: number, filters: Omit<ActivityFilters, 'requestId'> = {}): Promise<Activity[]> {
     return this.findAll({ ...filters, requestId });
   }
 
   /**
    * Search activities by name, memo, or contact name
    */
-  async search(searchTerm: string, filters: Omit<ActivityFilters, 'searchTerm') = {}): Promise<Activity[]> {
+  async search(searchTerm: string, filters: Omit<ActivityFilters, 'searchTerm'> = {}): Promise<Activity[]> {
     return this.findAll({ ...filters, searchTerm });
   }
 
@@ -334,10 +334,16 @@ export class ActivitiesRepository {
             const timeStr = activityData.scheduledTime || '00:00:00';
             
             // Parse Romanian date format: "DD-MM-YYYY"
-            const [day, month, year] = dateStr.split('-').map(Number);
-            const [hour, minute, second] = timeStr.split(':').map(Number);
+            const dateParts = dateStr.split('-').map(Number);
+            const timeParts = timeStr.split(':').map(Number);
             
-            scheduledDateTime = new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
+            if (dateParts.length === 3 && dateParts.every(part => !isNaN(part) && part != null)) {
+              const [day, month, year] = dateParts;
+              const [hour = 0, minute = 0, second = 0] = timeParts;
+              if (year != null && month != null && day != null) {
+                scheduledDateTime = new Date(year, month - 1, day, hour, minute, second);
+              }
+            }
           } catch (parseError) {
             console.warn(`Failed to parse date for activity ${activityData.originalActivityId}:`, parseError);
           }

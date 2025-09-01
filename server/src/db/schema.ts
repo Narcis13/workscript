@@ -386,6 +386,7 @@ export const activities = mysqlTable('activities', {
   // Metadata
   isImported: boolean('is_imported').default(true).notNull(),
   importedAt: timestamp('imported_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
   
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),

@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `${filename}.json`;
-                a.click();
+               // a.click();
                 URL.revokeObjectURL(url);
               //make a post request to the import endpoint
               if(filename == 'agenti-adauga'){
