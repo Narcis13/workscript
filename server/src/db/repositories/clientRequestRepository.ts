@@ -267,6 +267,10 @@ export class ClientRequestRepository {
     cutoffDate.setDate(cutoffDate.getDate() - days);
     const cutoffDateStr = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
 
+    // Create cutoff date for request age (requests should be older than 30 days)
+    const requestAgeCutoff = new Date();
+    requestAgeCutoff.setDate(requestAgeCutoff.getDate() - 30);
+
     // Build the query with LEFT JOIN to find requests with no recent activities
     let whereCondition = and(
       // Only active requests
@@ -275,7 +279,9 @@ export class ClientRequestRepository {
         eq(clientRequests.status, 'in_procesare')
       ),
       // No recent activities
-      isNull(activities.id)
+      isNull(activities.id),
+      // Request must be older than 30 days
+      lte(clientRequests.createdAt, requestAgeCutoff)
     );
 
     // Add agency filter if provided
@@ -286,8 +292,49 @@ export class ClientRequestRepository {
       );
     }
 
-    return db
-      .select()
+    const results = await db
+      .select({
+        id: clientRequests.id,
+        contactId: clientRequests.contactId,
+        agencyId: clientRequests.agencyId,
+        assignedAgentId: clientRequests.assignedAgentId,
+        requestType: clientRequests.requestType,
+        title: clientRequests.title,
+        description: clientRequests.description,
+        propertyType: clientRequests.propertyType,
+        budgetMin: clientRequests.budgetMin,
+        budgetMax: clientRequests.budgetMax,
+        preferredLocations: clientRequests.preferredLocations,
+        minRooms: clientRequests.minRooms,
+        maxRooms: clientRequests.maxRooms,
+        minSurface: clientRequests.minSurface,
+        maxSurface: clientRequests.maxSurface,
+        requiredFeatures: clientRequests.requiredFeatures,
+        preferredFeatures: clientRequests.preferredFeatures,
+        status: clientRequests.status,
+        statusColorCode: clientRequests.statusColorCode,
+        requestCode: clientRequests.requestCode,
+        priority: clientRequests.priority,
+        urgencyLevel: clientRequests.urgencyLevel,
+        propertyId: clientRequests.propertyId,
+        expectedTimeframe: clientRequests.expectedTimeframe,
+        deadlineDate: clientRequests.deadlineDate,
+        preferredContactTime: clientRequests.preferredContactTime,
+        communicationPreferences: clientRequests.communicationPreferences,
+        lastContactAt: clientRequests.lastContactAt,
+        nextFollowUpAt: clientRequests.nextFollowUpAt,
+        aiMatchingCriteria: clientRequests.aiMatchingCriteria,
+        autoMatchEnabled: clientRequests.autoMatchEnabled,
+        matchCount: clientRequests.matchCount,
+        lastMatchedAt: clientRequests.lastMatchedAt,
+        internalNotes: clientRequests.internalNotes,
+        clientNotes: clientRequests.clientNotes,
+        tags: clientRequests.tags,
+        source: clientRequests.source,
+        sourceDetails: clientRequests.sourceDetails,
+        createdAt: clientRequests.createdAt,
+        updatedAt: clientRequests.updatedAt
+      })
       .from(clientRequests)
       .leftJoin(
         activities,
@@ -301,6 +348,8 @@ export class ClientRequestRepository {
       )
       .where(whereCondition)
       .orderBy(desc(clientRequests.createdAt));
+
+    return results;
   }
 
   async delete(id: number): Promise<boolean> {
