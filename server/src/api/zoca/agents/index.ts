@@ -63,7 +63,7 @@ agents.post('/import', async (c) => {
         const existingAgent = await agentsRepository.findByPhone(phone)
         if (existingAgent) {
           skipped++
-          errors.push(`Row ${processed}: Agent with phone ${phone} already exists`)
+          console.log(`Skipping duplicate agent with phone: ${phone}`)
           continue
         }
 
@@ -95,13 +95,11 @@ agents.post('/import', async (c) => {
     
     return c.json({
       success: true,
-      message: 'Import completed',
-      stats: {
-        processed,
-        inserted,
-        skipped,
-        errors: errors.length > 0 ? errors : undefined
-      }
+      message: 'Agents imported successfully',
+      imported: inserted,
+      skipped: skipped,
+      errors: errors,
+      total: processed
     })
   } catch (error) {
     console.error('Failed to process import:', error)

@@ -126,75 +126,101 @@ document.addEventListener('DOMContentLoaded', function() {
                // a.click();
                 URL.revokeObjectURL(url);
               //make a post request to the import endpoint
+              let importPromise;
               if(filename == 'agenti-adauga'){
-                fetch('http://localhost:3013/api/zoca/agents/import', {
+                importPromise = fetch('http://localhost:3013/api/zoca/agents/import', {
                     method: 'POST',
                     body: jsonString
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    console.log('Import response:', data)
-                  })
-                  .catch(error => {
-                    console.error('Import error:', error)
-                  })
-    
+                  });
               }
-              if(filename == 'contacte-adauga'){
-                fetch('http://localhost:3013/api/zoca/contacts/import', {
+              else if(filename == 'contacte-adauga'){
+                importPromise = fetch('http://localhost:3013/api/zoca/contacts/import', {
                     method: 'POST',
                     body: jsonString
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    console.log('Import response:', data)
-                  })
-                  .catch(error => {
-                    console.error('Import error:', error)
-                  })
-    
+                  });
               }
-              if(filename == 'proprietati-adauga'){
-                  fetch('http://localhost:3013/api/zoca/properties/import', {
+              else if(filename == 'proprietati-adauga'){
+                importPromise = fetch('http://localhost:3013/api/zoca/properties/import', {
                     method: 'POST',
                     body: jsonString
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    console.log('Import response:', data)
-                  })
-                  .catch(error => {
-                    console.error('Import error:', error)
-                  })
-    
+                  });
               }
-              if(filename == 'cereri-adauga'){
-                  fetch('http://localhost:3013/api/zoca/requests/import', {
+              else if(filename == 'cereri-adauga'){
+                importPromise = fetch('http://localhost:3013/api/zoca/requests/import', {
                     method: 'POST',
                     body: jsonString
-                  })
-                  .then(response => response.json())
-                  .then(data => {
-                    console.log('Import response:', data)
-                  })
-                  .catch(error => {
-                    console.error('Import error:', error)
-                  })
-    
+                  });
               }
-              if(filename == 'activitati-adauga'){
-                  fetch('http://localhost:3013/api/zoca/activities/import', {
+              else if(filename == 'activitati-adauga'){
+                importPromise = fetch('http://localhost:3013/api/zoca/activities/import', {
                     method: 'POST',
                     body: jsonString
-                  })
+                  });
+              }
+
+              if(importPromise) {
+                importPromise
                   .then(response => response.json())
-                  .then(data => {
-                    console.log('Import response:', data)
+                  .then(importData => {
+                    console.log('Import response:', importData);
+                    
+                    // Show import results instead of extraction metrics
+                    const successDiv = document.createElement('div');
+                    successDiv.className = 'results';
+                    successDiv.innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Import completed!</span>
+                            <span class="metric-value">${importData.total} rows processed</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Successfully imported:</span>
+                            <span class="metric-value" style="color: #28a745;">${importData.imported}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Skipped:</span>
+                            <span class="metric-value" style="color: #ffc107;">${importData.skipped}</span>
+                        </div>
+                        ${importData.duplicates > 0 ? `
+                        <div class="metric">
+                            <span class="metric-label">Duplicates:</span>
+                            <span class="metric-value" style="color: #6c757d;">${importData.duplicates}</span>
+                        </div>
+                        ` : ''}
+                        ${importData.errors && importData.errors.length > 0 ? `
+                        <div class="metric">
+                            <span class="metric-label">Errors:</span>
+                            <span class="metric-value" style="color: #dc3545;">${importData.errors.length}</span>
+                        </div>
+                        ` : ''}
+                        <div style="margin-top: 10px; padding: 10px; background: #e8f5e8; border-radius: 4px; font-size: 12px;">
+                            ${importData.success ? 'Data successfully imported to database' : 'Import failed: ' + (importData.error || 'Unknown error')}
+                        </div>
+                    `;
+                    
+                    // Replace the loading message with results
+                    const loadingDiv = document.querySelector('.loading');
+                    if (loadingDiv) {
+                      loadingDiv.parentNode.replaceChild(successDiv, loadingDiv);
+                    }
                   })
                   .catch(error => {
-                    console.error('Import error:', error)
-                  })
-    
+                    console.error('Import error:', error);
+                    
+                    // Show error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'results';
+                    errorDiv.innerHTML = `
+                        <div style="margin-top: 10px; padding: 10px; background: #f8d7da; border-radius: 4px; font-size: 12px; color: #721c24;">
+                            Import failed: ${error.message || 'Network error'}
+                        </div>
+                    `;
+                    
+                    const loadingDiv = document.querySelector('.loading');
+                    if (loadingDiv) {
+                      loadingDiv.parentNode.replaceChild(errorDiv, loadingDiv);
+                    }
+                  });
+                return; // Exit early to avoid showing extraction metrics
               }
                 // Show success message with column names
                 const columnsList = result.result.tableInfo.columnNames.join(', ');

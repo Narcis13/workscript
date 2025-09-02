@@ -1,6 +1,6 @@
-import { eq, desc, like, and, or, lte, gte } from 'drizzle-orm';
+import { eq, desc, like, and, or, lte, gte, isNull, sql } from 'drizzle-orm';
 import { db } from '../index';
-import { clientRequests, type ClientRequest, type NewClientRequest } from '../schema';
+import { clientRequests, activities, type ClientRequest, type NewClientRequest } from '../schema';
 
 export class ClientRequestRepository {
   async create(request: NewClientRequest): Promise<ClientRequest> {
@@ -260,6 +260,47 @@ export class ClientRequestRepository {
     }
     
     return this.update(id, updates);
+  }
+
+  async findNeedingFollowUp(days: number = 30, agencyId?: number): Promise<ClientRequest[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffDateStr = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // Build the query with LEFT JOIN to find requests with no recent activities
+    let whereCondition = and(
+      // Only active requests
+      or(
+        eq(clientRequests.status, 'nou'),
+        eq(clientRequests.status, 'in_procesare')
+      ),
+      // No recent activities
+      isNull(activities.id)
+    );
+
+    // Add agency filter if provided
+    if (agencyId) {
+      whereCondition = and(
+        whereCondition,
+        eq(clientRequests.agencyId, agencyId)
+      );
+    }
+
+    return db
+      .select()
+      .from(clientRequests)
+      .leftJoin(
+        activities,
+        and(
+          eq(activities.requestId, clientRequests.id),
+          gte(
+            sql`STR_TO_DATE(${activities.scheduledDate}, '%d-%m-%Y')`,
+            cutoffDateStr
+          )
+        )
+      )
+      .where(whereCondition)
+      .orderBy(desc(clientRequests.createdAt));
   }
 
   async delete(id: number): Promise<boolean> {

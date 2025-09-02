@@ -39,6 +39,7 @@ properties.post('/import', async (c) => {
         
         const importResults = []
         const errors = []
+        let skipped = 0
         
         for (const item of propertyData) {
             try {
@@ -46,6 +47,7 @@ properties.post('/import', async (c) => {
                 if (item.id) {
                     const existingProperty = await propertiesRepository.findByOriginalId(item.id)
                     if (existingProperty) {
+                        skipped++
                         importResults.push({
                             success: true,
                             propertyId: existingProperty.id,
@@ -71,6 +73,7 @@ properties.post('/import', async (c) => {
                         status: 'created'
                     })
                 } else {
+                    skipped++
                     errors.push({
                         originalId: item.id,
                         error: 'Failed to transform property data - missing required fields'
@@ -85,13 +88,15 @@ properties.post('/import', async (c) => {
             }
         }
         
+        const actualImported = importResults.filter(r => r.status === 'created').length;
+        
         return c.json({
             success: true,
-            message: `Properties import completed: ${importResults.length} successful, ${errors.length} errors`,
-            imported: importResults.length,
-            errors: errors.length,
-            results: importResults,
-            errorDetails: errors
+            message: `Properties import completed: ${actualImported} imported, ${skipped} skipped, ${errors.length} errors`,
+            imported: actualImported,
+            skipped: skipped,
+            errors: errors,
+            total: propertyData.length
         })
         
     } catch (error) {

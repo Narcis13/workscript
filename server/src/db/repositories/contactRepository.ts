@@ -4,18 +4,55 @@ import { contacts, type Contact, type NewContact } from '../schema';
 
 export class ContactRepository {
   async create(contact: NewContact): Promise<Contact> {
-    await db.insert(contacts).values(contact);
-    // For MySQL with serial ID, we need to find the created record
-    if (contact.email) {
-      const created = await this.findByEmail(contact.email);
-      if (created) return created;
+    try {
+      const result = await db.insert(contacts).values(contact);
+      
+      // Get the inserted ID from the result
+      const insertId = Array.isArray(result) && result[0] ? result[0].insertId : (result as any).insertId;
+      console.log('Insert result:', { insertId, result });
+      
+      if (insertId) {
+        const created = await this.findById(insertId);
+        if (created) return created;
+        console.log('Failed to find contact by ID:', insertId);
+      }
+
+      // Fallback: find by email if no insertId
+      if (contact.email) {
+        console.log('Trying to find by email:', contact.email);
+        const created = await this.findByEmail(contact.email);
+        if (created) return created;
+      }
+      
+      // Fallback: find by phone if no email
+      if (contact.phone) {
+        console.log('Trying to find by phone:', contact.phone);
+        const created = await this.findByPhone(contact.phone);
+        if (created) return created;
+      }
+      
+      // Log the contact data for debugging
+      console.log('Contact data that failed to retrieve:', JSON.stringify(contact, null, 2));
+      throw new Error(`Failed to retrieve created contact. InsertId: ${insertId}, Email: ${contact.email}, Phone: ${contact.phone}`);
+    } catch (error) {
+      // Provide more detailed error information
+      if (error instanceof Error) {
+        if (error.message.includes('Duplicate entry')) {
+          throw new Error(`Contact already exists: ${error.message}`);
+        }
+        if (error.message.includes('cannot be null') || error.message.includes('NOT NULL')) {
+          throw new Error(`Missing required field: ${error.message}`);
+        }
+        if (error.message.includes('foreign key constraint')) {
+          throw new Error(`Invalid reference: ${error.message}`);
+        }
+        if (error.message.includes('Failed to retrieve created contact')) {
+          throw error; // Re-throw our custom error with more details
+        }
+        throw new Error(`Database error: ${error.message}`);
+      }
+      throw new Error('Failed to create contact');
     }
-    // Fallback: find by phone if no email
-    if (contact.phone) {
-      const created = await this.findByPhone(contact.phone);
-      if (created) return created;
-    }
-    throw new Error('Failed to create contact');
   }
 
   async findById(id: number): Promise<Contact | null> {

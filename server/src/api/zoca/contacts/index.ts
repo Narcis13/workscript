@@ -58,6 +58,7 @@ contacts.post('/import', async (c) => {
           const existingContact = await contactsRepository.findByPhone(curatedContact.phone)
           if (existingContact) {
             importResults.duplicates++
+            importResults.skipped++
             console.log(`Skipping duplicate contact with phone: ${curatedContact.phone}`)
             continue
           }
@@ -74,7 +75,12 @@ contacts.post('/import', async (c) => {
 
     return c.json({
       success: true,
-      data: importResults
+      message: 'Contacts imported successfully',
+      imported: importResults.imported,
+      skipped: importResults.skipped,
+      duplicates: importResults.duplicates,
+      errors: importResults.errors,
+      total: importResults.total
     })
   } catch (error) {
     console.error('Import endpoint error:', error)

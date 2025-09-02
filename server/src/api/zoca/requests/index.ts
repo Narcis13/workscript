@@ -30,6 +30,43 @@ requests.get('/', async (c) => {
   }
 })
 
+// Get client requests that need follow-up
+requests.get('/follow-up', async (c) => {
+  try {
+    // Get query parameters
+    const days = parseInt(c.req.query('days') || '30')
+    const agencyIdParam = c.req.query('agencyId')
+    const agencyId = agencyIdParam ? parseInt(agencyIdParam) : undefined
+
+    // Validate days parameter
+    if (isNaN(days) || days < 1 || days > 365) {
+      return c.json({
+        success: false,
+        error: 'Days parameter must be between 1 and 365'
+      }, { status: 400 })
+    }
+
+    // Get requests that need follow-up
+    const requestsNeedingFollowUp = await clientRequestRepository.findNeedingFollowUp(days, agencyId)
+
+    return c.json({
+      success: true,
+      message: `Found ${requestsNeedingFollowUp.length} client requests needing follow-up (no activities in last ${days} days)`,
+      count: requestsNeedingFollowUp.length,
+      days: days,
+      agencyId: agencyId,
+      data: requestsNeedingFollowUp
+    })
+  } catch (error) {
+    console.error('Failed to retrieve follow-up requests:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      data: []
+    }, { status: 500 })
+  }
+})
+
 // Import endpoint
 requests.post('/import', async (c) => {
   try {
@@ -47,17 +84,15 @@ requests.post('/import', async (c) => {
 
     const importResults = []
     const errors = []
+    let skipped = 0
 
     for (const item of body) {
       try {
         // Check for duplicate request code
         const existingRequest = await clientRequestRepository.findByRequestCode(item.requestCode)
         if (existingRequest) {
-          errors.push({
-            originalId: item.id,
-            requestCode: item.requestCode,
-            error: 'Request code already exists - skipping duplicate'
-          })
+          skipped++
+          console.log(`Skipping duplicate request with code: ${item.requestCode}`)
           continue
         }
 
@@ -72,6 +107,7 @@ requests.post('/import', async (c) => {
             dbId: createdRequest.id
           })
         } else {
+          skipped++
           errors.push({
             originalId: item.id,
             requestCode: item.requestCode,
@@ -90,16 +126,11 @@ requests.post('/import', async (c) => {
     
     return c.json({
       success: true,
-      message: `Import completed. ${importResults.length} successful, ${errors.length} failed.`,
-      data: {
-        successful: importResults,
-        errors: errors,
-        summary: {
-          total: body.length,
-          successful: importResults.length,
-          failed: errors.length
-        }
-      }
+      message: `Client requests imported successfully`,
+      imported: importResults.length,
+      skipped: skipped,
+      errors: errors,
+      total: body.length
     })
   } catch (error) {
     console.error('Import endpoint error:', error)

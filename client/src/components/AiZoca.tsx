@@ -9,22 +9,21 @@ export function AiZoca() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const sidebarItems = [
-    { id: 'panou-principal', label: 'Panou principal', icon: '📊', route: 'panou-principal' },
+    { id: 'agenti-ai', label: 'Agenti AI', icon: '📊', route: 'agenti-ai' },
     { id: 'activitati', label: 'Activitati', icon: '📋', route: 'activitati' },
-    { id: 'leads', label: 'Leads', icon: '🎯', route: 'leads' },
+
     { id: 'cereri', label: 'Cereri', icon: '📝', route: 'cereri' },
     { id: 'proprietati', label: 'Proprietati', icon: '🏠', route: 'proprietati' },
-    { id: 'acp', label: 'ACP', icon: '🏢', route: 'acp' },
+
     { id: 'anunturi-particulari', label: 'Anunturi particulari', icon: '📢', route: 'anunturi-particulari' },
-    { id: 'ansamburi', label: 'Ansamburi', icon: '🏘️', route: 'ansamburi' },
+
     { id: 'contacte', label: 'Contacte', icon: '👥', route: 'contacte' },
     { id: 'e-mail-uri', label: 'E-mail-uri', icon: '📧', route: 'e-mail-uri' },
     { id: 'rapoarte', label: 'Rapoarte', icon: '📈', route: 'rapoarte' },
-    { id: 'media', label: 'Media', icon: '🖼️', route: 'media' },
-    { id: 'obiective', label: 'Obiective', icon: '🎯', route: 'obiective' },
+
     { id: 'automatizari', label: 'Automatizari', icon: '⚙️', route: 'automatizari' },
     { id: 'documente', label: 'Documente', icon: '📄', route: 'documente' },
-    { id: 'facturi', label: 'Facturi', icon: '💰', route: 'facturi' },
+
     { id: 'setari', label: 'Setari', icon: '⚙️', route: 'setari' },
   ];
 
