@@ -4,9 +4,49 @@ import { ContactRepository } from '../../../db/repositories/contactRepository'
 const contacts = new Hono()
 const contactsRepository = new ContactRepository()
 
-// Get all agencies endpoint
+// Get all contacts endpoint with optional pagination
 contacts.get('/', async (c) => {
   try {
+    const limitParam = c.req.query('limit')
+    const offsetParam = c.req.query('offset')
+    
+    // If pagination params are provided, use paginated endpoint
+    if (limitParam || offsetParam) {
+      const limit = limitParam ? parseInt(limitParam, 10) : 15
+      const offset = offsetParam ? parseInt(offsetParam, 10) : 0
+      
+      // Validate parameters
+      if (isNaN(limit) || limit < 1 || limit > 100) {
+        return c.json({
+          success: false,
+          error: 'Invalid limit parameter. Must be between 1 and 100.'
+        }, { status: 400 })
+      }
+      
+      if (isNaN(offset) || offset < 0) {
+        return c.json({
+          success: false,
+          error: 'Invalid offset parameter. Must be 0 or greater.'
+        }, { status: 400 })
+      }
+      
+      const result = await contactsRepository.findAllPaginated(limit, offset)
+      
+      return c.json({
+        success: true,
+        count: result.total,
+        data: result.data,
+        pagination: {
+          limit,
+          offset,
+          total: result.total,
+          hasNext: offset + limit < result.total,
+          hasPrev: offset > 0
+        }
+      })
+    }
+    
+    // Fallback to non-paginated for backwards compatibility
     const allContacts = await contactsRepository.findAll()
     
     return c.json({
@@ -15,7 +55,7 @@ contacts.get('/', async (c) => {
       data: allContacts
     })
   } catch (error) {
-    console.error('Failed to retrieve agencies:', error)
+    console.error('Failed to retrieve contacts:', error)
     return c.json({
       error: error instanceof Error ? error.message : 'Unknown error',
       success: false,

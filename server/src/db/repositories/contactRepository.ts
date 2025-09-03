@@ -137,6 +137,22 @@ export class ContactRepository {
     return db.select().from(contacts).orderBy(desc(contacts.createdAt));
   }
 
+  async findAllPaginated(limit: number = 15, offset: number = 0): Promise<{ data: Contact[]; total: number }> {
+    // Get total count
+    const countResults = await db.select({ count: sql<number>`count(*)` }).from(contacts);
+    const total = countResults[0]?.count || 0;
+
+    // Get paginated data
+    const data = await db
+      .select()
+      .from(contacts)
+      .orderBy(desc(contacts.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return { data, total };
+  }
+
   async update(id: number, updates: Partial<NewContact>): Promise<Contact | null> {
     await db.update(contacts).set(updates).where(eq(contacts.id, id));
     return this.findById(id);
