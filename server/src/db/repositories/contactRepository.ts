@@ -1,6 +1,6 @@
-import { eq, desc, like, and, or, sql } from 'drizzle-orm';
+import { eq, desc, like, and, or, sql, count, lte, gte, isNull } from 'drizzle-orm';
 import { db } from '../index';
-import { contacts, type Contact, type NewContact } from '../schema';
+import { contacts, properties, clientRequests, activities, agents, type Contact, type NewContact } from '../schema';
 
 export class ContactRepository {
   async create(contact: NewContact): Promise<Contact> {
@@ -137,6 +137,95 @@ export class ContactRepository {
     return db.select().from(contacts).orderBy(desc(contacts.createdAt));
   }
 
+  async findAllWithCounts(): Promise<(Contact & { propertiesCount: number; clientRequestsCount: number; needFollowUp: boolean; assignedAgentName: string | null })[]> {
+    // Calculate cutoff dates for follow-up logic (30 days ago)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 30);
+    const requestAgeCutoff = cutoffDate.toISOString();
+    const activityCutoffDateStr = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    const result = await db
+      .select({
+        id: contacts.id,
+        agencyId: contacts.agencyId,
+        assignedAgentId: contacts.assignedAgentId,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        email: contacts.email,
+        phone: contacts.phone,
+        whatsapp: contacts.whatsapp,
+        contactType: contacts.contactType,
+        source: contacts.source,
+        sourceDetails: contacts.sourceDetails,
+        interestedIn: contacts.interestedIn,
+        budgetMin: contacts.budgetMin,
+        budgetMax: contacts.budgetMax,
+        preferredAreas: contacts.preferredAreas,
+        propertyPreferences: contacts.propertyPreferences,
+        urgencyLevel: contacts.urgencyLevel,
+        buyingReadiness: contacts.buyingReadiness,
+        preferredContactMethod: contacts.preferredContactMethod,
+        bestTimeToCall: contacts.bestTimeToCall,
+        communicationNotes: contacts.communicationNotes,
+        aiLeadScore: contacts.aiLeadScore,
+        qualificationStatus: contacts.qualificationStatus,
+        conversionProbability: contacts.conversionProbability,
+        lastInteractionScore: contacts.lastInteractionScore,
+        lastContactAt: contacts.lastContactAt,
+        lastResponseAt: contacts.lastResponseAt,
+        nextFollowUpAt: contacts.nextFollowUpAt,
+        interactionCount: contacts.interactionCount,
+        emailCount: contacts.emailCount,
+        callCount: contacts.callCount,
+        whatsappCount: contacts.whatsappCount,
+        meetingCount: contacts.meetingCount,
+        occupation: contacts.occupation,
+        company: contacts.company,
+        notes: contacts.notes,
+        tags: contacts.tags,
+        isBlacklisted: contacts.isBlacklisted,
+        gdprConsent: contacts.gdprConsent,
+        marketingConsent: contacts.marketingConsent,
+        createdAt: contacts.createdAt,
+        updatedAt: contacts.updatedAt,
+        propertiesCount: sql<number>`COALESCE(${sql`p.property_count`}, 0)`.as('propertiesCount'),
+        clientRequestsCount: sql<number>`COALESCE(${sql`cr.request_count`}, 0)`.as('clientRequestsCount'),
+        needFollowUp: sql<boolean>`CASE WHEN COALESCE(${sql`fu.has_followup_needed`}, 0) > 0 THEN 1 ELSE 0 END`.as('needFollowUp'),
+        assignedAgentName: sql<string>`CASE WHEN ${agents.firstName} IS NOT NULL THEN CONCAT(${agents.firstName}, ' ', COALESCE(${agents.lastName}, '')) ELSE NULL END`.as('assignedAgentName')
+      })
+      .from(contacts)
+      .leftJoin(agents, eq(contacts.assignedAgentId, agents.id))
+      .leftJoin(
+        sql`(SELECT owner_contact_id, COUNT(*) as property_count FROM properties WHERE owner_contact_id IS NOT NULL GROUP BY owner_contact_id) p`,
+        sql`p.owner_contact_id = ${contacts.id}`
+      )
+      .leftJoin(
+        sql`(SELECT contact_id, COUNT(*) as request_count FROM client_requests GROUP BY contact_id) cr`,
+        sql`cr.contact_id = ${contacts.id}`
+      )
+      .leftJoin(
+        sql`(
+          SELECT 
+            contact_id, 
+            COUNT(*) as has_followup_needed
+          FROM client_requests cr_fu
+          WHERE 
+            cr_fu.status IN ('nou', 'in_procesare')
+            AND cr_fu.created_at <= ${requestAgeCutoff}
+            AND NOT EXISTS (
+              SELECT 1 FROM activities a 
+              WHERE a.request_id = cr_fu.id 
+              AND STR_TO_DATE(a.scheduled_date, '%d-%m-%Y') >= ${activityCutoffDateStr}
+            )
+          GROUP BY contact_id
+        ) fu`,
+        sql`fu.contact_id = ${contacts.id}`
+      )
+      .orderBy(desc(contacts.createdAt));
+
+    return result as (Contact & { propertiesCount: number; clientRequestsCount: number; needFollowUp: boolean; assignedAgentName: string | null })[];
+  }
+
   async findAllPaginated(limit: number = 15, offset: number = 0): Promise<{ data: Contact[]; total: number }> {
     // Get total count
     const countResults = await db.select({ count: sql<number>`count(*)` }).from(contacts);
@@ -151,6 +240,108 @@ export class ContactRepository {
       .offset(offset);
 
     return { data, total };
+  }
+
+  async findAllPaginatedWithCounts(limit: number = 15, offset: number = 0): Promise<{ 
+    data: (Contact & { propertiesCount: number; clientRequestsCount: number; needFollowUp: boolean; assignedAgentName: string | null })[];
+    total: number 
+  }> {
+    // Get total count
+    const countResults = await db.select({ count: sql<number>`count(*)` }).from(contacts);
+    const total = countResults[0]?.count || 0;
+
+    // Calculate cutoff dates for follow-up logic (30 days ago)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 30);
+    const requestAgeCutoff = cutoffDate.toISOString();
+    const activityCutoffDateStr = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // Get paginated data with counts
+    const data = await db
+      .select({
+        id: contacts.id,
+        agencyId: contacts.agencyId,
+        assignedAgentId: contacts.assignedAgentId,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        email: contacts.email,
+        phone: contacts.phone,
+        whatsapp: contacts.whatsapp,
+        contactType: contacts.contactType,
+        source: contacts.source,
+        sourceDetails: contacts.sourceDetails,
+        interestedIn: contacts.interestedIn,
+        budgetMin: contacts.budgetMin,
+        budgetMax: contacts.budgetMax,
+        preferredAreas: contacts.preferredAreas,
+        propertyPreferences: contacts.propertyPreferences,
+        urgencyLevel: contacts.urgencyLevel,
+        buyingReadiness: contacts.buyingReadiness,
+        preferredContactMethod: contacts.preferredContactMethod,
+        bestTimeToCall: contacts.bestTimeToCall,
+        communicationNotes: contacts.communicationNotes,
+        aiLeadScore: contacts.aiLeadScore,
+        qualificationStatus: contacts.qualificationStatus,
+        conversionProbability: contacts.conversionProbability,
+        lastInteractionScore: contacts.lastInteractionScore,
+        lastContactAt: contacts.lastContactAt,
+        lastResponseAt: contacts.lastResponseAt,
+        nextFollowUpAt: contacts.nextFollowUpAt,
+        interactionCount: contacts.interactionCount,
+        emailCount: contacts.emailCount,
+        callCount: contacts.callCount,
+        whatsappCount: contacts.whatsappCount,
+        meetingCount: contacts.meetingCount,
+        occupation: contacts.occupation,
+        company: contacts.company,
+        notes: contacts.notes,
+        tags: contacts.tags,
+        isBlacklisted: contacts.isBlacklisted,
+        gdprConsent: contacts.gdprConsent,
+        marketingConsent: contacts.marketingConsent,
+        createdAt: contacts.createdAt,
+        updatedAt: contacts.updatedAt,
+        propertiesCount: sql<number>`COALESCE(${sql`p.property_count`}, 0)`.as('propertiesCount'),
+        clientRequestsCount: sql<number>`COALESCE(${sql`cr.request_count`}, 0)`.as('clientRequestsCount'),
+        needFollowUp: sql<boolean>`CASE WHEN COALESCE(${sql`fu.has_followup_needed`}, 0) > 0 THEN 1 ELSE 0 END`.as('needFollowUp'),
+        assignedAgentName: sql<string>`CASE WHEN ${agents.firstName} IS NOT NULL THEN CONCAT(${agents.firstName}, ' ', COALESCE(${agents.lastName}, '')) ELSE NULL END`.as('assignedAgentName')
+      })
+      .from(contacts)
+      .leftJoin(agents, eq(contacts.assignedAgentId, agents.id))
+      .leftJoin(
+        sql`(SELECT owner_contact_id, COUNT(*) as property_count FROM properties WHERE owner_contact_id IS NOT NULL GROUP BY owner_contact_id) p`,
+        sql`p.owner_contact_id = ${contacts.id}`
+      )
+      .leftJoin(
+        sql`(SELECT contact_id, COUNT(*) as request_count FROM client_requests GROUP BY contact_id) cr`,
+        sql`cr.contact_id = ${contacts.id}`
+      )
+      .leftJoin(
+        sql`(
+          SELECT 
+            contact_id, 
+            COUNT(*) as has_followup_needed
+          FROM client_requests cr_fu
+          WHERE 
+            cr_fu.status IN ('nou', 'in_procesare')
+            AND cr_fu.created_at <= ${requestAgeCutoff}
+            AND NOT EXISTS (
+              SELECT 1 FROM activities a 
+              WHERE a.request_id = cr_fu.id 
+              AND STR_TO_DATE(a.scheduled_date, '%d-%m-%Y') >= ${activityCutoffDateStr}
+            )
+          GROUP BY contact_id
+        ) fu`,
+        sql`fu.contact_id = ${contacts.id}`
+      )
+      .orderBy(desc(contacts.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return { 
+      data: data as (Contact & { propertiesCount: number; clientRequestsCount: number; needFollowUp: boolean; assignedAgentName: string | null })[], 
+      total 
+    };
   }
 
   async update(id: number, updates: Partial<NewContact>): Promise<Contact | null> {

@@ -30,7 +30,7 @@ contacts.get('/', async (c) => {
         }, { status: 400 })
       }
       
-      const result = await contactsRepository.findAllPaginated(limit, offset)
+      const result = await contactsRepository.findAllPaginatedWithCounts(limit, offset)
       
       return c.json({
         success: true,
@@ -47,7 +47,7 @@ contacts.get('/', async (c) => {
     }
     
     // Fallback to non-paginated for backwards compatibility
-    const allContacts = await contactsRepository.findAll()
+    const allContacts = await contactsRepository.findAllWithCounts()
     
     return c.json({
       success: true,
