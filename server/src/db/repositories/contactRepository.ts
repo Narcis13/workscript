@@ -9,7 +9,7 @@ export class ContactRepository {
       
       // Get the inserted ID from the result
       const insertId = Array.isArray(result) && result[0] ? result[0].insertId : (result as any).insertId;
-      console.log('Insert result:', { insertId, result });
+     // console.log('Insert result:', { insertId, result });
       
       if (insertId) {
         const created = await this.findById(insertId);

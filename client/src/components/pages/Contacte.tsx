@@ -70,6 +70,46 @@ export function Contacte() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize] = useState(15);
+  
+  // Filter states
+  const [propertiesCountFilter, setPropertiesCountFilter] = useState<number | ''>('');
+  const [clientRequestsCountFilter, setClientRequestsCountFilter] = useState<number | ''>('');
+  const [needFollowUpFilter, setNeedFollowUpFilter] = useState<string>('all');
+  const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>('');
+
+  // Filtered contacts based on current filters
+  const filteredContacts = contacts.filter(contact => {
+    // Properties count filter
+    if (propertiesCountFilter !== '' && (contact.propertiesCount ?? 0) < propertiesCountFilter) {
+      return false;
+    }
+    
+    // Client requests count filter  
+    if (clientRequestsCountFilter !== '' && (contact.clientRequestsCount ?? 0) < clientRequestsCountFilter) {
+      return false;
+    }
+    
+    // Follow-up filter
+    if (needFollowUpFilter !== 'all') {
+      const needsFollowUp = contact.needFollowUp === true || contact.needFollowUp === 1;
+      if (needFollowUpFilter === 'yes' && !needsFollowUp) {
+        return false;
+      }
+      if (needFollowUpFilter === 'no' && needsFollowUp) {
+        return false;
+      }
+    }
+    
+    // Assigned agent filter
+    if (assignedAgentFilter && assignedAgentFilter.trim() !== '') {
+      const agentName = contact.assignedAgentName || '';
+      if (!agentName.toLowerCase().includes(assignedAgentFilter.toLowerCase())) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -118,10 +158,86 @@ export function Contacte() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="mb-6 bg-white rounded-lg shadow p-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-4">Filtre</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Numar proprietati
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="Min"
+              value={propertiesCountFilter}
+              onChange={(e) => setPropertiesCountFilter(e.target.value === '' ? '' : parseInt(e.target.value))}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Numar cereri clienti
+            </label>
+            <input
+              type="number"
+              min="0"
+              placeholder="Min"
+              value={clientRequestsCountFilter}
+              onChange={(e) => setClientRequestsCountFilter(e.target.value === '' ? '' : parseInt(e.target.value))}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Necesita follow-up
+            </label>
+            <select
+              value={needFollowUpFilter}
+              onChange={(e) => setNeedFollowUpFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="all">Toate</option>
+              <option value="yes">Da</option>
+              <option value="no">Nu</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Agent asignat
+            </label>
+            <input
+              type="text"
+              placeholder="Nume agent"
+              value={assignedAgentFilter}
+              onChange={(e) => setAssignedAgentFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+        
+        <div className="mt-4 flex space-x-2">
+          <button
+            onClick={() => {
+              setPropertiesCountFilter('');
+              setClientRequestsCountFilter('');
+              setNeedFollowUpFilter('all');
+              setAssignedAgentFilter('');
+            }}
+            className="px-4 py-2 text-xs font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Reseteaza filtrele
+          </button>
+        </div>
+      </div>
+
       {/* Results Summary */}
       <div className="mb-4">
         <p className="text-xs sm:text-sm text-gray-600">
-          Rezultate {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} din {totalCount}
+          Afisate {filteredContacts.length} din {totalCount} contacte
         </p>
       </div>
 
@@ -166,14 +282,14 @@ export function Contacte() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {contacts.length === 0 ? (
+              {filteredContacts.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    No contacts found
+                    Nu au fost gasite contacte cu filtrele aplicate
                   </td>
                 </tr>
               ) : (
-                contacts.map((contact) => (
+                filteredContacts.map((contact) => (
                   <tr key={contact.id} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-6 py-2 sm:py-4">
                       <input type="checkbox" className="rounded border-gray-300 w-3 h-3 sm:w-4 sm:h-4" />
