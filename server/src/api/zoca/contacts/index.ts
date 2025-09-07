@@ -1,8 +1,10 @@
 import { Hono } from 'hono'
 import { ContactRepository } from '../../../db/repositories/contactRepository'
+import { AgentsRepository } from '../../../db/repositories/agentsRepository'
 
 const contacts = new Hono()
 const contactsRepository = new ContactRepository()
+const agentsRepository = new AgentsRepository()
 
 // Get all contacts endpoint with optional pagination
 contacts.get('/', async (c) => {
@@ -86,7 +88,7 @@ contacts.post('/import', async (c) => {
 
     for (const [index, rawContact] of body.entries()) {
       try {
-        const curatedContact = curateContactData(rawContact)
+        const curatedContact = await curateContactData(rawContact)
         
         if (!curatedContact) {
           importResults.skipped++
@@ -131,11 +133,12 @@ contacts.post('/import', async (c) => {
   }
 })
 
-function curateContactData(rawContact: any) {
+async function curateContactData(rawContact: any) {
   const firstName = rawContact['Nume']
   const email = rawContact['Email']
   const phone = rawContact['Telefon']
   const adaugatModificat = rawContact['Adaugat Modificat']
+  const adaugatDe = rawContact['Adaugat de']
 
   if (!firstName || firstName.trim() === '') {
     return null
@@ -168,6 +171,21 @@ function curateContactData(rawContact: any) {
     agencyId: 1, // Default agency ID - you might want to make this configurable
     createdAt: createdAt,
     updatedAt: updatedAt
+  }
+
+  // Look up agent by 'Adaugat de' field and set assignedAgentId
+  if (adaugatDe && adaugatDe.trim() !== '') {
+    try {
+      const agent = await agentsRepository.findByFirstName(adaugatDe.trim())
+      if (agent) {
+        curatedContact.assignedAgentId = agent.id
+      //  console.log(`Assigned agent ${agent.firstName} (ID: ${agent.id}) to contact ${firstName}`)
+      } else {
+      //  console.warn(`Agent not found for name: ${adaugatDe.trim()}`)
+      }
+    } catch (error) {
+      console.error('Failed to lookup agent:', error)
+    }
   }
 
   if (email && email.trim() !== '' && email.trim() !== 'E-mail') {

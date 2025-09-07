@@ -51,6 +51,30 @@
             text-align: center;
             color: #666;
             font-style: italic;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            margin-top: 5px;
         }
 
         .results {
@@ -142,7 +166,8 @@
     </div>
 
     <div id="loading" class="loading" style="display: none;">
-        Analizam pagina...
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Analizam pagina...</div>
     </div>
 
     <div id="error" class="error" style="display: none;"></div>

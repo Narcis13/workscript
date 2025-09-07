@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { ContactDetailsPanel } from '../contact-details/ContactDetailsPanel';
 
-interface Contact {
+export interface Contact {
   id: number;
   agencyId: number;
   assignedAgentId: number | null;
@@ -64,7 +65,7 @@ interface ApiResponse {
 
 export function Contacte() {
   const [selectedTab, setSelectedTab] = useState('contacte');
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,10 +76,29 @@ export function Contacte() {
   const [propertiesCountFilter, setPropertiesCountFilter] = useState<number | ''>('');
   const [clientRequestsCountFilter, setClientRequestsCountFilter] = useState<number | ''>('');
   const [needFollowUpFilter, setNeedFollowUpFilter] = useState<string>('all');
-  const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>('');
+  const [assignedAgentFilter, setAssignedAgentFilter] = useState<string>('all');
+  
+  // Agent states
+  const [availableAgents, setAvailableAgents] = useState<{id: number, firstName: string}[]>([]);
+  
+  // Contact details panel state
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Handler to open contact details panel
+  const handleContactClick = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsPanelOpen(true);
+  };
+
+  // Handler to close contact details panel
+  const handleClosePanel = () => {
+    setIsPanelOpen(false);
+    setTimeout(() => setSelectedContact(null), 300); // Delay to allow animation to complete
+  };
 
   // Filtered contacts based on current filters
-  const filteredContacts = contacts.filter(contact => {
+  const filteredContacts = allContacts.filter(contact => {
     // Properties count filter
     if (propertiesCountFilter !== '' && (contact.propertiesCount ?? 0) < propertiesCountFilter) {
       return false;
@@ -101,31 +121,80 @@ export function Contacte() {
     }
     
     // Assigned agent filter
-    if (assignedAgentFilter && assignedAgentFilter.trim() !== '') {
-      const agentName = contact.assignedAgentName || '';
-      if (!agentName.toLowerCase().includes(assignedAgentFilter.toLowerCase())) {
-        return false;
+    if (assignedAgentFilter !== 'all') {
+      if (assignedAgentFilter === 'unassigned') {
+        // Show contacts without assigned agent
+        if (contact.assignedAgentId !== null) {
+          return false;
+        }
+      } else {
+        // Show contacts assigned to specific agent
+        const selectedAgentId = parseInt(assignedAgentFilter);
+        if (contact.assignedAgentId !== selectedAgentId) {
+          return false;
+        }
       }
     }
     
     return true;
   });
 
+  // Apply pagination to filtered results
+  const totalFilteredCount = filteredContacts.length;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
   useEffect(() => {
-    const fetchContacts = async () => {
+    setCurrentPage(1);
+  }, [propertiesCountFilter, clientRequestsCountFilter, needFollowUpFilter, assignedAgentFilter]);
+
+  useEffect(() => {
+    const fetchAllContacts = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const offset = (currentPage - 1) * pageSize;
-        const response = await fetch(`http://localhost:3013/api/zoca/contacts?limit=${pageSize}&offset=${offset}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        let allData: Contact[] = [];
+        let currentOffset = 0;
+        const batchSize = 100; // Fetch in batches of 100
+        let hasMore = true;
+        
+        // Fetch first batch to get total count
+        while (hasMore) {
+          const response = await fetch(`http://localhost:3013/api/zoca/contacts?limit=${batchSize}&offset=${currentOffset}`);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const result: ApiResponse = await response.json();
+          allData = [...allData, ...result.data];
+          
+          // Set total count from first response
+          if (currentOffset === 0) {
+            setTotalCount(result.count);
+          }
+          
+          // Check if we have more data
+          hasMore = result.data.length === batchSize && allData.length < result.count;
+          currentOffset += batchSize;
+          
+          // Safety check to prevent infinite loop
+          if (currentOffset > result.count || currentOffset > 10000) {
+            break;
+          }
         }
         
-        const result: ApiResponse = await response.json();
-        setContacts(result.data);
-        setTotalCount(result.count);
+        // Remove duplicates based on contact ID
+        const uniqueContacts = allData.reduce((acc: Contact[], contact) => {
+          if (!acc.find(existingContact => existingContact.id === contact.id)) {
+            acc.push(contact);
+          }
+          return acc;
+        }, []);
+        
+        setAllContacts(uniqueContacts);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch contacts');
         console.error('Error fetching contacts:', err);
@@ -134,8 +203,28 @@ export function Contacte() {
       }
     };
 
-    fetchContacts();
-  }, [currentPage, pageSize]);
+    const fetchAgents = async () => {
+      try {
+        const response = await fetch('http://localhost:3013/api/zoca/agents');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        if (result.success && result.data) {
+          setAvailableAgents(result.data.map((agent: any) => ({
+            id: agent.id,
+            firstName: agent.firstName
+          })));
+        }
+      } catch (err) {
+        console.error('Error fetching agents:', err);
+      }
+    };
+
+    fetchAllContacts();
+    fetchAgents();
+  }, []); // Only fetch once on component mount
 
   return (
     <div className="flex-1 p-4 sm:p-6">
@@ -209,13 +298,19 @@ export function Contacte() {
             <label className="block text-xs font-medium text-gray-600 mb-1">
               Agent asignat
             </label>
-            <input
-              type="text"
-              placeholder="Nume agent"
+            <select
               value={assignedAgentFilter}
               onChange={(e) => setAssignedAgentFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            >
+              <option value="all">Toti agentii</option>
+              <option value="unassigned">Unassigned</option>
+              {availableAgents.map((agent) => (
+                <option key={agent.id} value={agent.id.toString()}>
+                  {agent.firstName}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         
@@ -225,7 +320,7 @@ export function Contacte() {
               setPropertiesCountFilter('');
               setClientRequestsCountFilter('');
               setNeedFollowUpFilter('all');
-              setAssignedAgentFilter('');
+              setAssignedAgentFilter('all');
             }}
             className="px-4 py-2 text-xs font-medium text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
           >
@@ -237,7 +332,7 @@ export function Contacte() {
       {/* Results Summary */}
       <div className="mb-4">
         <p className="text-xs sm:text-sm text-gray-600">
-          Afisate {filteredContacts.length} din {totalCount} contacte
+          Afisate {Math.min(paginatedContacts.length, pageSize)} din {totalFilteredCount} contacte filtrate ({totalCount} total)
         </p>
       </div>
 
@@ -282,16 +377,22 @@ export function Contacte() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredContacts.length === 0 ? (
+              {paginatedContacts.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                    Nu au fost gasite contacte cu filtrele aplicate
+                    {totalFilteredCount === 0 
+                      ? "Nu au fost gasite contacte cu filtrele aplicate"
+                      : "Nu exista contacte pe aceasta pagina"}
                   </td>
                 </tr>
               ) : (
-                filteredContacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-gray-50">
-                    <td className="px-2 sm:px-6 py-2 sm:py-4">
+                paginatedContacts.map((contact) => (
+                  <tr 
+                    key={contact.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleContactClick(contact)}
+                  >
+                    <td className="px-2 sm:px-6 py-2 sm:py-4" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" className="rounded border-gray-300 w-3 h-3 sm:w-4 sm:h-4" />
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
@@ -342,7 +443,7 @@ export function Contacte() {
                     <td className="hidden lg:table-cell px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {contact.createdAt ? new Date(contact.createdAt).toLocaleDateString('ro-RO') : 'N/A'}
                     </td>
-                    <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap">
+                    <td className="px-2 sm:px-6 py-2 sm:py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button className="text-gray-400 hover:text-gray-600">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
@@ -358,10 +459,10 @@ export function Contacte() {
       )}
 
       {/* Pagination */}
-      {!loading && !error && totalCount > 0 && (
+      {!loading && !error && totalFilteredCount > 0 && (
         <div className="mt-6 flex flex-col items-center space-y-4">
           {/* <div className="text-sm text-gray-700">
-            Pagina {currentPage} din {Math.ceil(totalCount / pageSize)}
+            Pagina {currentPage} din {Math.ceil(totalFilteredCount / pageSize)}
           </div> */}
           <div className="flex items-center space-x-2">
             <button
@@ -375,7 +476,7 @@ export function Contacte() {
             {/* Page Numbers */}
             <div className="flex items-center space-x-1">
               {(() => {
-                const totalPages = Math.ceil(totalCount / pageSize);
+                const totalPages = Math.ceil(totalFilteredCount / pageSize);
                 const pages = [];
                 
                 // Always show page 1
@@ -447,8 +548,8 @@ export function Contacte() {
             </div>
             
             <button
-              onClick={() => setCurrentPage(Math.min(Math.ceil(totalCount / pageSize), currentPage + 1))}
-              disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+              onClick={() => setCurrentPage(Math.min(Math.ceil(totalFilteredCount / pageSize), currentPage + 1))}
+              disabled={currentPage >= Math.ceil(totalFilteredCount / pageSize)}
               className="px-3 py-1 text-sm border rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
               Urmatoarea
@@ -456,6 +557,13 @@ export function Contacte() {
           </div>
         </div>
       )}
+
+      {/* Contact Details Panel */}
+      <ContactDetailsPanel
+        contact={selectedContact}
+        isOpen={isPanelOpen}
+        onClose={handleClosePanel}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { PropertyRepository } from '../../../db/repositories/propertyRepository'
 import { AgentsRepository } from '../../../db/repositories/agentsRepository'
 import { ContactRepository } from '../../../db/repositories/contactRepository'
+import { parse } from 'node-html-parser'
 
 const properties = new Hono()
 const propertiesRepository = new PropertyRepository()
@@ -163,6 +164,7 @@ async function transformPropertyData(incomingData: any) {
         
         // Generate title if not provided
         const title = generateTitle(propertyType, transactionType, rooms, locationData.city || locationData.neighborhood || '')
+        const descriptionResult = await generateDescription(incomingData)
         
         // Build the transformed property object
         const transformedProperty = {
@@ -171,7 +173,7 @@ async function transformPropertyData(incomingData: any) {
             ownerContactId,
             internalCode: incomingData.internalCode || null,
             title,
-            description: generateDescription(incomingData),
+            description:descriptionResult.rawHTML, //descriptionResult.description,//
             propertyType,
             transactionType,
             price: price.toString(),
@@ -185,8 +187,8 @@ async function transformPropertyData(incomingData: any) {
             sector: locationData.sector,
             neighborhood: locationData.neighborhood,
             address: address,
-            latitude: null,
-            longitude: null,
+            latitude: descriptionResult.latitude,
+            longitude: descriptionResult.longitude,
             
             // Property details
             surfaceArea: surfaceArea > 0 ? surfaceArea.toString() : null,
@@ -202,11 +204,11 @@ async function transformPropertyData(incomingData: any) {
             energyClass: null,
             
             // Features & Media
-            features: JSON.stringify([]),
+            features: JSON.stringify({ description: descriptionResult.description }),
             amenities: JSON.stringify([]),
             appliances: JSON.stringify([]),
             photos: JSON.stringify(extractPhotos(incomingData)),
-            virtualTourUrl: null,
+            virtualTourUrl:  `https://web.immoflux.ro/publicproperty/${incomingData.internalCode}`,
             floorPlanUrl: null,
             documents: JSON.stringify(extractPlatformLinks(incomingData)),
             
@@ -423,18 +425,66 @@ function generateTitle(propertyType: string, transactionType: string, rooms: num
     return `${propertyName}${roomsText} ${transactionName}${locationText}`
 }
 
-function generateDescription(incomingData: any): string {
-    const parts = []
-    
-    if (incomingData.rooms) parts.push(`${incomingData.rooms}`)
-    if (incomingData.bedrooms) parts.push(`${incomingData.bedrooms}`)
-    if (incomingData.usefulSurface) parts.push(`Suprafață utilă: ${incomingData.usefulSurface}`)
-    if (incomingData.constructedSurface) parts.push(`Suprafață construită: ${incomingData.constructedSurface}`)
-    if (incomingData.floor) parts.push(`Etaj: ${incomingData.floor}`)
-    if (incomingData.compartmentType) parts.push(`Compartimentare: ${incomingData.compartmentType}`)
-    if (incomingData.landlord) parts.push(`Proprietar: ${incomingData.landlord}`)
-    
-    return parts.join('. ')
+async function generateDescription(incomingData: any): Promise<{rawHTML: string, description: string, latitude: number | null, longitude: number | null}> {
+    const createFallbackResult = () => {
+        const parts = []
+        
+        if (incomingData.rooms) parts.push(`${incomingData.rooms}`)
+        if (incomingData.bedrooms) parts.push(`${incomingData.bedrooms}`)
+        if (incomingData.usefulSurface) parts.push(`Suprafață utilă: ${incomingData.usefulSurface}`)
+        if (incomingData.constructedSurface) parts.push(`Suprafață construită: ${incomingData.constructedSurface}`)
+        if (incomingData.floor) parts.push(`Etaj: ${incomingData.floor}`)
+        if (incomingData.compartmentType) parts.push(`Compartimentare: ${incomingData.compartmentType}`)
+        if (incomingData.landlord) parts.push(`Proprietar: ${incomingData.landlord}`)
+        
+        const fallbackDescription = parts.join('. ')
+        return {
+            rawHTML: fallbackDescription,
+            description: fallbackDescription,
+            latitude: null,
+            longitude: null
+        }
+    }
+
+    if (!incomingData.internalCode) {
+        return createFallbackResult()
+    }
+
+    try {
+        const url = `https://web.immoflux.ro/publicproperty/${incomingData.internalCode}`
+        const response = await fetch(url)
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const htmlContent = await response.text()
+        
+        // Parse HTML and extract meta description content
+        const root = parse(htmlContent)
+        const metaDescription = root.querySelector('meta[name="description"]')
+        const descriptionContent = metaDescription?.getAttribute('content') || ''
+        
+        // Extract latitude and longitude from hidden input elements
+        const latitudeInput = root.querySelector('input#latitude')
+        const longitudeInput = root.querySelector('input#longitude')
+        
+        const latitudeValue = latitudeInput?.getAttribute('value')
+        const longitudeValue = longitudeInput?.getAttribute('value')
+        
+        const latitude = latitudeValue ? parseFloat(latitudeValue) : null
+        const longitude = longitudeValue ? parseFloat(longitudeValue) : null
+        
+        return {
+            rawHTML: htmlContent,
+            description: descriptionContent,
+            latitude: (latitude && !isNaN(latitude)) ? latitude : null,
+            longitude: (longitude && !isNaN(longitude)) ? longitude : null
+        }
+    } catch (error) {
+        console.error(`Failed to fetch HTML for internal code ${incomingData.internalCode}:`, error)
+        return createFallbackResult()
+    }
 }
 
 function extractPhotos(incomingData: any): string[] {

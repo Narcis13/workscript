@@ -191,7 +191,7 @@ export class ContactRepository {
         propertiesCount: sql<number>`COALESCE(${sql`p.property_count`}, 0)`.as('propertiesCount'),
         clientRequestsCount: sql<number>`COALESCE(${sql`cr.request_count`}, 0)`.as('clientRequestsCount'),
         needFollowUp: sql<boolean>`CASE WHEN COALESCE(${sql`fu.has_followup_needed`}, 0) > 0 THEN 1 ELSE 0 END`.as('needFollowUp'),
-        assignedAgentName: sql<string>`CASE WHEN ${agents.firstName} IS NOT NULL THEN CONCAT(${agents.firstName}, ' ', COALESCE(${agents.lastName}, '')) ELSE NULL END`.as('assignedAgentName')
+        assignedAgentName: agents.firstName
       })
       .from(contacts)
       .leftJoin(agents, eq(contacts.assignedAgentId, agents.id))
@@ -304,7 +304,7 @@ export class ContactRepository {
         propertiesCount: sql<number>`COALESCE(${sql`p.property_count`}, 0)`.as('propertiesCount'),
         clientRequestsCount: sql<number>`COALESCE(${sql`cr.request_count`}, 0)`.as('clientRequestsCount'),
         needFollowUp: sql<boolean>`CASE WHEN COALESCE(${sql`fu.has_followup_needed`}, 0) > 0 THEN 1 ELSE 0 END`.as('needFollowUp'),
-        assignedAgentName: sql<string>`CASE WHEN ${agents.firstName} IS NOT NULL THEN CONCAT(${agents.firstName}, ' ', COALESCE(${agents.lastName}, '')) ELSE NULL END`.as('assignedAgentName')
+        assignedAgentName: agents.firstName
       })
       .from(contacts)
       .leftJoin(agents, eq(contacts.assignedAgentId, agents.id))

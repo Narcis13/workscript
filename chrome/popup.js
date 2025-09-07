@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const analyzeBtn = document.getElementById('analyzeBtn');
     const getTableBtn = document.getElementById('getTableBtn');
     const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loadingText');
     const error = document.getElementById('error');
     const results = document.getElementById('results');
 
@@ -59,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
     getTableBtn.addEventListener('click', async function() {
         try {
             // Show loading state
+            loadingText.textContent = 'Extracting data from page...';
             loading.style.display = 'block';
             error.style.display = 'none';
             results.style.display = 'none';
@@ -159,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
               }
 
               if(importPromise) {
+                loadingText.textContent = 'Syncing data to server...';
                 importPromise
                   .then(response => response.json())
                   .then(importData => {

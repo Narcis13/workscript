@@ -26,6 +26,11 @@ export class AgentsRepository {
     return agent || null;
   }
 
+  async findByFirstName(firstName: string): Promise<Agent | null> {
+    const [agent] = await db.select().from(agents).where(eq(agents.firstName, firstName));
+    return agent || null;
+  }
+
   async findAll(): Promise<Agent[]> {
     return db.select().from(agents).orderBy(desc(agents.createdAt));
   }
