@@ -401,4 +401,112 @@ export class ContactRepository {
     const result = await db.delete(contacts).where(eq(contacts.id, id));
     return (result as any).affectedRows > 0;
   }
+
+  async findFullContext(contactId: number): Promise<{
+    contact: Contact | null;
+    ownedProperty: any | null;
+    clientRequest: any | null;
+    activities: any[];
+  }> {
+    // Get the contact details
+    const contact = await this.findById(contactId);
+    if (!contact) {
+      return {
+        contact: null,
+        ownedProperty: null,
+        clientRequest: null,
+        activities: []
+      };
+    }
+
+    // Get property where contact is the owner
+    const ownedPropertyResult = await db
+      .select({
+        id: properties.id,
+        internalCode: properties.internalCode,
+        title: properties.title,
+        description: properties.description,
+        propertyType: properties.propertyType,
+        transactionType: properties.transactionType,
+        price: properties.price,
+        currency: properties.currency,
+        city: properties.city,
+        neighborhood: properties.neighborhood,
+        status: properties.status,
+        photos: properties.photos,
+        virtualTourUrl: properties.virtualTourUrl,
+        surfaceArea: properties.surfaceArea,
+        rooms: properties.rooms,
+        bedrooms: properties.bedrooms,
+        bathrooms: properties.bathrooms,
+        floor: properties.floor,
+        constructionYear: properties.constructionYear,
+        createdAt: properties.createdAt
+      })
+      .from(properties)
+      .where(eq(properties.ownerContactId, contactId))
+      .limit(1);
+
+    const ownedProperty = ownedPropertyResult.length > 0 ? ownedPropertyResult[0] : null;
+
+    // Get client request for this contact (most recent one) with related property info
+    const clientRequestResult = await db
+      .select({
+        id: clientRequests.id,
+        title: clientRequests.title,
+        description: clientRequests.description,
+        requestType: clientRequests.requestType,
+        status: clientRequests.status,
+        propertyType: clientRequests.propertyType,
+        budgetMin: clientRequests.budgetMin,
+        budgetMax: clientRequests.budgetMax,
+        priority: clientRequests.priority,
+        urgencyLevel: clientRequests.urgencyLevel,
+        preferredLocations: clientRequests.preferredLocations,
+        minRooms: clientRequests.minRooms,
+        maxRooms: clientRequests.maxRooms,
+        minSurface: clientRequests.minSurface,
+        maxSurface: clientRequests.maxSurface,
+        createdAt: clientRequests.createdAt,
+        nextFollowUpAt: clientRequests.nextFollowUpAt,
+        propertyId: clientRequests.propertyId,
+        // Get property internal code if there's a related property
+        propertyInternalCode: properties.internalCode
+      })
+      .from(clientRequests)
+      .leftJoin(properties, eq(clientRequests.propertyId, properties.id))
+      .where(eq(clientRequests.contactId, contactId))
+      .orderBy(desc(clientRequests.createdAt))
+      .limit(1);
+
+    const clientRequest = clientRequestResult.length > 0 ? clientRequestResult[0] : null;
+
+    // Get all activities related to this contact
+    const activitiesResult = await db
+      .select({
+        id: activities.id,
+        name: activities.name,
+        memo: activities.memo,
+        activityType: activities.activityType,
+        status: activities.status,
+        scheduledDate: activities.scheduledDate,
+        scheduledTime: activities.scheduledTime,
+        scheduledDateTime: activities.scheduledDateTime,
+        agentName: activities.agentName,
+        propertyCode: activities.propertyCode,
+        requestCode: activities.requestCode,
+        createdAt: activities.createdAt,
+        completedAt: activities.completedAt
+      })
+      .from(activities)
+      .where(eq(activities.contactId, contactId))
+      .orderBy(desc(activities.scheduledDateTime), desc(activities.createdAt));
+
+    return {
+      contact,
+      ownedProperty,
+      clientRequest,
+      activities: activitiesResult
+    };
+  }
 }

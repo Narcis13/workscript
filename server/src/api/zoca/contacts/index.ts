@@ -199,4 +199,38 @@ async function curateContactData(rawContact: any) {
   return curatedContact
 }
 
+// Get full context for a contact
+contacts.get('/fullcontext/:contactId', async (c) => {
+  try {
+    const contactId = c.req.param('contactId')
+    
+    if (!contactId || isNaN(parseInt(contactId))) {
+      return c.json({
+        success: false,
+        error: 'Invalid contact ID provided'
+      }, { status: 400 })
+    }
+    
+    const fullContext = await contactsRepository.findFullContext(parseInt(contactId))
+    
+    if (!fullContext.contact) {
+      return c.json({
+        success: false,
+        error: 'Contact not found'
+      }, { status: 404 })
+    }
+    
+    return c.json({
+      success: true,
+      data: fullContext
+    })
+  } catch (error) {
+    console.error('Failed to retrieve full contact context:', error)
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
+  }
+})
+
 export default contacts
