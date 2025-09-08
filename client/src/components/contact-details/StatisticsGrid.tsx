@@ -332,7 +332,13 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
             {/* Additional timeline entries from activities */}
             {fullContext?.activities && fullContext.activities.length > 0 && (
               <>
-                {fullContext.activities.slice(0, 3).map((activity: any) => (
+                {fullContext.activities
+                  .sort((a: any, b: any) => {
+                    const dateA = new Date(a.scheduledDateTime || a.createdAt || 0);
+                    const dateB = new Date(b.scheduledDateTime || b.createdAt || 0);
+                    return dateB.getTime() - dateA.getTime();
+                  })
+                  .slice(0, 3).map((activity: any) => (
                   <div key={activity.id} className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -546,7 +552,13 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
             {/* Additional timeline entries from activities */}
             {fullContext?.activities && fullContext.activities.length > 0 && (
               <>
-                {fullContext.activities.slice(0, 3).map((activity: any) => (
+                {fullContext.activities
+                  .sort((a: any, b: any) => {
+                    const dateA = new Date(a.scheduledDateTime || a.createdAt || 0);
+                    const dateB = new Date(b.scheduledDateTime || b.createdAt || 0);
+                    return dateB.getTime() - dateA.getTime();
+                  })
+                  .slice(0, 3).map((activity: any) => (
                   <div key={activity.id} className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${

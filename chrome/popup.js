@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = `${filename}.json`;
-               // a.click();
+              //  a.click();
                 URL.revokeObjectURL(url);
               //make a post request to the import endpoint
               let importPromise;
@@ -954,6 +954,23 @@ async function extractActivitiesData() {
                     return;
                 }
                 
+                // First, ensure any existing popovers are closed
+                const hideAllPopovers = () => {
+                    const existingPopovers = document.querySelectorAll('.popover, .tooltip, [class*="popover"], [class*="tooltip"]');
+                    existingPopovers.forEach(popover => {
+                        if (popover.style) {
+                            popover.style.display = 'none';
+                            popover.style.opacity = '0';
+                        }
+                        if (popover.remove) {
+                            popover.remove();
+                        }
+                    });
+                };
+                
+                // Hide any existing popovers first
+                hideAllPopovers();
+                
                 // Create hover events
                 const mouseEnterEvent = new MouseEvent('mouseenter', {
                     bubbles: true,
@@ -967,13 +984,25 @@ async function extractActivitiesData() {
                     view: window
                 });
                 
+                // Create focus event for better hover simulation
+                const focusEvent = new FocusEvent('focus', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                
                 // Function to check for popover and extract phone
                 const checkForPopover = () => {
                     // Look for popover content that might contain phone number
-                    const popovers = document.querySelectorAll('.popover, .tooltip, [class*="popover"], [class*="tooltip"]');
+                    const popovers = document.querySelectorAll('.popover, .tooltip, [class*="popover"], [class*="tooltip"], .bs-popover-top, .bs-popover-bottom, .bs-popover-left, .bs-popover-right');
                     
                     for (const popover of popovers) {
-                        if (popover.style.display !== 'none' && popover.offsetHeight > 0) {
+                        const isVisible = popover.style.display !== 'none' && 
+                                        popover.offsetHeight > 0 && 
+                                        popover.offsetWidth > 0 &&
+                                        window.getComputedStyle(popover).opacity !== '0';
+                        
+                        if (isVisible) {
                             // Look for phone number in various formats
                             const popoverText = popover.textContent || popover.innerText || '';
                             
@@ -1006,24 +1035,40 @@ async function extractActivitiesData() {
                     return null;
                 };
                 
-                // Trigger hover events
+                // Trigger hover events to show popover (no click needed)
                 contactElement.dispatchEvent(mouseEnterEvent);
                 contactElement.dispatchEvent(mouseOverEvent);
+                contactElement.dispatchEvent(focusEvent);
                 
-                // Wait for popover to appear and extract phone
-                setTimeout(() => {
+                // Try multiple times with increasing delays to ensure popover loads
+                let attempts = 0;
+                const maxAttempts = 3;
+                
+                const attemptExtraction = () => {
+                    attempts++;
                     const phone = checkForPopover();
                     
-                    // Create mouse leave event to hide popover
-                    const mouseLeaveEvent = new MouseEvent('mouseleave', {
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                    });
-                    contactElement.dispatchEvent(mouseLeaveEvent);
-                    
-                    resolve(phone);
-                }, 300); // Wait 300ms for popover to load
+                    if (phone || attempts >= maxAttempts) {
+                        // Create mouse leave event to hide popover
+                        const mouseLeaveEvent = new MouseEvent('mouseleave', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        });
+                        contactElement.dispatchEvent(mouseLeaveEvent);
+                        
+                        // Clean up popovers
+                        setTimeout(hideAllPopovers, 100);
+                        
+                        resolve(phone);
+                    } else {
+                        // Try again with longer delay
+                        setTimeout(attemptExtraction, 200 * attempts);
+                    }
+                };
+                
+                // Start first attempt after initial delay
+                setTimeout(attemptExtraction, 500);
             });
         };
         
@@ -1285,9 +1330,9 @@ async function extractActivitiesData() {
             
             jsonData.push(activity);
             
-            // Add small delay between rows to ensure popovers are processed correctly
+            // Add delay between rows to ensure popovers are fully processed
             if (i < rows.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 800)); // Increased delay to 800ms
             }
         }
         
