@@ -470,8 +470,9 @@ export class ContactRepository {
         createdAt: clientRequests.createdAt,
         nextFollowUpAt: clientRequests.nextFollowUpAt,
         propertyId: clientRequests.propertyId,
-        // Get property internal code if there's a related property
-        propertyInternalCode: properties.internalCode
+        // Get property internal code and virtual tour URL if there's a related property
+        propertyInternalCode: properties.internalCode,
+        virtualTourUrl: properties.virtualTourUrl
       })
       .from(clientRequests)
       .leftJoin(properties, eq(clientRequests.propertyId, properties.id))
