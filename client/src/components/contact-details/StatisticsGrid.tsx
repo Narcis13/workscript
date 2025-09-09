@@ -410,11 +410,22 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
   // If contact has a client request but no owned property, show client request card
   if (fullContext?.clientRequest && !fullContext?.ownedProperty) {
     const request = fullContext.clientRequest;
+    
+    const handleClientRequestClick = () => {
+      if (request?.virtualTourUrl) {
+        window.open(request.virtualTourUrl, '_blank');
+      }
+    };
 
     return (
       <div>
         <h3 className="text-sm font-semibold text-gray-800 mb-3">CERERE INITIALA</h3>
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div 
+          className={`bg-white border border-gray-200 rounded-lg p-4 ${
+            request?.virtualTourUrl ? 'cursor-pointer hover:shadow-md transition-shadow' : ''
+          }`}
+          onClick={handleClientRequestClick}
+        >
           <div className="flex gap-4">
             {/* Request Icon */}
             <div className="w-20 h-20 bg-orange-100 rounded-lg flex-shrink-0 flex items-center justify-center">
@@ -459,7 +470,7 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
                     <span> / {request.propertyType.charAt(0).toUpperCase() + request.propertyType.slice(1)}</span>
                   )}
                   {request.budgetMin && request.budgetMax && (
-                    <span> / {request.budgetMin}-{request.budgetMax}€</span>
+                    <span> / {Math.floor(request.budgetMin)}-{Math.floor(request.budgetMax)}€</span>
                   )}
                 </div>
                 
@@ -558,7 +569,7 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
                     const dateB = new Date(b.scheduledDateTime || b.createdAt || 0);
                     return dateB.getTime() - dateA.getTime();
                   })
-                  .slice(0, 3).map((activity: any) => (
+                  .map((activity: any) => (
                   <div key={activity.id} className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-1">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -611,14 +622,6 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
                     </div>
                   </div>
                 ))}
-                
-                {fullContext.activities.length > 3 && (
-                  <div className="text-center">
-                    <span className="text-xs text-gray-500">
-                      +{fullContext.activities.length - 3} mai multe activitati
-                    </span>
-                  </div>
-                )}
               </>
             )}
           </div>
