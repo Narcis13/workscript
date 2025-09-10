@@ -3,6 +3,7 @@ import { Contact } from '../pages/Contacte';
 
 interface StatisticsGridProps {
   contact: Contact;
+  onFullContextChange?: (fullContext: FullContextData | null) => void;
 }
 
 interface StatisticItem {
@@ -37,7 +38,7 @@ function parseDateString(dateString: string): Date | null {
   return new Date(dateString);
 }
 
-export function StatisticsGrid({ contact }: StatisticsGridProps) {
+export function StatisticsGrid({ contact, onFullContextChange }: StatisticsGridProps) {
   const [fullContext, setFullContext] = useState<FullContextData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,12 +52,14 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
         
         if (result.success) {
           setFullContext(result.data);
+          onFullContextChange?.(result.data);
         } else {
           setError(result.error || 'Failed to fetch contact context');
         }
       } catch (err) {
         setError('Network error while fetching contact context');
         console.error('Error fetching full context:', err);
+        onFullContextChange?.(null);
       } finally {
         setLoading(false);
       }
@@ -218,7 +221,7 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
       window.open(fullContext.ownedProperty.virtualTourUrl, '_blank');
     }
   };
-
+//console.log(fullContext)
   // If contact owns a property, show property owner card instead of statistics
   if (fullContext?.ownedProperty) {
     const property = fullContext.ownedProperty;

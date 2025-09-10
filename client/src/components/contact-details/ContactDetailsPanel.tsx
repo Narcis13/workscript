@@ -27,6 +27,11 @@ const tabs: Tab[] = [
 
 export function ContactDetailsPanel({ contact, isOpen, onClose }: ContactDetailsPanelProps) {
   const [activeTab, setActiveTab] = useState('detalii');
+  const [fullContextFromChild, setFullContextFromChild] = useState<any>(null);
+
+  const handleFollowUp = () => {
+    console.log('Follow-up!', { fullContext: fullContextFromChild });
+  };
 
   // Reset active tab when contact changes
   useEffect(() => {
@@ -81,11 +86,14 @@ export function ContactDetailsPanel({ contact, isOpen, onClose }: ContactDetails
         />
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className={`flex-1 overflow-y-auto p-4 ${activeTab === 'detalii' ? 'pb-20' : ''}`}>
           {activeTab === 'detalii' && (
             <div className="space-y-6">
               <ContactInfoSection contact={contact} />
-              <StatisticsGrid contact={contact} />
+              <StatisticsGrid 
+                contact={contact} 
+                onFullContextChange={setFullContextFromChild}
+              />
             </div>
           )}
 
@@ -105,6 +113,18 @@ export function ContactDetailsPanel({ contact, isOpen, onClose }: ContactDetails
             </div>
           )}
         </div>
+
+        {/* Footer with Follow-up Button - Only show on 'detalii' tab */}
+        {activeTab === 'detalii' && (
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
+            <button
+              onClick={handleFollowUp}
+              className="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Follow-up
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
