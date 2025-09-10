@@ -435,6 +435,7 @@ export class ContactRepository {
         status: properties.status,
         photos: properties.photos,
         virtualTourUrl: properties.virtualTourUrl,
+        availableFrom: properties.availableFrom,
         surfaceArea: properties.surfaceArea,
         rooms: properties.rooms,
         bedrooms: properties.bedrooms,
@@ -472,7 +473,8 @@ export class ContactRepository {
         propertyId: clientRequests.propertyId,
         // Get property internal code and virtual tour URL if there's a related property
         propertyInternalCode: properties.internalCode,
-        virtualTourUrl: properties.virtualTourUrl
+        virtualTourUrl: properties.virtualTourUrl,
+        sourcePropertyDescription:properties.features
       })
       .from(clientRequests)
       .leftJoin(properties, eq(clientRequests.propertyId, properties.id))

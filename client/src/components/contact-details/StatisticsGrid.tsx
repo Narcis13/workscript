@@ -19,6 +19,24 @@ interface FullContextData {
   activities: any[];
 }
 
+// Helper function to parse DD-MM-YYYY HH:MM:SS format
+function parseDateString(dateString: string): Date | null {
+  if (!dateString) return null;
+  
+  // Handle format like '15-07-2025  20:30:00' (note the double spaces)
+  const trimmed = dateString.trim();
+  const match = trimmed.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  
+  if (match) {
+    const [, day, month, year, hour, minute, second] = match;
+    // Create date in ISO format: YYYY-MM-DDTHH:MM:SS
+    return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}`);
+  }
+  
+  // Fallback to native Date parsing
+  return new Date(dateString);
+}
+
 export function StatisticsGrid({ contact }: StatisticsGridProps) {
   const [fullContext, setFullContext] = useState<FullContextData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -311,7 +329,7 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
                   </span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  {property.createdAt && new Date(property.createdAt).toLocaleString('ro-RO', {
+                  {property.availableFrom && new Date(property.availableFrom).toLocaleString('ro-RO', {
                     day: '2-digit',
                     month: '2-digit', 
                     year: 'numeric',
@@ -375,7 +393,7 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        {activity.scheduledDateTime && new Date(activity.scheduledDateTime).toLocaleString('ro-RO', {
+                        {activity.scheduledDate && parseDateString(activity.scheduledDate)?.toLocaleString('ro-RO', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
@@ -606,7 +624,7 @@ export function StatisticsGrid({ contact }: StatisticsGridProps) {
                         </span>
                       </div>
                       <div className="text-xs text-gray-500">
-                        {activity.scheduledDateTime && new Date(activity.scheduledDateTime).toLocaleString('ro-RO', {
+                        {activity.scheduledDate && parseDateString(activity.scheduledDate)?.toLocaleString('ro-RO', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
