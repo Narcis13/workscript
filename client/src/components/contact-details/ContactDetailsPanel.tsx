@@ -31,8 +31,10 @@ export function ContactDetailsPanel({ contact, isOpen, onClose }: ContactDetails
 
   const handleFollowUp = () => {
     const followup_context = { fullContext: fullContextFromChild }
+    followup_context.fullContext.clientRequest.agentName = followup_context.fullContext.contact.assignedAgentName
+    followup_context.fullContext.clientRequest.agentPhone = followup_context.fullContext.contact.assignedAgentPhone
     const followup_userprompt = JSON.stringify(followup_context.fullContext.clientRequest).replace(/\\\\r\\\\n/g, ' ')
-    console.log('Follow-up!!!', followup_userprompt);
+    console.log('Follow-up!!!', followup_context.fullContext,followup_userprompt);
   };
 
   // Reset active tab when contact changes

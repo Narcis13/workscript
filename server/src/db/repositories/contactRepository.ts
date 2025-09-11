@@ -403,13 +403,65 @@ export class ContactRepository {
   }
 
   async findFullContext(contactId: number): Promise<{
-    contact: Contact | null;
+    contact: Contact & { assignedAgentName?: string; assignedAgentPhone?: string } | null;
     ownedProperty: any | null;
     clientRequest: any | null;
     activities: any[];
   }> {
-    // Get the contact details
-    const contact = await this.findById(contactId);
+    // Get the contact details with assigned agent info
+    const contactResult = await db
+      .select({
+        id: contacts.id,
+        agencyId: contacts.agencyId,
+        assignedAgentId: contacts.assignedAgentId,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        email: contacts.email,
+        phone: contacts.phone,
+        whatsapp: contacts.whatsapp,
+        contactType: contacts.contactType,
+        source: contacts.source,
+        sourceDetails: contacts.sourceDetails,
+        interestedIn: contacts.interestedIn,
+        budgetMin: contacts.budgetMin,
+        budgetMax: contacts.budgetMax,
+        preferredAreas: contacts.preferredAreas,
+        propertyPreferences: contacts.propertyPreferences,
+        urgencyLevel: contacts.urgencyLevel,
+        buyingReadiness: contacts.buyingReadiness,
+        preferredContactMethod: contacts.preferredContactMethod,
+        bestTimeToCall: contacts.bestTimeToCall,
+        communicationNotes: contacts.communicationNotes,
+        aiLeadScore: contacts.aiLeadScore,
+        qualificationStatus: contacts.qualificationStatus,
+        conversionProbability: contacts.conversionProbability,
+        lastInteractionScore: contacts.lastInteractionScore,
+        lastContactAt: contacts.lastContactAt,
+        lastResponseAt: contacts.lastResponseAt,
+        nextFollowUpAt: contacts.nextFollowUpAt,
+        interactionCount: contacts.interactionCount,
+        emailCount: contacts.emailCount,
+        callCount: contacts.callCount,
+        whatsappCount: contacts.whatsappCount,
+        meetingCount: contacts.meetingCount,
+        occupation: contacts.occupation,
+        company: contacts.company,
+        notes: contacts.notes,
+        tags: contacts.tags,
+        isBlacklisted: contacts.isBlacklisted,
+        gdprConsent: contacts.gdprConsent,
+        marketingConsent: contacts.marketingConsent,
+        createdAt: contacts.createdAt,
+        updatedAt: contacts.updatedAt,
+        assignedAgentName: agents.firstName,
+        assignedAgentPhone: agents.phone
+      })
+      .from(contacts)
+      .leftJoin(agents, eq(contacts.assignedAgentId, agents.id))
+      .where(eq(contacts.id, contactId))
+      .limit(1);
+
+    const contact = contactResult.length > 0 ? contactResult[0] : null;
     if (!contact) {
       return {
         contact: null,
