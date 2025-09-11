@@ -36,6 +36,16 @@ export const users = mysqlTable('users', {
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 });
 
+export const aiAgents = mysqlTable('ai_agents', {
+  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => createId()),
+  agentName: varchar('agent_name', { length: 255 }).notNull(),
+  description: text('description'),
+  systemPrompt: text('system_prompt').notNull(),
+  aiModel: varchar('ai_model', { length: 100 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+});
+
 // Real Estate Tables
 
 // Real Estate Agencies Table
@@ -121,6 +131,7 @@ export const contacts = mysqlTable('contacts', {
   urgencyLevel: mysqlEnum('urgency_level', ['scazut', 'mediu', 'ridicat', 'urgent']).default('mediu').notNull(),
   buyingReadiness: mysqlEnum('buying_readiness', ['research', 'considering', 'ready', 'urgent']).default('research').notNull(),
   
+
   // Communication
   preferredContactMethod: mysqlEnum('preferred_contact_method', ['email', 'phone', 'whatsapp', 'sms']).default('phone').notNull(),
   bestTimeToCall: varchar('best_time_to_call', { length: 100 }),
@@ -590,6 +601,9 @@ export type NewWorkflowExecution = typeof workflowExecutions.$inferInsert;
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+export type AiAgent = typeof aiAgents.$inferSelect;
+export type NewAiAgent = typeof aiAgents.$inferInsert;
 
 // Real Estate Type exports
 export type Agency = typeof agencies.$inferSelect;

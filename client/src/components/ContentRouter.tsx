@@ -1,6 +1,7 @@
 import { PanouPrincipal } from './pages/PanouPrincipal';
 import { Contacte } from './pages/Contacte';
 import { GenericPage } from './pages/GenericPage';
+import { AgentiAI } from './pages/AgentiAI';
 
 interface ContentRouterProps {
   currentRoute: string;
@@ -10,6 +11,9 @@ export function ContentRouter({ currentRoute }: ContentRouterProps) {
   switch (currentRoute) {
     case 'panou-principal':
       return <PanouPrincipal />;
+    
+    case 'agenti-ai':
+      return <AgentiAI />;
     
     case 'contacte':
       return <Contacte />;
