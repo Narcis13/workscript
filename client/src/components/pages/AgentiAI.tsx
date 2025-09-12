@@ -73,11 +73,17 @@ const aiAgentApi = {
 
 // Available AI models
 const AI_MODELS = [
-  { value: 'gpt-4', label: 'GPT-4' },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-  { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-  { value: 'claude-3-haiku', label: 'Claude 3 Haiku' },
+  { value: 'openai/gpt-5', label: 'GPT-5' },
+  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+  { value: 'openai/o4-mini', label: 'OpenAI O4 mini' },
+  { value: 'google/gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'x-ai/grok-3-mini', label: 'Grok 3 Mini' },
+  { value: 'x-ai/grok-4', label: 'Grok 4' },
+  { value: 'deepseek/deepseek-chat-v3.1:free', label: 'DeepSeek Chat V3.1 Free' },
+  { value: 'deepseek/deepseek-chat-v3.1', label: 'DeepSeek Chat V3.1' },
+  { value: 'openrouter/sonoma-sky-alpha', label: 'Sonoma Sky Alpha' }
 ];
 
 

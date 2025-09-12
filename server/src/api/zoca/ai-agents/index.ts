@@ -310,4 +310,104 @@ aiAgents.patch('/:id/model', async (c) => {
   }
 })
 
+// Ask AI agent endpoint - send user prompt to specific AI agent
+aiAgents.post('/ask', async (c) => {
+  try {
+    const body = await c.req.json()
+    
+    // Validate required fields
+    if (!body.name || !body.user_prompt) {
+      return c.json({
+        error: 'Missing required fields: name and user_prompt are required',
+        success: false
+      }, { status: 400 })
+    }
+
+    // Find AI agent by name
+    const aiAgent = await aiAgentsRepository.findByName(body.name)
+    if (!aiAgent) {
+      return c.json({
+        error: 'AI agent not found',
+        success: false
+      }, { status: 404 })
+    }
+
+    // Get OpenRouter API key from environment
+    const openRouterApiKey = process.env.OPENROUTER_APIKEY
+    if (!openRouterApiKey) {
+      return c.json({
+        error: 'OpenRouter API key not configured',
+        success: false
+      }, { status: 500 })
+    }
+
+    // Prepare messages for OpenRouter API
+    const messages = [
+      {
+        role: 'system',
+        content: aiAgent.systemPrompt
+      },
+      {
+        role: 'user', 
+        content: body.user_prompt
+      }
+    ]
+
+    // Make request to OpenRouter API
+    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openRouterApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: aiAgent.aiModel,
+        messages: messages
+      })
+    })
+
+    if (!openRouterResponse.ok) {
+      const errorText = await openRouterResponse.text()
+      console.error('OpenRouter API error:', errorText)
+      return c.json({
+        error: 'Failed to get response from AI model',
+        success: false
+      }, { status: 500 })
+    }
+
+    const openRouterData = await openRouterResponse.json() as {
+      choices?: Array<{
+        message?: {
+          content?: string
+        }
+      }>
+    }
+    
+    // Extract the AI response
+    const aiResponse = openRouterData.choices?.[0]?.message?.content
+    if (!aiResponse) {
+      return c.json({
+        error: 'Invalid response from AI model',
+        success: false
+      }, { status: 500 })
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        agent_name: aiAgent.agentName,
+        model: aiAgent.aiModel,
+        user_prompt: body.user_prompt,
+        ai_response: aiResponse
+      }
+    })
+  } catch (error) {
+    console.error('Failed to process AI agent request:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false
+    }, { status: 500 })
+  }
+})
+
 export default aiAgents

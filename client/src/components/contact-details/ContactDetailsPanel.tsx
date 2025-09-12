@@ -5,6 +5,7 @@ import { TabNavigation } from './TabNavigation';
 import { ContactInfoSection } from './ContactInfoSection';
 import { ActivityHistorySection } from './ActivityHistorySection';
 import { StatisticsGrid } from './StatisticsGrid';
+import { FollowUpModal } from './FollowUpModal';
 
 interface ContactDetailsPanelProps {
   contact: Contact | null;
@@ -28,13 +29,45 @@ const tabs: Tab[] = [
 export function ContactDetailsPanel({ contact, isOpen, onClose }: ContactDetailsPanelProps) {
   const [activeTab, setActiveTab] = useState('detalii');
   const [fullContextFromChild, setFullContextFromChild] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [aiResponse, setAiResponse] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleFollowUp = () => {
+  const handleFollowUp = async () => {
     const followup_context = { fullContext: fullContextFromChild }
     followup_context.fullContext.clientRequest.agentName = followup_context.fullContext.contact.assignedAgentName
     followup_context.fullContext.clientRequest.agentPhone = followup_context.fullContext.contact.assignedAgentPhone
     const followup_userprompt = JSON.stringify(followup_context.fullContext.clientRequest).replace(/\\\\r\\\\n/g, ' ')
-    console.log('Follow-up!!!', followup_context.fullContext,followup_userprompt);
+    
+    setIsModalOpen(true);
+    setIsLoading(true);
+    setAiResponse('');
+    
+    try {
+      const response = await fetch('http://localhost:3013/api/zoca/ai-agents/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'Follow Up Agent',
+          user_prompt: followup_userprompt
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+     // console.log('data', data);
+      setAiResponse(data.data.ai_response || 'No response received from the AI agent.');
+    } catch (error) {
+      console.error('Error calling follow-up API:', error);
+      setAiResponse(`Error: ${error instanceof Error ? error.message : 'Failed to get response from AI agent'}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Reset active tab when contact changes
@@ -130,6 +163,14 @@ export function ContactDetailsPanel({ contact, isOpen, onClose }: ContactDetails
           </div>
         )}
       </div>
+
+      {/* Follow-up Modal */}
+      <FollowUpModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        response={aiResponse}
+        isLoading={isLoading}
+      />
     </>
   );
 }
