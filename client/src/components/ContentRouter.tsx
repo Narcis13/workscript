@@ -2,6 +2,7 @@ import { PanouPrincipal } from './pages/PanouPrincipal';
 import { Contacte } from './pages/Contacte';
 import { GenericPage } from './pages/GenericPage';
 import { AgentiAI } from './pages/AgentiAI';
+import { Automatizari } from './pages/Automatizari';
 
 interface ContentRouterProps {
   currentRoute: string;
@@ -52,7 +53,7 @@ export function ContentRouter({ currentRoute }: ContentRouterProps) {
       return <GenericPage title="Obiective" icon="🎯" description="Obiective de vânzări și performanță" />;
     
     case 'automatizari':
-      return <GenericPage title="Automatizari" icon="⚙️" description="Automatizări și workflow-uri" />;
+      return <Automatizari />;
     
     case 'documente':
       return <GenericPage title="Documente" icon="📄" description="Arhiva de documente și contracte" />;

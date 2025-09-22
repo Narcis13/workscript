@@ -592,6 +592,75 @@ export const whatsappMessages = mysqlTable('whatsapp_messages', {
   whatsappIdIdx: uniqueIndex('whatsapp_messages_wa_id_idx').on(table.whatsappMessageId),
 }));
 
+// Automations Table - Workflow automation system
+export const automations = mysqlTable('automations', {
+  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => createId()),
+  agencyId: bigint('agency_id', { mode: 'number', unsigned: true }).references(() => agencies.id).notNull(),
+  
+  // Basic Information
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  
+  // Trigger Configuration
+  triggerType: mysqlEnum('trigger_type', ['immediate', 'cron', 'webhook']).notNull(),
+  triggerConfig: json('trigger_config').notNull(), // Store trigger-specific configuration
+  
+  // Workflow Reference
+  workflowId: varchar('workflow_id', { length: 128 }).references(() => workflows.id).notNull(),
+  
+  // Status & Control
+  enabled: boolean('enabled').default(true).notNull(),
+  
+  // Execution Tracking
+  lastRunAt: timestamp('last_run_at'),
+  nextRunAt: timestamp('next_run_at'), // For scheduled automations
+  runCount: int('run_count').default(0).notNull(),
+  successCount: int('success_count').default(0).notNull(),
+  failureCount: int('failure_count').default(0).notNull(),
+  
+  // Error Handling
+  lastError: text('last_error'),
+  lastErrorAt: timestamp('last_error_at'),
+  
+  // Metadata
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+}, (table) => ({
+  agencyIdx: index('automations_agency_idx').on(table.agencyId),
+  workflowIdx: index('automations_workflow_idx').on(table.workflowId),
+  triggerTypeIdx: index('automations_trigger_type_idx').on(table.triggerType),
+  enabledIdx: index('automations_enabled_idx').on(table.enabled),
+  nextRunIdx: index('automations_next_run_idx').on(table.nextRunAt),
+  nameIdx: index('automations_name_idx').on(table.name),
+}));
+
+// Automation Executions Table - Track individual automation runs
+export const automationExecutions = mysqlTable('automation_executions', {
+  id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => createId()),
+  automationId: varchar('automation_id', { length: 128 }).references(() => automations.id).notNull(),
+  workflowExecutionId: varchar('workflow_execution_id', { length: 128 }).references(() => workflowExecutions.id),
+  
+  // Execution Details
+  status: mysqlEnum('status', ['pending', 'running', 'completed', 'failed']).notNull().default('pending'),
+  triggerData: json('trigger_data'), // Data that triggered this execution
+  result: json('result'), // Execution result
+  error: text('error'), // Error message if execution fails
+  
+  // Timing
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+  duration: int('duration'), // Execution duration in milliseconds
+  
+  // Metadata
+  triggerSource: varchar('trigger_source', { length: 100 }), // What triggered this execution
+  executionContext: json('execution_context').default('{}').notNull(),
+}, (table) => ({
+  automationIdx: index('automation_executions_automation_idx').on(table.automationId),
+  workflowExecutionIdx: index('automation_executions_workflow_exec_idx').on(table.workflowExecutionId),
+  statusIdx: index('automation_executions_status_idx').on(table.status),
+  startedIdx: index('automation_executions_started_idx').on(table.startedAt),
+}));
+
 // Type exports for use in your application
 export type Workflow = typeof workflows.$inferSelect;
 export type NewWorkflow = typeof workflows.$inferInsert;
@@ -642,6 +711,12 @@ export type NewWhatsappConversation = typeof whatsappConversations.$inferInsert;
 export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
 export type NewWhatsappMessage = typeof whatsappMessages.$inferInsert;
 
+export type Automation = typeof automations.$inferSelect;
+export type NewAutomation = typeof automations.$inferInsert;
+
+export type AutomationExecution = typeof automationExecutions.$inferSelect;
+export type NewAutomationExecution = typeof automationExecutions.$inferInsert;
+
 // Relations
 export const agenciesRelations = relations(agencies, ({ many }) => ({
   agents: many(agents),
@@ -651,6 +726,7 @@ export const agenciesRelations = relations(agencies, ({ many }) => ({
   clientRequests: many(clientRequests),
   emailTemplates: many(emailTemplates),
   whatsappConversations: many(whatsappConversations),
+  automations: many(automations),
 }));
 
 export const agentsRelations = relations(agents, ({ one, many }) => ({
@@ -727,4 +803,20 @@ export const whatsappConversationsRelations = relations(whatsappConversations, (
 
 export const whatsappMessagesRelations = relations(whatsappMessages, ({ one }) => ({
   conversation: one(whatsappConversations, { fields: [whatsappMessages.conversationId], references: [whatsappConversations.id] }),
+}));
+
+export const workflowsRelations = relations(workflows, ({ many }) => ({
+  executions: many(workflowExecutions),
+  automations: many(automations),
+}));
+
+export const automationsRelations = relations(automations, ({ one, many }) => ({
+  agency: one(agencies, { fields: [automations.agencyId], references: [agencies.id] }),
+  workflow: one(workflows, { fields: [automations.workflowId], references: [workflows.id] }),
+  executions: many(automationExecutions),
+}));
+
+export const automationExecutionsRelations = relations(automationExecutions, ({ one }) => ({
+  automation: one(automations, { fields: [automationExecutions.automationId], references: [automations.id] }),
+  workflowExecution: one(workflowExecutions, { fields: [automationExecutions.workflowExecutionId], references: [workflowExecutions.id] }),
 }));
