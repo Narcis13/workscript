@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { WorkflowSelector } from '../WorkflowSelector';
+import { NewWorkflowModal } from '../workflow-ui';
+import { Plus } from 'lucide-react';
 
 interface Automation {
   id: string;
@@ -25,6 +27,7 @@ export function Automatizari() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
+  const [showNewWorkflowModal, setShowNewWorkflowModal] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -276,6 +279,7 @@ export function Automatizari() {
     setShowForm(false);
   };
 
+
   const getTriggerDisplayText = (automation: Automation) => {
     switch (automation.triggerType) {
       case 'immediate':
@@ -412,10 +416,23 @@ export function Automatizari() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Workflow *
               </label>
-              <WorkflowSelector
-                selectedWorkflowId={formData.workflowId}
-                onWorkflowSelect={(workflowId) => setFormData({ ...formData, workflowId })}
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <WorkflowSelector
+                    selectedWorkflowId={formData.workflowId}
+                    onWorkflowSelect={(workflowId) => setFormData({ ...formData, workflowId })}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewWorkflowModal(true)}
+                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1 whitespace-nowrap"
+                  title="Crează workflow nou"
+                >
+                  <Plus size={16} />
+                  Workflow nou...
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center">
@@ -528,6 +545,12 @@ export function Automatizari() {
           </div>
         )}
       </div>
+
+      {/* New Workflow Modal */}
+      <NewWorkflowModal
+        isOpen={showNewWorkflowModal}
+        onClose={() => setShowNewWorkflowModal(false)}
+      />
     </div>
   );
 }

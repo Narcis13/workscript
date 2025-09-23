@@ -33,24 +33,24 @@ export function WorkflowSelector({
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:3013/workflows/all');
+      const response = await fetch('http://localhost:3013/workflows/allfromdb');
       if (!response.ok) {
-        throw new Error('Failed to fetch workflows');
+        throw new Error('Failed to fetch workflows from database');
       }
-      
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         throw new Error('Server returned non-JSON response');
       }
-      
+
       const data = await response.json();
       if (data.success && Array.isArray(data.workflows)) {
         setWorkflows(data.workflows);
       } else {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format from database');
       }
     } catch (err) {
-      console.warn('Failed to fetch workflows from API, using mock data:', err);
+      console.warn('Failed to fetch workflows from database, using mock data:', err);
       // Fallback to mock data
       setWorkflows([
         { id: '1', name: 'Email Notification Workflow', description: 'Send automated emails', version: '1.0.0' },
@@ -87,7 +87,7 @@ export function WorkflowSelector({
       
       {error && (
         <p className="mt-1 text-sm text-red-600">
-          Eroare la încărcarea workflow-urilor: {error}
+          Eroare la încărcarea workflow-urilor din baza de date: {error}
         </p>
       )}
       
