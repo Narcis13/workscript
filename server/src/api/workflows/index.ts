@@ -1,10 +1,67 @@
 import { Hono } from 'hono'
 import type { WorkflowDefinition } from 'shared/dist'
 import { WorkflowService } from '../../services/WorkflowService'
+import { WorkflowRepository } from '../../db/repositories/workflowRepository'
 import { writeFile, mkdir, readFile, readdir, stat } from 'fs/promises'
 import { join } from 'path'
 
 const workflows = new Hono()
+
+// Create workflow endpoint - saves workflow to database
+workflows.post('/create', async (c) => {
+  try {
+    const workflowDefinition = await c.req.json() as WorkflowDefinition
+    
+    if (!workflowDefinition.id) {
+      return c.json({
+        error: 'Workflow definition must have an id field',
+        success: false
+      }, { status: 400 })
+    }
+
+    if (!workflowDefinition.name) {
+      return c.json({
+        error: 'Workflow definition must have a name field',
+        success: false
+      }, { status: 400 })
+    }
+
+    // Validate workflow before saving
+    const workflowService = await WorkflowService.getInstance()
+    const validationResult = workflowService.validateWorkflow(workflowDefinition)
+    
+    if (!validationResult.valid) {
+      return c.json({
+        error: 'Workflow validation failed',
+        valid: false,
+        validationErrors: validationResult.errors
+      }, { status: 400 })
+    }
+
+    // Create workflow in database
+    const workflowRepository = new WorkflowRepository()
+    const createdWorkflow = await workflowRepository.create({
+      id: workflowDefinition.id,
+      name: workflowDefinition.name,
+      description: workflowDefinition.description || null,
+      definition: workflowDefinition,
+      version: workflowDefinition.version || '1.0.0'
+    })
+
+    return c.json({
+      message: 'Workflow created successfully',
+      success: true,
+      workflow: createdWorkflow
+    }, { status: 201 })
+
+  } catch (error) {
+    console.error('Workflow creation error:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false
+    }, { status: 500 })
+  }
+})
 
 // Workflow validation endpoint
 workflows.post('/validate', async (c) => {
@@ -164,6 +221,27 @@ workflows.post('/run/:workflowId', async (c) => {
     return c.json({
       error: error instanceof Error ? error.message : 'Unknown error',
       status: 'failed'
+    }, { status: 500 })
+  }
+})
+
+// Get all workflows from database endpoint
+workflows.get('/allfromdb', async (c) => {
+  try {
+    const workflowRepository = new WorkflowRepository()
+    const allWorkflows = await workflowRepository.findAll()
+    
+    return c.json({
+      success: true,
+      count: allWorkflows.length,
+      workflows: allWorkflows
+    })
+  } catch (error) {
+    console.error('Failed to retrieve workflows from database:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      workflows: []
     }, { status: 500 })
   }
 })

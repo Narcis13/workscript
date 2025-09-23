@@ -83,7 +83,8 @@ const AI_MODELS = [
   { value: 'x-ai/grok-4', label: 'Grok 4' },
   { value: 'deepseek/deepseek-chat-v3.1:free', label: 'DeepSeek Chat V3.1 Free' },
   { value: 'deepseek/deepseek-chat-v3.1', label: 'DeepSeek Chat V3.1' },
-  { value: 'openrouter/sonoma-sky-alpha', label: 'Sonoma Sky Alpha' }
+  { value: 'openrouter/sonoma-sky-alpha', label: 'Sonoma Sky Alpha' },
+  { value: 'x-ai/grok-4-fast:free', label: 'Grok 4 Fast' },
 ];
 
 
