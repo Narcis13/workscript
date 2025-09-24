@@ -6,6 +6,7 @@ import { WorkflowService } from './services/WorkflowService'
 import { WebSocketManager } from './services/WebSocketManager'
 import { initializeTokenStorage } from './lib/token-storage';
 import workflows from './api/workflows'
+import automations from './api/automations'
 import googleAuthRoutes from './api/google'
 import agencies from './api/zoca/agencies'
 import agents from './api/zoca/agents'
@@ -30,6 +31,7 @@ app.onError(errorHandler)
 
 // API routes
 app.route('/workflows', workflows)
+app.route('/automations', automations)
 app.route('/api/auth', googleAuthRoutes)
 app.route('/api/zoca/agencies', agencies)
 app.route('/api/zoca/agents', agents)

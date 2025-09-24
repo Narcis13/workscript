@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 
 interface Automation {
   id: string;
+  agencyId: number;
   name: string;
   description?: string;
   triggerType: 'immediate' | 'cron' | 'webhook';
@@ -17,7 +18,14 @@ interface Automation {
   workflowName?: string;
   enabled: boolean;
   createdAt: string;
-  lastRun?: string;
+  lastRunAt?: string;
+  nextRunAt?: string;
+  runCount: number;
+  successCount: number;
+  failureCount: number;
+  lastError?: string;
+  lastErrorAt?: string;
+  updatedAt: string;
 }
 
 type TriggerType = 'immediate' | 'cron' | 'webhook';
@@ -28,9 +36,11 @@ export function Automatizari() {
   const [showForm, setShowForm] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
   const [showNewWorkflowModal, setShowNewWorkflowModal] = useState(false);
+  const [executingAutomations, setExecutingAutomations] = useState<Set<string>>(new Set());
   
   // Form state
   const [formData, setFormData] = useState({
+    agencyId: 1, // TODO: Get from user context
     name: '',
     description: '',
     triggerType: 'immediate' as TriggerType,
@@ -48,53 +58,12 @@ export function Automatizari() {
     try {
       setLoading(true);
       
-      // For development, use mock data directly
-      // TODO: Replace with actual API call when backend is ready
-      if (process.env.NODE_ENV === 'development') {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setAutomations([
-          {
-            id: '1',
-            name: 'Daily Email Report',
-            description: 'Send daily summary email',
-            triggerType: 'cron',
-            triggerConfig: { cronExpression: '0 9 * * *' },
-            workflowId: '1',
-            workflowName: 'Email Notification Workflow',
-            enabled: true,
-            createdAt: new Date().toISOString(),
-            lastRun: new Date(Date.now() - 86400000).toISOString()
-          },
-          {
-            id: '2',
-            name: 'Contact Form Processing',
-            description: 'Process contact form submissions',
-            triggerType: 'webhook',
-            triggerConfig: { webhookUrl: '/webhook/contact-form' },
-            workflowId: '2',
-            workflowName: 'Data Processing Workflow',
-            enabled: true,
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: '3',
-            name: 'Weekly Report Generation',
-            description: 'Generate weekly performance reports',
-            triggerType: 'cron',
-            triggerConfig: { cronExpression: '0 8 * * 1' },
-            workflowId: '3',
-            workflowName: 'Report Generation Workflow',
-            enabled: false,
-            createdAt: new Date(Date.now() - 604800000).toISOString()
-          }
-        ]);
-        return;
-      }
-
-      const response = await fetch('/api/automations');
+      // Use the actual API endpoint
+      const agencyId = formData.agencyId; // TODO: Get from user context
+      const response = await fetch(`http://localhost:3013/automations?agencyId=${agencyId}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch automations');
+        throw new Error(`Failed to fetch automations: ${response.status} ${response.statusText}`);
       }
       
       const contentType = response.headers.get('content-type');
@@ -105,44 +74,9 @@ export function Automatizari() {
       const data = await response.json();
       setAutomations(data);
     } catch (err) {
-      console.warn('Failed to fetch automations from API, using mock data:', err);
-      // Fallback to mock data
-      setAutomations([
-        {
-          id: '1',
-          name: 'Daily Email Report',
-          description: 'Send daily summary email',
-          triggerType: 'cron',
-          triggerConfig: { cronExpression: '0 9 * * *' },
-          workflowId: '1',
-          workflowName: 'Email Notification Workflow',
-          enabled: true,
-          createdAt: new Date().toISOString(),
-          lastRun: new Date(Date.now() - 86400000).toISOString()
-        },
-        {
-          id: '2',
-          name: 'Contact Form Processing',
-          description: 'Process contact form submissions',
-          triggerType: 'webhook',
-          triggerConfig: { webhookUrl: '/webhook/contact-form' },
-          workflowId: '2',
-          workflowName: 'Data Processing Workflow',
-          enabled: true,
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: '3',
-          name: 'Weekly Report Generation',
-          description: 'Generate weekly performance reports',
-          triggerType: 'cron',
-          triggerConfig: { cronExpression: '0 8 * * 1' },
-          workflowId: '3',
-          workflowName: 'Report Generation Workflow',
-          enabled: false,
-          createdAt: new Date(Date.now() - 604800000).toISOString()
-        }
-      ]);
+      console.error('Failed to fetch automations from API:', err);
+      // For development, show empty state instead of mock data
+      setAutomations([]);
     } finally {
       setLoading(false);
     }
@@ -152,6 +86,7 @@ export function Automatizari() {
     e.preventDefault();
     
     const automationData = {
+      agencyId: formData.agencyId,
       name: formData.name,
       description: formData.description,
       triggerType: formData.triggerType,
@@ -165,18 +100,9 @@ export function Automatizari() {
     };
 
     try {
-      // For development, simulate successful save
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Saving automation (dev mode):', automationData);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await fetchAutomations();
-        resetForm();
-        return;
-      }
-
       const url = editingAutomation 
-        ? `/api/automations/${editingAutomation.id}`
-        : '/api/automations';
+        ? `http://localhost:3013/automations/${editingAutomation.id}`
+        : 'http://localhost:3013/automations';
       const method = editingAutomation ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
@@ -186,20 +112,22 @@ export function Automatizari() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save automation');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to save automation: ${response.status}`);
       }
 
       await fetchAutomations();
       resetForm();
     } catch (err) {
       console.error('Error saving automation:', err);
-      alert('Eroare la salvarea automatizării. Încearcă din nou.');
+      alert(`Eroare la salvarea automatizării: ${err instanceof Error ? err.message : 'Încearcă din nou.'}`);
     }
   };
 
   const handleEdit = (automation: Automation) => {
     setEditingAutomation(automation);
     setFormData({
+      agencyId: automation.agencyId,
       name: automation.name,
       description: automation.description || '',
       triggerType: automation.triggerType,
@@ -215,58 +143,77 @@ export function Automatizari() {
     if (!confirm('Ești sigur că vrei să ștergi această automatizare?')) return;
 
     try {
-      // For development, simulate successful delete
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Deleting automation (dev mode):', id);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        await fetchAutomations();
-        return;
-      }
-
-      const response = await fetch(`/api/automations/${id}`, {
+      const response = await fetch(`http://localhost:3013/automations/${id}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete automation');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete automation: ${response.status}`);
       }
 
       await fetchAutomations();
     } catch (err) {
       console.error('Error deleting automation:', err);
-      alert('Eroare la ștergerea automatizării. Încearcă din nou.');
+      alert(`Eroare la ștergerea automatizării: ${err instanceof Error ? err.message : 'Încearcă din nou.'}`);
     }
   };
 
   const toggleAutomation = async (id: string, enabled: boolean) => {
     try {
-      // For development, simulate successful toggle
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Toggling automation (dev mode):', id, enabled);
-        await new Promise(resolve => setTimeout(resolve, 200));
-        await fetchAutomations();
-        return;
-      }
-
-      const response = await fetch(`/api/automations/${id}/toggle`, {
-        method: 'PATCH',
+      const response = await fetch(`http://localhost:3013/automations/${id}/toggle`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to toggle automation');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to toggle automation: ${response.status}`);
       }
 
       await fetchAutomations();
     } catch (err) {
       console.error('Error toggling automation:', err);
-      alert('Eroare la modificarea stării automatizării. Încearcă din nou.');
+      alert(`Eroare la modificarea stării automatizării: ${err instanceof Error ? err.message : 'Încearcă din nou.'}`);
+    }
+  };
+
+  const executeAutomation = async (id: string) => {
+    try {
+      setExecutingAutomations(prev => new Set([...prev, id]));
+      
+      const response = await fetch(`http://localhost:3013/automations/${id}/execute`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to execute automation: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      // Show success message with execution ID
+      alert(`Automatizarea a fost executată cu succes!\nID execuție: ${result.executionId}`);
+      
+      // Refresh the automations list to show updated run counts
+      await fetchAutomations();
+    } catch (err) {
+      console.error('Error executing automation:', err);
+      alert(`Eroare la executarea automatizării: ${err instanceof Error ? err.message : 'Încearcă din nou.'}`);
+    } finally {
+      setExecutingAutomations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
     }
   };
 
   const resetForm = () => {
     setFormData({
+      agencyId: 1, // TODO: Get from user context
       name: '',
       description: '',
       triggerType: 'immediate',
@@ -505,15 +452,32 @@ export function Automatizari() {
                       <span>
                         <strong>Workflow:</strong> {automation.workflowName || automation.workflowId}
                       </span>
-                      {automation.lastRun && (
+                      {automation.lastRunAt && (
                         <span>
-                          <strong>Ultima execuție:</strong> {new Date(automation.lastRun).toLocaleString('ro-RO')}
+                          <strong>Ultima execuție:</strong> {new Date(automation.lastRunAt).toLocaleString('ro-RO')}
                         </span>
                       )}
+                      <span>
+                        <strong>Execuții:</strong> {automation.runCount} (succes: {automation.successCount}, eșecuri: {automation.failureCount})
+                      </span>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2 ml-4">
+                    {automation.enabled && automation.triggerType === 'immediate' && (
+                      <button
+                        onClick={() => executeAutomation(automation.id)}
+                        disabled={executingAutomations.has(automation.id)}
+                        className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                          executingAutomations.has(automation.id)
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                            : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                        }`}
+                      >
+                        {executingAutomations.has(automation.id) ? 'Se execută...' : 'Execută acum'}
+                      </button>
+                    )}
+                    
                     <button
                       onClick={() => toggleAutomation(automation.id, !automation.enabled)}
                       className={`px-3 py-1 text-xs rounded-md transition-colors ${
