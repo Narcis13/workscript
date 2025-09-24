@@ -183,73 +183,71 @@ automationsApp.post('/:id/execute', async (c) => {
     })
     
     // Execute workflow via /workflows/run API
-    setTimeout(async () => {
-      try {
-        // Get the workflow definition
-        const workflow = await workflowRepository.findById(automation.workflowId)
-        if (!workflow) {
-          throw new Error('Workflow not found')
-        }
-
-        console.log('Raw workflow from database:', JSON.stringify(workflow, null, 2))
-        console.log('Workflow definition type:', typeof workflow.definition)
-        console.log('Workflow definition:', JSON.stringify(workflow.definition, null, 2))
-
-        // Ensure workflow.definition is an object and add execution context
-        let workflowDefinition
-        if (typeof workflow.definition === 'object' && workflow.definition !== null) {
-          workflowDefinition = {
-            ...(workflow.definition as any),
-            executionContext: {
-              automationId: id,
-              executionId: executionId,
-              triggeredBy: 'manual'
-            }
-          }
-        } else {
-          workflowDefinition = workflow.definition
-        }
-
-        console.log('Final workflow definition for execution:', JSON.stringify(workflowDefinition, null, 2))
-
-        // Make POST request to /workflows/run
-        const workflowRunResponse = await fetch('http://localhost:3013/workflows/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(workflowDefinition)
-        })
-
-        if (!workflowRunResponse.ok) {
-          const errorData = await workflowRunResponse.json().catch(() => ({})) as { error?: string }
-          throw new Error(errorData.error || `Workflow execution failed: ${workflowRunResponse.status}`)
-        }
-
-        const workflowResult = await workflowRunResponse.json()
-        
-        // Mark as completed with workflow result
-        await automationRepository.completeExecution(
-          executionId, 
-          'completed', 
-          workflowResult
-        )
-        
-        // Update automation run stats
-        await automationRepository.updateRunStats(id, true)
-      } catch (error) {
-        console.error('Workflow execution error:', error)
-        
-        // Mark as failed
-        await automationRepository.completeExecution(
-          executionId, 
-          'failed', 
-          null,
-          error instanceof Error ? error.message : 'Unknown error'
-        )
-        
-        // Update automation run stats
-        await automationRepository.updateRunStats(id, false, error instanceof Error ? error.message : 'Unknown error')
+    try {
+      // Get the workflow definition
+      const workflow = await workflowRepository.findById(automation.workflowId)
+      if (!workflow) {
+        throw new Error('Workflow not found')
       }
-    }, 100)
+
+     // console.log('Raw workflow from database:', JSON.stringify(workflow, null, 2))
+    //  console.log('Workflow definition type:', typeof workflow.definition)
+     // console.log('Workflow definition:', JSON.stringify(workflow.definition, null, 2))
+
+      // Ensure workflow.definition is an object and add execution context
+      let workflowDefinition
+      if (typeof workflow.definition === 'object' && workflow.definition !== null) {
+        workflowDefinition = {
+          ...(workflow.definition as any),
+          executionContext: {
+            automationId: id,
+            executionId: executionId,
+            triggeredBy: 'manual'
+          }
+        }
+      } else {
+        workflowDefinition = workflow.definition
+      }
+
+      //console.log('Final workflow definition for execution:', JSON.stringify(workflowDefinition, null, 2))
+
+      // Make POST request to /workflows/run
+      const workflowRunResponse = await fetch('http://localhost:3013/workflows/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workflowDefinition)
+      })
+
+      if (!workflowRunResponse.ok) {
+        const errorData = await workflowRunResponse.json().catch(() => ({})) as { error?: string }
+        throw new Error(errorData.error || `Workflow execution failed: ${workflowRunResponse.status}`)
+      }
+
+      const workflowResult = await workflowRunResponse.json()
+      //console.log('Workflow result:', workflowResult)
+      // Mark as completed with workflow result
+      await automationRepository.completeExecution(
+        executionId,
+        'completed',
+        workflowResult
+      )
+
+      // Update automation run stats
+      await automationRepository.updateRunStats(id, true)
+    } catch (error) {
+      console.error('Workflow execution error:', error)
+
+      // Mark as failed
+      await automationRepository.completeExecution(
+        executionId,
+        'failed',
+        null,
+        error instanceof Error ? error.message : 'Unknown error'
+      )
+
+      // Update automation run stats
+      await automationRepository.updateRunStats(id, false, error instanceof Error ? error.message : 'Unknown error')
+    }
     
     return c.json({ 
       message: 'Automation execution started',
