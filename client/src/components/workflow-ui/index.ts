@@ -4,6 +4,9 @@
 // Main renderer component
 export { default as WorkflowArtifact } from './WorkflowArtifact';
 
+// Modal components
+export { NewWorkflowModal } from './NewWorkflowModal';
+
 // Component library (these would be implemented as actual React components)
 export { WorkflowForm } from './components/WorkflowForm';
 export { Dashboard } from './components/Dashboard';
@@ -14,7 +17,6 @@ export { FileProcessor } from './components/FileProcessor';
 
 // Utility components
 export { UIComponentRenderer } from './components/UIComponentRenderer';
-export { SecurityWarningDisplay } from './components/SecurityWarningDisplay';
 
 // Types re-export for convenience
 export type {

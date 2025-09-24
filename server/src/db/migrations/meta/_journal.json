@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1756224386494,
+      "tag": "0000_magenta_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1756236544296,
+      "tag": "0001_smart_mandroid",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1756236944708,
+      "tag": "0002_new_energizer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1756237187069,
+      "tag": "0003_adorable_wallow",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1756284202870,
+      "tag": "0004_safe_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1756545460741,
+      "tag": "0005_chemical_viper",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1756545800469,
+      "tag": "0006_mature_butterfly",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1758704876775,
+      "tag": "0007_pretty_sally_floyd",
+      "breakpoints": true
+    }
+  ]
+}

@@ -6,8 +6,15 @@ import { WorkflowService } from './services/WorkflowService'
 import { WebSocketManager } from './services/WebSocketManager'
 import { initializeTokenStorage } from './lib/token-storage';
 import workflows from './api/workflows'
+import automations from './api/automations'
 import googleAuthRoutes from './api/google'
-
+import agencies from './api/zoca/agencies'
+import agents from './api/zoca/agents'
+import contacts from './api/zoca/contacts'
+import properties from './api/zoca/properties'
+import requests from './api/zoca/requests'
+import activities from './api/zoca/activities'
+import aiAgents from './api/zoca/ai-agents'
 initializeTokenStorage();    
 const app = new Hono()
 const wsManager = WebSocketManager.getInstance()
@@ -24,7 +31,15 @@ app.onError(errorHandler)
 
 // API routes
 app.route('/workflows', workflows)
+app.route('/automations', automations)
 app.route('/api/auth', googleAuthRoutes)
+app.route('/api/zoca/agencies', agencies)
+app.route('/api/zoca/agents', agents)
+app.route('/api/zoca/contacts', contacts)
+app.route('/api/zoca/properties', properties)
+app.route('/api/zoca/requests', requests)
+app.route('/api/zoca/activities', activities)
+app.route('/api/zoca/ai-agents', aiAgents)
 app.get('/', (c) => {
   return c.text('Hello Hono!')
 })

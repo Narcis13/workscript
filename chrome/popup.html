@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Page Analyzer</title>
+    <style>
+        body {
+            width: 400px;
+            min-height: 300px;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            color: #333;
+            margin: 0 0 10px 0;
+        }
+
+        .analyze-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            width: 100%;
+            margin-bottom: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .analyze-btn:hover {
+            background: #3367d6;
+        }
+
+        .analyze-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .results {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #4285f4;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .metric:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .metric-value {
+            color: #666;
+        }
+
+        .error {
+            background: #fdf2f2;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            border-radius: 6px;
+            color: #c53030;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .tab.active {
+            color: #4285f4;
+            border-bottom-color: #4285f4;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .keyword-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .keyword {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 IMMOFLUX SYNC</h1>
+        <button id="analyzeBtn" class="analyze-btn">Analiza pagina curenta</button>
+        <button id="getTableBtn" class="analyze-btn">Sync!</button>
+    </div>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Analizam pagina...</div>
+    </div>
+
+    <div id="error" class="error" style="display: none;"></div>
+
+    <div id="results" style="display: none;">
+        <div class="tabs">
+            <div class="tab active" data-tab="overview">Overview</div>
+            <div class="tab" data-tab="content">Content</div>
+            <div class="tab" data-tab="seo">SEO</div>
+        </div>
+
+        <div id="overview-tab" class="tab-content active">
+            <div class="results">
+                <div class="metric">
+                    <span class="metric-label">Page Title:</span>
+                    <span class="metric-value" id="pageTitle">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Word Count:</span>
+                    <span class="metric-value" id="wordCount">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Images:</span>
+                    <span class="metric-value" id="imageCount">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Links:</span>
+                    <span class="metric-value" id="linkCount">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Load Time:</span>
+                    <span class="metric-value" id="loadTime">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-tab" class="tab-content">
+            <div class="results">
+                <div class="metric">
+                    <span class="metric-label">Headings (H1-H6):</span>
+                    <span class="metric-value" id="headingCount">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Paragraphs:</span>
+                    <span class="metric-value" id="paragraphCount">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Reading Time:</span>
+                    <span class="metric-value" id="readingTime">-</span>
+                </div>
+                <div>
+                    <div class="metric-label">Top Keywords:</div>
+                    <div class="keyword-list" id="keywords"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="seo-tab" class="tab-content">
+            <div class="results">
+                <div class="metric">
+                    <span class="metric-label">Meta Description:</span>
+                    <span class="metric-value" id="metaDescription">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Alt Text Coverage:</span>
+                    <span class="metric-value" id="altTextCoverage">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Internal Links:</span>
+                    <span class="metric-value" id="internalLinks">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">External Links:</span>
+                    <span class="metric-value" id="externalLinks">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
