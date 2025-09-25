@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WorkflowSelector } from '../WorkflowSelector';
-import { NewWorkflowModal } from '../workflow-ui';
+import { WorkflowManager } from '../WorkflowManager';
 import { Plus } from 'lucide-react';
 
 interface Automation {
@@ -35,7 +34,7 @@ export function Automatizari() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState<Automation | null>(null);
-  const [showNewWorkflowModal, setShowNewWorkflowModal] = useState(false);
+  const [showWorkflowManager, setShowWorkflowManager] = useState(false);
   const [executingAutomations, setExecutingAutomations] = useState<Set<string>>(new Set());
   
   // Form state
@@ -365,19 +364,21 @@ export function Automatizari() {
               </label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <WorkflowSelector
+                  <WorkflowManager
+                    mode="selector"
                     selectedWorkflowId={formData.workflowId}
                     onWorkflowSelect={(workflowId) => setFormData({ ...formData, workflowId })}
+                    placeholder="Selectează un workflow..."
                   />
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowNewWorkflowModal(true)}
-                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1 whitespace-nowrap"
-                  title="Crează workflow nou"
+                  onClick={() => setShowWorkflowManager(true)}
+                  className="px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center gap-1 whitespace-nowrap shadow-md"
+                  title="Gestionează workflow-uri"
                 >
                   <Plus size={16} />
-                  Workflow nou...
+                  Gestionează...
                 </button>
               </div>
             </div>
@@ -510,11 +511,50 @@ export function Automatizari() {
         )}
       </div>
 
-      {/* New Workflow Modal */}
-      <NewWorkflowModal
-        isOpen={showNewWorkflowModal}
-        onClose={() => setShowNewWorkflowModal(false)}
-      />
+      {/* Workflow Manager Modal */}
+      {showWorkflowManager && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl mx-4 max-h-[95vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Workflow Manager
+              </h2>
+              <button
+                onClick={() => setShowWorkflowManager(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              <WorkflowManager
+                mode="full"
+                selectedWorkflowId={formData.workflowId}
+                onWorkflowSelect={(workflowId) => {
+                  setFormData({ ...formData, workflowId });
+                  setShowWorkflowManager(false);
+                }}
+                onWorkflowCreated={() => {
+                  // Optionally refresh workflows or show success message
+                }}
+                onWorkflowUpdated={() => {
+                  // Optionally refresh workflows or show success message
+                }}
+                onWorkflowDeleted={() => {
+                  // Clear selection if deleted workflow was selected
+                  if (formData.workflowId) {
+                    setFormData({ ...formData, workflowId: '' });
+                  }
+                }}
+                className="h-full"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
