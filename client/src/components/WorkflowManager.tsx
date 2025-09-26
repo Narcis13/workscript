@@ -25,6 +25,7 @@ interface Workflow {
   name: string;
   description?: string;
   version: string;
+  definition?: string; // JSON string of the workflow definition
   createdAt?: string;
   updatedAt?: string;
   status?: 'active' | 'inactive' | 'draft';
@@ -124,6 +125,36 @@ export function WorkflowManager({
           name: 'Email Notification System',
           description: 'Automated email notifications for user actions',
           version: '1.2.0',
+          definition: JSON.stringify({
+            id: '1',
+            name: 'Email Notification System',
+            version: '1.2.0',
+            description: 'Automated email notifications for user actions',
+            workflow: [
+              {
+                'start': {
+                  'message': 'Starting email notification workflow',
+                  'success?': 'validate-email'
+                }
+              },
+              {
+                'validate-email': {
+                  'email': '$input.email',
+                  'success?': 'send-email',
+                  'error?': 'log-error'
+                }
+              },
+              {
+                'send-email': {
+                  'to': '$state.email',
+                  'subject': '$input.subject',
+                  'body': '$input.body',
+                  'success?': 'log-success',
+                  'error?': 'log-error'
+                }
+              }
+            ]
+          }, null, 2),
           status: 'active',
           createdAt: '2024-01-15T10:00:00Z',
           updatedAt: '2024-02-20T14:30:00Z',
@@ -137,6 +168,29 @@ export function WorkflowManager({
           name: 'Data Processing Pipeline',
           description: 'Process and transform incoming data streams',
           version: '2.1.0',
+          definition: JSON.stringify({
+            id: '2',
+            name: 'Data Processing Pipeline',
+            version: '2.1.0',
+            description: 'Process and transform incoming data streams',
+            workflow: [
+              {
+                'fetch-data': {
+                  'source': '$input.dataSource',
+                  'format': 'json',
+                  'success?': 'transform-data',
+                  'error?': 'handle-error'
+                }
+              },
+              {
+                'transform-data': {
+                  'data': '$state.fetchedData',
+                  'transformations': '$input.transformations',
+                  'success?': 'save-data'
+                }
+              }
+            ]
+          }, null, 2),
           status: 'active',
           createdAt: '2024-01-10T08:00:00Z',
           updatedAt: '2024-02-18T16:45:00Z',
@@ -150,6 +204,21 @@ export function WorkflowManager({
           name: 'Report Generation',
           description: 'Generate monthly reports with charts and analytics',
           version: '1.0.0',
+          definition: JSON.stringify({
+            id: '3',
+            name: 'Report Generation',
+            version: '1.0.0',
+            description: 'Generate monthly reports with charts and analytics',
+            workflow: [
+              {
+                'collect-data': {
+                  'period': '$input.period',
+                  'metrics': '$input.metrics',
+                  'success?': 'generate-charts'
+                }
+              }
+            ]
+          }, null, 2),
           status: 'draft',
           createdAt: '2024-02-01T12:00:00Z',
           updatedAt: '2024-02-15T10:20:00Z',
@@ -163,6 +232,21 @@ export function WorkflowManager({
           name: 'Contact Management',
           description: 'Manage and synchronize contact information',
           version: '1.1.0',
+          definition: JSON.stringify({
+            id: '4',
+            name: 'Contact Management',
+            version: '1.1.0',
+            description: 'Manage and synchronize contact information',
+            workflow: [
+              {
+                'sync-contacts': {
+                  'source': '$input.source',
+                  'destination': '$input.destination',
+                  'success?': 'update-index'
+                }
+              }
+            ]
+          }, null, 2),
           status: 'inactive',
           createdAt: '2024-01-20T15:30:00Z',
           updatedAt: '2024-02-10T13:15:00Z',
@@ -176,6 +260,23 @@ export function WorkflowManager({
           name: 'File Processing System',
           description: 'Process uploaded files with validation and transformation',
           version: '1.0.0',
+          definition: JSON.stringify({
+            id: '5',
+            name: 'File Processing System',
+            version: '1.0.0',
+            description: 'Process uploaded files with validation and transformation',
+            workflow: [
+              {
+                'validate-file': {
+                  'file': '$input.file',
+                  'maxSize': '10MB',
+                  'allowedTypes': ['pdf', 'doc', 'docx'],
+                  'success?': 'process-file',
+                  'error?': 'reject-file'
+                }
+              }
+            ]
+          }, null, 2),
           status: 'active',
           createdAt: '2024-02-05T09:15:00Z',
           updatedAt: '2024-02-19T11:00:00Z',
@@ -227,12 +328,33 @@ export function WorkflowManager({
   };
 
   const handleEdit = (workflow: Workflow) => {
+    // Use existing definition if available, otherwise create a template
+    const defaultDefinition = '{\n  "id": "' + workflow.id + '",\n  "name": "' + workflow.name + '",\n  "version": "' + workflow.version + '",\n  "description": "' + (workflow.description || '') + '",\n  "workflow": [\n    \n  ]\n}';
+    
+    let definitionString = defaultDefinition;
+    
+    if (workflow.definition) {
+      if (typeof workflow.definition === 'string') {
+        // If it's already a string, try to parse and re-stringify for proper formatting
+        try {
+          const parsed = JSON.parse(workflow.definition);
+          definitionString = JSON.stringify(parsed, null, 2);
+        } catch {
+          // If parsing fails, use the raw string
+          definitionString = workflow.definition;
+        }
+      } else {
+        // If it's an object, stringify it
+        definitionString = JSON.stringify(workflow.definition, null, 2);
+      }
+    }
+    
     setFormData({
       name: workflow.name,
       description: workflow.description || '',
       version: workflow.version,
       tags: workflow.tags?.join(', ') || '',
-      definition: '{\n  "id": "' + workflow.id + '",\n  "name": "' + workflow.name + '",\n  "version": "' + workflow.version + '",\n  "description": "' + (workflow.description || '') + '",\n  "workflow": [\n    \n  ]\n}'
+      definition: definitionString
     });
     setEditingWorkflow(workflow);
     setShowCreateModal(true);
@@ -320,12 +442,35 @@ export function WorkflowManager({
       version: '1.0.0'
     };
 
+    let clonedDefinition = '{\n  "id": "",\n  "name": "' + clonedWorkflow.name + '",\n  "version": "' + clonedWorkflow.version + '",\n  "description": "' + (clonedWorkflow.description || '') + '",\n  "workflow": [\n    \n  ]\n}';
+    
+    // If we have a definition, parse it and update the metadata
+    if (workflow.definition) {
+      try {
+        let parsedDef;
+        if (typeof workflow.definition === 'string') {
+          parsedDef = JSON.parse(workflow.definition);
+        } else {
+          parsedDef = { ...workflow.definition };
+        }
+        
+        parsedDef.id = '';
+        parsedDef.name = clonedWorkflow.name;
+        parsedDef.version = clonedWorkflow.version;
+        parsedDef.description = clonedWorkflow.description || '';
+        clonedDefinition = JSON.stringify(parsedDef, null, 2);
+      } catch (error) {
+        console.warn('Failed to parse workflow definition for cloning, using template');
+        clonedDefinition = '{\n  "id": "",\n  "name": "' + clonedWorkflow.name + '",\n  "version": "' + clonedWorkflow.version + '",\n  "description": "' + (clonedWorkflow.description || '') + '",\n  "workflow": [\n    \n  ]\n}';
+      }
+    }
+
     setFormData({
       name: clonedWorkflow.name,
       description: clonedWorkflow.description || '',
       version: clonedWorkflow.version,
       tags: clonedWorkflow.tags?.join(', ') || '',
-      definition: '{\n  "id": "",\n  "name": "' + clonedWorkflow.name + '",\n  "version": "' + clonedWorkflow.version + '",\n  "description": "' + (clonedWorkflow.description || '') + '",\n  "workflow": [\n    \n  ]\n}'
+      definition: clonedDefinition
     });
     setEditingWorkflow(null);
     setShowCreateModal(true);
@@ -885,6 +1030,26 @@ export function WorkflowManager({
                     )}
                   </div>
                 </div>
+
+                {showPreview.definition && (
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-2">Definiția Workflow-ului</h3>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <pre className="text-sm text-gray-700 overflow-x-auto whitespace-pre-wrap font-mono">
+                        {typeof showPreview.definition === 'string' 
+                          ? (() => {
+                              try {
+                                return JSON.stringify(JSON.parse(showPreview.definition), null, 2);
+                              } catch {
+                                return showPreview.definition;
+                              }
+                            })()
+                          : JSON.stringify(showPreview.definition, null, 2)
+                        }
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
