@@ -15,14 +15,15 @@ if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
   // Server environment
   randomUUID = require('crypto').randomUUID;
 }
-import type { 
-  ExecutionContext, 
-  ExecutionResult, 
-  EdgeMap 
+import type {
+  ExecutionContext,
+  ExecutionResult,
+  EdgeMap
 } from '../types';
 import type { ParsedWorkflow, ParsedNode, ParsedEdge } from '../parser/WorkflowParser';
 import { NodeRegistry } from '../registry/NodeRegistry';
 import { StateManager } from '../state/StateManager';
+import { StateResolver } from '../state/StateResolver';
 import { HookManager } from '../hooks/HookManager';
 import type { HookContext } from '../hooks/types';
 
@@ -66,12 +67,15 @@ export class LoopLimitError extends ExecutionEngineError {
 export class ExecutionEngine {
   private static readonly MAX_LOOP_ITERATIONS = 1000;
   private static readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
+  private stateResolver: StateResolver;
 
   constructor(
     private registry: NodeRegistry,
     private stateManager: StateManager,
     private hookManager: HookManager = new HookManager()
-  ) {}
+  ) {
+    this.stateResolver = StateResolver.createDefault();
+  }
 
   /**
    * Execute a parsed workflow
@@ -274,8 +278,11 @@ export class ExecutionEngine {
       const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
       const instance = this.registry.getInstance(nodeTypeId);
 
+      // Resolve state references in node configuration
+      const resolvedConfig = this.stateResolver.resolve(node.config, nodeContext.state);
+
       // Execute the node
-      const edgeMap = await instance.execute(nodeContext, node.config);
+      const edgeMap = await instance.execute(nodeContext, resolvedConfig);
       
       // Determine which edge was taken
       const edgeResult = await this.processEdgeMap(edgeMap, nodeContext);
@@ -476,7 +483,8 @@ export class ExecutionEngine {
       state: await this.stateManager.getState(context.executionId),
       inputs: await this.stateManager.getAndClearEdgeContext(context.executionId) || {}
     };
-    
+
+    // No config to resolve for registry-only execution, pass empty config
     await instance.execute(nodeContext, {});
     await this.updateStateFromContext(context.executionId, nodeContext);
   }
@@ -627,8 +635,11 @@ export class ExecutionEngine {
         state: await this.stateManager.getState(context.executionId),
         inputs: await this.stateManager.getAndClearEdgeContext(context.executionId) || {}
       };
-      
-      await instance.execute(nodeContext, nodeConfig as Record<string, any>);
+
+      // Resolve state references in nested node configuration
+      const resolvedConfig = this.stateResolver.resolve(nodeConfig, nodeContext.state);
+
+      await instance.execute(nodeContext, resolvedConfig as Record<string, any>);
       await this.updateStateFromContext(context.executionId, nodeContext);
     }
   }

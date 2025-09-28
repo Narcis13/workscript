@@ -10,3 +10,9 @@ export {
   type StateDiff,
   type StateWatcher
 } from './StateManager';
+
+export {
+  StateResolver,
+  StateResolverError,
+  type StateResolverOptions
+} from './StateResolver';
