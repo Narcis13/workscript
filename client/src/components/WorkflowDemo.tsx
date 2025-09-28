@@ -34,9 +34,13 @@ export function WorkflowDemo() {
         name: 'Client Workflow Demo',
         version: '1.0.0',
         description: 'Demo workflow running in browser with client nodes',
+        initialState: {
+          developer: 'Narcis Brindusescu'
+        },
         workflow: [
           'log-input',
-          'empty'
+          'empty',
+          'log'
         ]
       };
 

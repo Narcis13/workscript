@@ -399,4 +399,146 @@ async function getAllWorkflows(dir: string): Promise<Array<{
   return workflows
 }
 
+// Get workflow by ID endpoint
+workflows.get('/:workflowId', async (c) => {
+  try {
+    const workflowId = c.req.param('workflowId')
+
+    if (!workflowId) {
+      return c.json({
+        error: 'Workflow ID is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    const workflowRepository = new WorkflowRepository()
+    const workflow = await workflowRepository.findById(workflowId)
+
+    if (!workflow) {
+      return c.json({
+        error: `Workflow with ID '${workflowId}' not found`,
+        success: false
+      }, { status: 404 })
+    }
+
+    return c.json({
+      success: true,
+      workflow
+    })
+  } catch (error) {
+    console.error('Failed to retrieve workflow:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false
+    }, { status: 500 })
+  }
+})
+
+// Update workflow by ID endpoint
+workflows.put('/:workflowId', async (c) => {
+  try {
+    const workflowId = c.req.param('workflowId')
+    const workflowData = await c.req.json()
+
+    if (!workflowId) {
+      return c.json({
+        error: 'Workflow ID is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    if (!workflowData.name) {
+      return c.json({
+        error: 'Workflow name is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    // Validate workflow before updating
+    const workflowService = await WorkflowService.getInstance()
+    const validationResult = workflowService.validateWorkflow(workflowData)
+
+    if (!validationResult.valid) {
+      return c.json({
+        error: 'Workflow validation failed',
+        valid: false,
+        validationErrors: validationResult.errors
+      }, { status: 400 })
+    }
+
+    const workflowRepository = new WorkflowRepository()
+
+    // Check if workflow exists
+    const existingWorkflow = await workflowRepository.findById(workflowId)
+    if (!existingWorkflow) {
+      return c.json({
+        error: `Workflow with ID '${workflowId}' not found`,
+        success: false
+      }, { status: 404 })
+    }
+
+    // Update workflow
+    const updatedWorkflow = await workflowRepository.update(workflowId, {
+      name: workflowData.name,
+      description: workflowData.description || null,
+      definition: workflowData,
+      version: workflowData.version || existingWorkflow.version
+    })
+
+    return c.json({
+      message: 'Workflow updated successfully',
+      success: true,
+      workflow: updatedWorkflow
+    })
+
+  } catch (error) {
+    console.error('Workflow update error:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false
+    }, { status: 500 })
+  }
+})
+
+// Delete workflow by ID endpoint
+workflows.delete('/:workflowId', async (c) => {
+  try {
+    const workflowId = c.req.param('workflowId')
+
+    if (!workflowId) {
+      return c.json({
+        error: 'Workflow ID is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    const workflowRepository = new WorkflowRepository()
+
+    // Check if workflow exists
+    const existingWorkflow = await workflowRepository.findById(workflowId)
+    if (!existingWorkflow) {
+      return c.json({
+        error: `Workflow with ID '${workflowId}' not found`,
+        success: false
+      }, { status: 404 })
+    }
+
+    // Delete workflow
+    await workflowRepository.delete(workflowId)
+
+    return c.json({
+      message: 'Workflow deleted successfully',
+      success: true,
+      workflowId
+    })
+
+  } catch (error) {
+    console.error('Workflow deletion error:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false
+    }, { status: 500 })
+  }
+})
+
 export default workflows

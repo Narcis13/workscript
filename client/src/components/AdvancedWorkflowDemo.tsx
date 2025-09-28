@@ -33,6 +33,9 @@ export function AdvancedWorkflowDemo() {
         name: 'Client Workflow Demo',
         version: '1.0.0',
         description: 'Demo workflow that creates a container and renders a button inside it',
+        initialState: {
+          developer: 'Narcis Brindusescu'
+        },
         workflow: [
           {
             'container': {
@@ -55,7 +58,7 @@ export function AdvancedWorkflowDemo() {
                         }
                       ]
             }
-          }//,
+          }
        //    'log-input',
        //   'empty'
           

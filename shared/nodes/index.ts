@@ -11,12 +11,14 @@ export { MathNode } from './MathNode';
 export { LogicNode } from './LogicNode';
 export { DataTransformNode } from './DataTransformNode';
 export { EmptyNode } from './EmptyNode';
+export { LogNode } from './LogNode';
 
 // Import for array creation
 import { MathNode } from './MathNode';
 import { LogicNode } from './LogicNode';
 import { DataTransformNode } from './DataTransformNode';
 import { EmptyNode } from './EmptyNode';
+import { LogNode } from './LogNode';
 import type { WorkflowNode } from '../src/types';
 
 /**
@@ -27,7 +29,8 @@ export const UNIVERSAL_NODES: Array<typeof WorkflowNode> = [
   MathNode,
   LogicNode,
   DataTransformNode,
-  EmptyNode
+  EmptyNode,
+  LogNode
 ];
 
 /**

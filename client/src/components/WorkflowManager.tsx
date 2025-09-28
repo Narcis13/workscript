@@ -72,6 +72,10 @@ export function WorkflowManager({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [showPreview, setShowPreview] = useState<Workflow | null>(null);
+  const [showRunDialog, setShowRunDialog] = useState<Workflow | null>(null);
+  const [initialState, setInitialState] = useState('{}');
+  const [runLoading, setRunLoading] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -483,6 +487,81 @@ export function WorkflowManager({
     setFormLoading(false);
   };
 
+  const handleRun = (workflow: Workflow) => {
+    setShowRunDialog(workflow);
+    setInitialState('{}');
+    setRunError(null);
+  };
+
+  const handleExecuteWorkflow = async () => {
+    if (!showRunDialog) return;
+
+    try {
+      setRunLoading(true);
+      setRunError(null);
+
+      // Parse the initial state
+      let parsedInitialState = {};
+      try {
+        parsedInitialState = JSON.parse(initialState);
+      } catch (err) {
+        throw new Error('Format JSON invalid pentru starea inițială');
+      }
+
+      // Get the workflow definition
+      let workflowDefinition;
+      if (showRunDialog.definition) {
+        if (typeof showRunDialog.definition === 'string') {
+          try {
+            workflowDefinition = JSON.parse(showRunDialog.definition);
+          } catch (err) {
+            throw new Error('Definiția workflow-ului nu este un JSON valid');
+          }
+        } else {
+          workflowDefinition = { ...showRunDialog.definition };
+        }
+      } else {
+        throw new Error('Workflow-ul nu are o definiție validă');
+      }
+
+      // Inject/overwrite the initialState in the workflow definition
+      workflowDefinition.initialState = parsedInitialState;
+
+      // Execute the workflow
+      const response = await fetch('http://localhost:3013/workflows/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workflowDefinition)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Success - close dialog and show result
+      setShowRunDialog(null);
+      alert(`Workflow executat cu succes!\n\nRezultat: ${JSON.stringify(result, null, 2)}`);
+
+      // Refresh workflows to update execution count
+      await fetchWorkflows();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Eroare necunoscută';
+      setRunError(`Eroare la execuția workflow-ului: ${errorMessage}`);
+    } finally {
+      setRunLoading(false);
+    }
+  };
+
+  const handleCloseRunDialog = () => {
+    setShowRunDialog(null);
+    setInitialState('{}');
+    setRunError(null);
+    setRunLoading(false);
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'active': return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -717,6 +796,16 @@ export function WorkflowManager({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          handleRun(workflow);
+                        }}
+                        className="p-1.5 bg-white border border-gray-200 rounded-full text-gray-600 hover:text-orange-600 hover:border-orange-300 transition-colors"
+                        title="Run"
+                      >
+                        <Play className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setShowPreview(workflow);
                         }}
                         className="p-1.5 bg-white border border-gray-200 rounded-full text-gray-600 hover:text-blue-600 hover:border-blue-300 transition-colors"
@@ -813,6 +902,15 @@ export function WorkflowManager({
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRun(workflow);
+                    }}
+                    className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                  >
+                    <Play className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1069,6 +1167,83 @@ export function WorkflowManager({
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Închide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Run Dialog */}
+      {showRunDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Executare Workflow: {showRunDialog.name}
+              </h2>
+              <button
+                onClick={handleCloseRunDialog}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Informații Workflow</h3>
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <p><span className="font-medium">Nume:</span> {showRunDialog.name}</p>
+                    <p><span className="font-medium">Versiune:</span> {showRunDialog.version}</p>
+                    <p><span className="font-medium">Status:</span> {showRunDialog.status}</p>
+                    {showRunDialog.description && (
+                      <p><span className="font-medium">Descriere:</span> {showRunDialog.description}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Starea Inițială (JSON)</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Definește obiectul de stare cu care va începe execuția workflow-ului.
+                  </p>
+                  <textarea
+                    value={initialState}
+                    onChange={(e) => setInitialState(e.target.value)}
+                    className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none"
+                    placeholder='{"key": "value", "counter": 0}'
+                    spellCheck={false}
+                    disabled={runLoading}
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Exemplu: {"{"}"key": "value", "counter": 0{"}"}
+                  </p>
+                </div>
+
+                {runError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-600">{runError}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                onClick={handleCloseRunDialog}
+                disabled={runLoading}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handleExecuteWorkflow}
+                disabled={runLoading}
+                className="px-6 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              >
+                <Play className="w-4 h-4" />
+                {runLoading ? 'Se execută...' : 'Execută'}
               </button>
             </div>
           </div>

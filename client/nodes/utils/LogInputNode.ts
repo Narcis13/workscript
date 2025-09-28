@@ -12,7 +12,7 @@ export class LogInputNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext): Promise<EdgeMap> {
-    console.log('Logging context.inputs:', context.inputs);
+    console.log('Logging context.inputs:', context.inputs,context.state);
     return {
       nothing: () => ({  })
     };

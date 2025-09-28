@@ -127,6 +127,9 @@ export function Home() {
         name: 'Server Test Workflow',
         version: '1.0.0',
         description: 'Generate token and save to file!',
+        initialState: {
+          developer: 'Narcis Brindusescu'
+        },
         workflow: [
           {
             'auth': {
@@ -140,7 +143,8 @@ export function Home() {
                 }
               }
             }
-          }
+          },
+          'log'
         ]
       }
 
