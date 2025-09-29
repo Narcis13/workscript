@@ -144,7 +144,11 @@ export function Home() {
               }
             }
           },
-          'log'
+          {
+            'log': {
+              message: '$.developer'
+            }
+          }
         ]
       }
 

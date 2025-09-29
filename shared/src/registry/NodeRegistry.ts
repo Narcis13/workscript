@@ -385,14 +385,31 @@ export class NodeRegistry {
    * Check if a value is a WorkflowNode class
    */
   private isWorkflowNode(value: any): value is typeof WorkflowNode {
-    return (
-      typeof value === 'function' &&
-      value.prototype &&
-      (value.prototype instanceof WorkflowNode ||
-        value.prototype.constructor === WorkflowNode ||
-        // Check for matching interface structure
-        (typeof value.prototype.execute === 'function' &&
-         value.prototype.metadata !== undefined))
-    );
+    if (typeof value !== 'function' || !value.prototype) {
+      return false;
+    }
+
+    // Check if it has the required WorkflowNode structure
+    const hasExecuteMethod = typeof value.prototype.execute === 'function';
+    const hasMetadataProperty = 'metadata' in value.prototype;
+
+    // Check if it extends from WorkflowNode by examining the prototype chain
+    let proto = value.prototype;
+    let extendsWorkflowNode = false;
+    let depth = 0;
+
+    while (proto && depth < 10) { // Prevent infinite loops
+      if (proto.constructor.name === 'WorkflowNode') {
+        extendsWorkflowNode = true;
+        break;
+      }
+      proto = Object.getPrototypeOf(proto);
+      depth++;
+    }
+
+    // A WorkflowNode must either:
+    // 1. Extend from WorkflowNode class, OR
+    // 2. Have the required interface (execute method and metadata property)
+    return extendsWorkflowNode || (hasExecuteMethod && hasMetadataProperty);
   }
 }

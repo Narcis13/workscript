@@ -1,5 +1,5 @@
-import { WorkflowNode } from 'shared';
-import type { ExecutionContext, EdgeMap } from 'shared';
+import { WorkflowNode } from '../src/types';
+import type { ExecutionContext, EdgeMap } from '../src/types';
 
 export class EmptyNode extends WorkflowNode {
   metadata = {

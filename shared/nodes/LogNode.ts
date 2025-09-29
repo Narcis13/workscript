@@ -1,20 +1,28 @@
-import { WorkflowNode } from 'shared';
-import type { ExecutionContext, EdgeMap } from 'shared';
+import { WorkflowNode } from '../src/types';
+import type { ExecutionContext, EdgeMap } from '../src/types';
 
 export class LogNode extends WorkflowNode {
   metadata = {
     id: 'log',
     name: 'Log Node',
     version: '1.0.0',
-    description: 'A node that logs context.inputs',
-    inputs: [],
-    outputs: []
+    description: 'A node that logs messages with state resolution support',
+    inputs: ['message'],
+    outputs: ['message']
   };
 
-  async execute(context: ExecutionContext): Promise<EdgeMap> {
-    console.log('Logging context.inputs:', context.state.developer);
+  async execute(context: ExecutionContext,config?: any): Promise<EdgeMap> {
+    const { message } = config || {};
+
+    // Log the resolved message
+    console.log('📝 Log Node Message:', message);
+
+    // Store the logged message in state for potential use by other nodes
+    context.state.lastLoggedMessage = message;
+    context.state.logNodeExecuted = true;
+
     return {
-      nothing: () => ({  })
+      success: () => ({ message })
     };
   }
 
