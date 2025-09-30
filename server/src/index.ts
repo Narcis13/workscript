@@ -4,6 +4,7 @@ import type { ApiResponse } from 'shared/dist'
 import { securityHeaders, logger, errorHandler } from './middleware'
 import { WorkflowService } from './services/WorkflowService'
 import { WebSocketManager } from './services/WebSocketManager'
+import { CronScheduler } from './services/CronScheduler'
 import { initializeTokenStorage } from './lib/token-storage';
 import workflows from './api/workflows'
 import automations from './api/automations'
@@ -139,6 +140,36 @@ const PORT = process.env.PORT || 3013;
 
 console.log(`🚀 Server starting on http://localhost:${PORT}`);
 console.log(`🔌 WebSocket server available at ws://localhost:${PORT}/ws`);
+
+// Initialize CronScheduler after server starts
+const initializeCronScheduler = async () => {
+  try {
+    const cronScheduler = CronScheduler.getInstance();
+    await cronScheduler.start();
+  } catch (error) {
+    console.error('❌ Failed to initialize CronScheduler:', error);
+  }
+};
+
+// Start scheduler after a brief delay to ensure server is fully initialized
+setTimeout(() => {
+  initializeCronScheduler();
+}, 1000);
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+  const cronScheduler = CronScheduler.getInstance();
+  await cronScheduler.shutdown();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+  const cronScheduler = CronScheduler.getInstance();
+  await cronScheduler.shutdown();
+  process.exit(0);
+});
 
 export default {
   port: PORT,

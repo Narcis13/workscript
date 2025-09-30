@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { AutomationRepository } from '../../db/repositories/automationRepository'
 import { WorkflowRepository } from '../../db/repositories/workflowRepository'
+import { CronScheduler } from '../../services/CronScheduler'
 import type { NewAutomation } from '../../db/schema'
 import { createId } from '@paralleldrive/cuid2'
 
@@ -56,7 +57,20 @@ automationsApp.get('/:id', async (c) => {
 automationsApp.post('/', async (c) => {
   try {
     const body = await c.req.json()
-    
+
+    // Validate cron expression if triggerType is 'cron'
+    if (body.triggerType === 'cron') {
+      const cronExpression = body.triggerConfig?.cronExpression
+      if (!cronExpression) {
+        return c.json({ error: 'Cron expression is required for cron trigger type' }, 400)
+      }
+
+      const validation = CronScheduler.validateAndParseCron(cronExpression)
+      if (!validation.valid) {
+        return c.json({ error: `Invalid cron expression: ${validation.error}` }, 400)
+      }
+    }
+
     const newAutomation: NewAutomation = {
       id: createId(),
       agencyId: body.agencyId,
@@ -70,8 +84,15 @@ automationsApp.post('/', async (c) => {
       createdAt: new Date(),
       updatedAt: new Date()
     }
-    
+
     const automation = await automationRepository.create(newAutomation)
+
+    // Schedule cron automation if enabled
+    if (automation.triggerType === 'cron' && automation.enabled) {
+      const cronScheduler = CronScheduler.getInstance()
+      await cronScheduler.scheduleAutomation(automation)
+    }
+
     return c.json(automation, 201)
   } catch (error) {
     console.error('Error creating automation:', error)
@@ -84,7 +105,15 @@ automationsApp.put('/:id', async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
-    
+
+    // Validate cron expression if triggerType is 'cron'
+    if (body.triggerType === 'cron' && body.triggerConfig?.cronExpression) {
+      const validation = CronScheduler.validateAndParseCron(body.triggerConfig.cronExpression)
+      if (!validation.valid) {
+        return c.json({ error: `Invalid cron expression: ${validation.error}` }, 400)
+      }
+    }
+
     const updates: Partial<NewAutomation> = {
       name: body.name,
       description: body.description,
@@ -95,13 +124,23 @@ automationsApp.put('/:id', async (c) => {
       nextRunAt: body.nextRunAt ? new Date(body.nextRunAt) : undefined,
       updatedAt: new Date()
     }
-    
+
     const automation = await automationRepository.update(id, updates)
-    
+
     if (!automation) {
       return c.json({ error: 'Automation not found' }, 404)
     }
-    
+
+    // Reschedule cron automation if config changed
+    if (automation.triggerType === 'cron') {
+      const cronScheduler = CronScheduler.getInstance()
+      if (automation.enabled) {
+        await cronScheduler.rescheduleAutomation(id)
+      } else {
+        await cronScheduler.unscheduleAutomation(id)
+      }
+    }
+
     return c.json(automation)
   } catch (error) {
     console.error('Error updating automation:', error)
@@ -113,12 +152,17 @@ automationsApp.put('/:id', async (c) => {
 automationsApp.delete('/:id', async (c) => {
   try {
     const id = c.req.param('id')
+
+    // Unschedule cron job if exists
+    const cronScheduler = CronScheduler.getInstance()
+    await cronScheduler.unscheduleAutomation(id)
+
     const deleted = await automationRepository.delete(id)
-    
+
     if (!deleted) {
       return c.json({ error: 'Automation not found' }, 404)
     }
-    
+
     return c.json({ message: 'Automation deleted successfully' })
   } catch (error) {
     console.error('Error deleting automation:', error)
@@ -144,13 +188,23 @@ automationsApp.put('/:id/toggle', async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
-    
+
     const automation = await automationRepository.toggleEnabled(id, body.enabled)
-    
+
     if (!automation) {
       return c.json({ error: 'Automation not found' }, 404)
     }
-    
+
+    // Handle cron scheduling based on enabled status
+    if (automation.triggerType === 'cron') {
+      const cronScheduler = CronScheduler.getInstance()
+      if (automation.enabled) {
+        await cronScheduler.scheduleAutomation(automation)
+      } else {
+        await cronScheduler.unscheduleAutomation(id)
+      }
+    }
+
     return c.json(automation)
   } catch (error) {
     console.error('Error toggling automation:', error)
@@ -249,7 +303,7 @@ automationsApp.post('/:id/execute', async (c) => {
       await automationRepository.updateRunStats(id, false, error instanceof Error ? error.message : 'Unknown error')
     }
     
-    return c.json({ 
+    return c.json({
       message: 'Automation execution started',
       executionId,
       automation
@@ -257,6 +311,81 @@ automationsApp.post('/:id/execute', async (c) => {
   } catch (error) {
     console.error('Error executing automation:', error)
     return c.json({ error: 'Failed to execute automation' }, 500)
+  }
+})
+
+// POST /automations/:id/reschedule - Manually reschedule a cron automation
+automationsApp.post('/:id/reschedule', async (c) => {
+  try {
+    const id = c.req.param('id')
+    const automation = await automationRepository.findById(id)
+
+    if (!automation) {
+      return c.json({ error: 'Automation not found' }, 404)
+    }
+
+    if (automation.triggerType !== 'cron') {
+      return c.json({ error: 'Only cron automations can be rescheduled' }, 400)
+    }
+
+    const cronScheduler = CronScheduler.getInstance()
+    await cronScheduler.rescheduleAutomation(id)
+
+    const updatedAutomation = await automationRepository.findById(id)
+
+    return c.json({
+      message: 'Automation rescheduled successfully',
+      automation: updatedAutomation
+    })
+  } catch (error) {
+    console.error('Error rescheduling automation:', error)
+    return c.json({ error: 'Failed to reschedule automation' }, 500)
+  }
+})
+
+// POST /automations/cron/validate - Validate cron expression
+automationsApp.post('/cron/validate', async (c) => {
+  try {
+    const body = await c.req.json()
+    const { cronExpression } = body
+
+    if (!cronExpression) {
+      return c.json({ error: 'Cron expression is required' }, 400)
+    }
+
+    const validation = CronScheduler.validateAndParseCron(cronExpression)
+
+    if (validation.valid) {
+      return c.json({
+        valid: true,
+        nextRun: validation.nextRun?.toISOString(),
+        message: 'Valid cron expression'
+      })
+    } else {
+      return c.json({
+        valid: false,
+        error: validation.error
+      }, 400)
+    }
+  } catch (error) {
+    console.error('Error validating cron expression:', error)
+    return c.json({ error: 'Failed to validate cron expression' }, 500)
+  }
+})
+
+// GET /automations/scheduler/status - Get scheduler status
+automationsApp.get('/scheduler/status', async (c) => {
+  try {
+    const cronScheduler = CronScheduler.getInstance()
+    const status = cronScheduler.getStatus()
+
+    return c.json({
+      status: 'running',
+      ...status
+    })
+  } catch (error) {
+    console.error('Error getting scheduler status:', error)
+    return c.json({ error: 'Failed to get scheduler status' }, 500)
   }
 })
 
