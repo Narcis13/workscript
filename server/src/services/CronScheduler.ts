@@ -102,7 +102,7 @@ export class CronScheduler {
         protect: true, // Prevent overlapping executions
       };
 
-      const job = Cron(cronExpression, options, async () => {
+      const job = new Cron(cronExpression, options, async () => {
         await this.executeAutomation(automation.id);
       });
 
@@ -280,7 +280,7 @@ export class CronScheduler {
   private validateCronExpression(expression: string): boolean {
     try {
       // Try to create a cron job to validate
-      const testJob = Cron(expression, { paused: true }, () => {});
+      const testJob = new Cron(expression, { paused: true }, () => {});
       testJob.stop();
       return true;
     } catch (error) {
@@ -340,7 +340,7 @@ export class CronScheduler {
     nextRun?: Date;
   } {
     try {
-      const testJob = Cron(expression, { paused: true }, () => {});
+      const testJob = new Cron(expression, { paused: true }, () => {});
       const nextRun = testJob.nextRun();
       testJob.stop();
 
