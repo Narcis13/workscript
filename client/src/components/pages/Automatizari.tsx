@@ -10,6 +10,7 @@ interface Automation {
   triggerType: 'immediate' | 'cron' | 'webhook';
   triggerConfig: {
     cronExpression?: string;
+    timezone?: string;
     webhookUrl?: string;
     immediate?: boolean;
   };
@@ -44,6 +45,7 @@ export function Automatizari() {
     description: '',
     triggerType: 'immediate' as TriggerType,
     cronExpression: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     webhookUrl: '',
     workflowId: '',
     enabled: true
@@ -90,7 +92,10 @@ export function Automatizari() {
       description: formData.description,
       triggerType: formData.triggerType,
       triggerConfig: {
-        ...(formData.triggerType === 'cron' && { cronExpression: formData.cronExpression }),
+        ...(formData.triggerType === 'cron' && {
+          cronExpression: formData.cronExpression,
+          timezone: formData.timezone
+        }),
         ...(formData.triggerType === 'webhook' && { webhookUrl: formData.webhookUrl }),
         ...(formData.triggerType === 'immediate' && { immediate: true })
       },
@@ -131,6 +136,7 @@ export function Automatizari() {
       description: automation.description || '',
       triggerType: automation.triggerType,
       cronExpression: automation.triggerConfig.cronExpression || '',
+      timezone: automation.triggerConfig.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
       webhookUrl: automation.triggerConfig.webhookUrl || '',
       workflowId: automation.workflowId,
       enabled: automation.enabled
@@ -217,6 +223,7 @@ export function Automatizari() {
       description: '',
       triggerType: 'immediate',
       cronExpression: '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       webhookUrl: '',
       workflowId: '',
       enabled: true
@@ -231,9 +238,9 @@ export function Automatizari() {
       case 'immediate':
         return 'Execuție imediată';
       case 'cron':
-        return `Cron: ${automation.triggerConfig.cronExpression}`;
+        return `Cron: ${automation.triggerConfig.cronExpression} (${automation.triggerConfig.timezone || 'UTC'})`;
       case 'webhook':
-        return `Webhook: ${automation.triggerConfig.webhookUrl}`;
+        return `Webhook: POST /automations/webhook/${automation.triggerConfig.webhookUrl}`;
       default:
         return 'Unknown';
     }
@@ -324,37 +331,135 @@ export function Automatizari() {
             </div>
 
             {formData.triggerType === 'cron' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Expresie Cron *
-                </label>
-                <input
-                  type="text"
-                  value={formData.cronExpression}
-                  onChange={(e) => setFormData({ ...formData, cronExpression: e.target.value })}
-                  placeholder="0 9 * * * (zilnic la 9:00)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Format: minute oră zi lună zi_săptămână
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Expresie Cron *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.cronExpression}
+                    onChange={(e) => setFormData({ ...formData, cronExpression: e.target.value })}
+                    placeholder="0 9 * * * (zilnic la 9:00)"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Format: minute oră zi lună zi_săptămână
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Timezone *
+                  </label>
+                  <select
+                    value={formData.timezone}
+                    onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="Europe/Bucharest">Europe/Bucharest (UTC+2/+3)</option>
+                    <option value="Europe/London">Europe/London (UTC+0/+1)</option>
+                    <option value="Europe/Paris">Europe/Paris (UTC+1/+2)</option>
+                    <option value="Europe/Berlin">Europe/Berlin (UTC+1/+2)</option>
+                    <option value="America/New_York">America/New_York (UTC-5/-4)</option>
+                    <option value="America/Chicago">America/Chicago (UTC-6/-5)</option>
+                    <option value="America/Denver">America/Denver (UTC-7/-6)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (UTC-8/-7)</option>
+                    <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+                    <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+                    <option value="Australia/Sydney">Australia/Sydney (UTC+10/+11)</option>
+                    <option value="UTC">UTC (UTC+0)</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Cron-ul va fi executat conform acestui timezone
+                  </p>
+                </div>
               </div>
             )}
 
             {formData.triggerType === 'webhook' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  URL Webhook *
-                </label>
-                <input
-                  type="text"
-                  value={formData.webhookUrl}
-                  onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
-                  placeholder="/webhook/my-automation"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Webhook Path *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.webhookUrl}
+                    onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
+                    placeholder="my-automation-webhook"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Doar caractere alfanumerice, cratime și underscore
+                  </p>
+                </div>
+
+                {formData.webhookUrl && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <label className="block text-sm font-medium text-blue-900 mb-2">
+                      🔗 URL Webhook Generat
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-white px-3 py-2 rounded border border-blue-300 text-sm font-mono text-blue-800">
+                        POST http://localhost:3013/automations/webhook/{formData.webhookUrl}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`http://localhost:3013/automations/webhook/${formData.webhookUrl}`);
+                          alert('URL copiat în clipboard!');
+                        }}
+                        className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        Copiază
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <span className="transform transition-transform group-open:rotate-90">▶</span>
+                      ℹ️ Cum funcționează webhook-urile?
+                    </summary>
+                    <div className="mt-3 space-y-3 text-sm text-gray-600">
+                      <p>
+                        <strong>1. Trimite un POST request</strong> la URL-ul webhook cu un body JSON.
+                      </p>
+                      <p>
+                        <strong>2. Body-ul devine initialState</strong> și este injectat în workflow.
+                      </p>
+                      <p>
+                        <strong>3. Accesează datele în workflow</strong> folosind <code className="bg-gray-200 px-1 rounded">context.state.propertyId</code>
+                      </p>
+
+                      <div className="bg-white border border-gray-300 rounded p-3 mt-2">
+                        <p className="font-medium text-gray-700 mb-2">Exemplu POST request:</p>
+                        <pre className="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">
+{`curl -X POST \\
+  http://localhost:3013/automations/webhook/${formData.webhookUrl || 'your-path'} \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "propertyId": "123",
+    "contactEmail": "user@example.com",
+    "customData": {
+      "source": "website"
+    }
+  }'`}
+                        </pre>
+                      </div>
+
+                      <p className="mt-2">
+                        <strong>💡 Tip:</strong> Body-ul JSON va fi disponibil în workflow ca <code className="bg-gray-200 px-1 rounded">context.state</code>
+                      </p>
+                    </div>
+                  </details>
+                </div>
               </div>
             )}
 
@@ -478,7 +583,21 @@ export function Automatizari() {
                         {executingAutomations.has(automation.id) ? 'Se execută...' : 'Execută acum'}
                       </button>
                     )}
-                    
+
+                    {automation.triggerType === 'webhook' && (
+                      <button
+                        onClick={() => {
+                          const webhookUrl = `http://localhost:3013/automations/webhook/${automation.triggerConfig.webhookUrl}`;
+                          navigator.clipboard.writeText(webhookUrl);
+                          alert('URL webhook copiat în clipboard!');
+                        }}
+                        className="px-3 py-1 text-xs bg-indigo-100 text-indigo-800 rounded-md hover:bg-indigo-200 transition-colors"
+                        title="Copiază URL webhook"
+                      >
+                        📋 Copiază URL
+                      </button>
+                    )}
+
                     <button
                       onClick={() => toggleAutomation(automation.id, !automation.enabled)}
                       className={`px-3 py-1 text-xs rounded-md transition-colors ${

@@ -251,12 +251,21 @@ export class WorkflowService {
   /**
    * Execute a workflow definition
    * @param workflowDefinition The workflow to execute
+   * @param initialState Optional initial state to inject into workflow
    * @returns The execution result
    */
-  public async executeWorkflow(workflowDefinition: WorkflowDefinition) {
+  public async executeWorkflow(workflowDefinition: WorkflowDefinition, initialState?: any) {
     // Parse and validate workflow
     const parsedWorkflow = this.parser.parse(workflowDefinition);
-    
+
+    // Inject initial state if provided
+    // The execution engine will handle state initialization with the parsed workflow's execution ID
+    // We'll pass initialState through the workflow definition itself
+    if (initialState && Object.keys(initialState).length > 0) {
+      // Merge initial state into workflow definition metadata
+      (parsedWorkflow as any).initialState = initialState;
+    }
+
     // Execute workflow
     return await this.executionEngine.execute(parsedWorkflow);
   }

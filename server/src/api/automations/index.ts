@@ -343,6 +343,130 @@ automationsApp.post('/:id/reschedule', async (c) => {
   }
 })
 
+// POST /automations/webhook/:webhookPath - Execute automation via webhook
+automationsApp.post('/webhook/:webhookPath', async (c) => {
+  try {
+    const webhookPath = c.req.param('webhookPath')
+
+    // Parse request body as initial state
+    let initialState: any = {}
+    try {
+      initialState = await c.req.json()
+    } catch (parseError) {
+      return c.json({ error: 'Invalid JSON in request body' }, 400)
+    }
+
+    // Find automation by webhook path
+    const automations = await automationRepository.findAll()
+    const automation = automations.find(auto => {
+      if (auto.triggerType !== 'webhook') return false
+      const config = auto.triggerConfig as { webhookUrl?: string }
+      return config.webhookUrl === webhookPath || config.webhookUrl === `/${webhookPath}`
+    })
+
+    if (!automation) {
+      return c.json({ error: `No automation found for webhook path: ${webhookPath}` }, 404)
+    }
+
+    if (!automation.enabled) {
+      return c.json({ error: 'Automation is disabled' }, 400)
+    }
+
+    // Create execution record
+    const executionId = createId()
+    await automationRepository.createExecution({
+      id: executionId,
+      automationId: automation.id,
+      status: 'running',
+      startedAt: new Date(),
+      triggerSource: 'webhook',
+      triggerData: initialState
+    })
+
+    // Execute workflow with initial state injection
+    try {
+      // Get the workflow definition
+      const workflow = await workflowRepository.findById(automation.workflowId)
+      if (!workflow) {
+        throw new Error('Workflow not found')
+      }
+
+      // Inject initial state into workflow definition
+      let workflowDefinition
+      if (typeof workflow.definition === 'object' && workflow.definition !== null) {
+        workflowDefinition = {
+          ...(workflow.definition as any),
+          initialState: initialState,
+          executionContext: {
+            automationId: automation.id,
+            executionId: executionId,
+            triggeredBy: 'webhook',
+            webhookPath: webhookPath
+          }
+        }
+      } else {
+        workflowDefinition = workflow.definition
+      }
+
+      // Make POST request to /workflows/run
+      const workflowRunResponse = await fetch('http://localhost:3013/workflows/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(workflowDefinition)
+      })
+
+      if (!workflowRunResponse.ok) {
+        const errorData = await workflowRunResponse.json().catch(() => ({})) as { error?: string }
+        throw new Error(errorData.error || `Workflow execution failed: ${workflowRunResponse.status}`)
+      }
+
+      const workflowResult = await workflowRunResponse.json()
+
+      // Mark as completed with workflow result
+      await automationRepository.completeExecution(
+        executionId,
+        'completed',
+        workflowResult
+      )
+
+      // Update automation run stats
+      await automationRepository.updateRunStats(automation.id, true)
+
+      return c.json({
+        message: 'Workflow execution started via webhook',
+        executionId,
+        automationId: automation.id,
+        automation: {
+          id: automation.id,
+          name: automation.name
+        }
+      }, 202)
+    } catch (error) {
+      console.error('Webhook workflow execution error:', error)
+
+      // Mark as failed
+      await automationRepository.completeExecution(
+        executionId,
+        'failed',
+        null,
+        error instanceof Error ? error.message : 'Unknown error'
+      )
+
+      // Update automation run stats
+      await automationRepository.updateRunStats(automation.id, false, error instanceof Error ? error.message : 'Unknown error')
+
+      return c.json({
+        error: 'Workflow execution failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        executionId
+      }, 500)
+    }
+  } catch (error) {
+    console.error('Error processing webhook:', error)
+    return c.json({ error: 'Failed to process webhook request' }, 500)
+  }
+})
+
 // POST /automations/cron/validate - Validate cron expression
 automationsApp.post('/cron/validate', async (c) => {
   try {

@@ -83,11 +83,12 @@ workflows.post('/validate', async (c) => {
 // Workflow execution endpoint
 workflows.post('/run', async (c) => {
   try {
-    const workflowDefinition = await c.req.json() as WorkflowDefinition
+    const body = await c.req.json() as WorkflowDefinition & { initialState?: any }
+    const { initialState, ...workflowDefinition } = body
     const workflowService = await WorkflowService.getInstance()
 
-    // Execute workflow using singleton service
-    const result = await workflowService.executeWorkflow(workflowDefinition)
+    // Execute workflow using singleton service with optional initial state
+    const result = await workflowService.executeWorkflow(workflowDefinition, initialState)
 
     return c.json(result, { status: 202 })
   } catch (error) {
