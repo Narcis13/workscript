@@ -3,6 +3,7 @@ import { Home } from './components/Home'
 import { Advanced } from './components/Advanced'
 import { WebSocketWorkflowDemo } from './components/WebSocketWorkflowDemo'
 import { AiZoca } from './components/AiZoca'
+import { NodesManager } from './components/NodesManager'
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/advanced" element={<Advanced />} />
         <Route path="/websocket" element={<WebSocketWorkflowDemo />} />
         <Route path="/aizoca" element={<AiZoca />} />
+        <Route path="/nodes-browser" element={<NodesManager />} />
       </Routes>
     </Router>
   )

@@ -226,12 +226,33 @@ workflows.post('/run/:workflowId', async (c) => {
   }
 })
 
+// Get all available nodes endpoint
+workflows.get('/allnodes', async (c) => {
+  try {
+    const workflowService = await WorkflowService.getInstance()
+    const availableNodes = workflowService.getAvailableNodes()
+
+    return c.json({
+      success: true,
+      count: availableNodes.length,
+      nodes: availableNodes
+    })
+  } catch (error) {
+    console.error('Failed to retrieve available nodes:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      nodes: []
+    }, { status: 500 })
+  }
+})
+
 // Get all workflows from database endpoint
 workflows.get('/allfromdb', async (c) => {
   try {
     const workflowRepository = new WorkflowRepository()
     const allWorkflows = await workflowRepository.findAll()
-    
+
     return c.json({
       success: true,
       count: allWorkflows.length,
