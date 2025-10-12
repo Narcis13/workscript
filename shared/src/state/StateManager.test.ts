@@ -453,6 +453,176 @@ describe('StateManager', () => {
     });
   });
 
+  // Tests for nested path state operations ($.syntax support)
+  describe('Nested Path Operations', () => {
+    beforeEach(async () => {
+      await stateManager.initialize(testExecutionId, testInitialState);
+    });
+
+    describe('setNestedPath', () => {
+      it('should set simple nested path', async () => {
+        await stateManager.setNestedPath(testExecutionId, 'user.name', 'John');
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.user).toEqual({ name: 'John' });
+      });
+
+      it('should set deeply nested path', async () => {
+        await stateManager.setNestedPath(testExecutionId, 'user.profile.settings.theme', 'dark');
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.user).toEqual({
+          profile: {
+            settings: {
+              theme: 'dark'
+            }
+          }
+        });
+      });
+
+      it('should preserve existing nested data', async () => {
+        await stateManager.setNestedPath(testExecutionId, 'user.name', 'John');
+        await stateManager.setNestedPath(testExecutionId, 'user.age', 30);
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.user).toEqual({ name: 'John', age: 30 });
+      });
+
+      it('should set value on existing path', async () => {
+        await stateManager.updateState(testExecutionId, {
+          user: { name: 'Alice', age: 25 }
+        });
+
+        await stateManager.setNestedPath(testExecutionId, 'user.name', 'Bob');
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.user).toEqual({ name: 'Bob', age: 25 });
+      });
+
+      it('should set complex values (objects, arrays)', async () => {
+        await stateManager.setNestedPath(testExecutionId, 'config.options', {
+          timeout: 30,
+          retries: 3,
+          enabled: true
+        });
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.config.options).toEqual({
+          timeout: 30,
+          retries: 3,
+          enabled: true
+        });
+      });
+
+      it('should set array values', async () => {
+        await stateManager.setNestedPath(testExecutionId, 'items.list', [1, 2, 3, 4, 5]);
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.items.list).toEqual([1, 2, 3, 4, 5]);
+      });
+
+      it('should throw error for empty path', async () => {
+        await expect(
+          stateManager.setNestedPath(testExecutionId, '', 'value')
+        ).rejects.toThrow('Invalid state path: path cannot be empty');
+      });
+
+      it('should throw error for non-existent execution', async () => {
+        await expect(
+          stateManager.setNestedPath('non-existent', 'path.to.value', 'value')
+        ).rejects.toThrow(StateNotFoundError);
+      });
+
+      it('should persist updates to adapter', async () => {
+        const saveCountBefore = mockAdapter.saveCallCount;
+
+        await stateManager.setNestedPath(testExecutionId, 'user.name', 'John');
+
+        expect(mockAdapter.saveCallCount).toBeGreaterThan(saveCountBefore);
+      });
+
+      it('should increment state version', async () => {
+        const versionBefore = stateManager.getStateMetadata(testExecutionId)?.version;
+
+        await stateManager.setNestedPath(testExecutionId, 'user.name', 'John');
+
+        const versionAfter = stateManager.getStateMetadata(testExecutionId)?.version;
+        expect(versionAfter).toBe((versionBefore ?? 0) + 1);
+      });
+
+      it('should handle single-level path', async () => {
+        await stateManager.setNestedPath(testExecutionId, 'simpleValue', 42);
+
+        const state = await stateManager.getState(testExecutionId);
+        expect(state.simpleValue).toBe(42);
+      });
+    });
+
+    describe('getNestedPath', () => {
+      beforeEach(async () => {
+        await stateManager.updateState(testExecutionId, {
+          user: {
+            name: 'John',
+            profile: {
+              age: 30,
+              settings: {
+                theme: 'dark'
+              }
+            }
+          },
+          items: [1, 2, 3]
+        });
+      });
+
+      it('should get value from simple nested path', async () => {
+        const value = await stateManager.getNestedPath(testExecutionId, 'user.name');
+        expect(value).toBe('John');
+      });
+
+      it('should get value from deeply nested path', async () => {
+        const value = await stateManager.getNestedPath(testExecutionId, 'user.profile.settings.theme');
+        expect(value).toBe('dark');
+      });
+
+      it('should get object from nested path', async () => {
+        const value = await stateManager.getNestedPath(testExecutionId, 'user.profile');
+        expect(value).toEqual({
+          age: 30,
+          settings: {
+            theme: 'dark'
+          }
+        });
+      });
+
+      it('should return undefined for non-existent path', async () => {
+        const value = await stateManager.getNestedPath(testExecutionId, 'user.nonexistent.path');
+        expect(value).toBeUndefined();
+      });
+
+      it('should return undefined for empty path', async () => {
+        const value = await stateManager.getNestedPath(testExecutionId, '');
+        expect(value).toBeUndefined();
+      });
+
+      it('should get array value', async () => {
+        const value = await stateManager.getNestedPath(testExecutionId, 'items');
+        expect(value).toEqual([1, 2, 3]);
+      });
+
+      it('should get single-level value', async () => {
+        await stateManager.updateState(testExecutionId, { simpleValue: 42 });
+        const value = await stateManager.getNestedPath(testExecutionId, 'simpleValue');
+        expect(value).toBe(42);
+      });
+
+      it('should throw error for non-existent execution', async () => {
+        await expect(
+          stateManager.getNestedPath('non-existent', 'some.path')
+        ).rejects.toThrow(StateNotFoundError);
+      });
+    });
+  });
+
   // Phase 3: State Change Detection and Watchers Tests
   describe('Phase 3: State Change Detection', () => {
     beforeEach(async () => {

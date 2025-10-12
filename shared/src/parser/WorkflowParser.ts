@@ -56,9 +56,55 @@ export class WorkflowParser {
   }
 
   /**
-   * Get the base node type from a potentially loop node ID
+   * Check if a node ID is a state setter (starts with $.)
+   */
+  private isStateSetter(nodeId: string): boolean {
+    return nodeId.startsWith('$.');
+  }
+
+  /**
+   * Extract the state path from a state setter node ID
+   * Example: '$.config.timeout' -> 'config.timeout'
+   */
+  private extractStatePath(nodeId: string): string {
+    if (!this.isStateSetter(nodeId)) {
+      throw new Error(`Not a state setter node: ${nodeId}`);
+    }
+    return nodeId.substring(2); // Remove '$.' prefix
+  }
+
+  /**
+   * Validate state path syntax
+   */
+  private validateStatePath(path: string, fullNodeId: string): string | null {
+    if (path.length === 0) {
+      return `Invalid state setter syntax: '${fullNodeId}' - path cannot be empty after '$.''`;
+    }
+
+    // Check for valid identifier characters and dots
+    const validPathRegex = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/;
+    if (!validPathRegex.test(path)) {
+      return `Invalid state path syntax: '${fullNodeId}' - path must contain valid identifiers separated by dots (e.g., $.config.timeout)`;
+    }
+
+    // Warn about reserved state keys
+    const segments = path.split('.');
+    const reservedKeys = ['_edgeContext', '_edgeContextTimestamp', '_lastStateSet'];
+    if (segments.length > 0 && reservedKeys.includes(segments[0]!)) {
+      console.warn(`Warning: State path '${fullNodeId}' uses reserved key '${segments[0]}'. This may cause unexpected behavior.`);
+    }
+
+    return null; // No errors
+  }
+
+  /**
+   * Get the base node type from a potentially loop node ID or state setter
    */
   private getBaseNodeType(nodeId: string): string {
+    // State setters always resolve to the internal __state_setter__ node
+    if (this.isStateSetter(nodeId)) {
+      return '__state_setter__';
+    }
     return this.isLoopNode(nodeId) ? nodeId.slice(0, -3) : nodeId;
   }
 
@@ -111,14 +157,27 @@ export class WorkflowParser {
   private validateSemantics(workflow: WorkflowDefinition): ValidationError[] {
     const errors: ValidationError[] = [];
     const nodeIds = new Set<string>();
-    
+
     // First pass: collect all node IDs from workflow steps
     workflow.workflow.forEach((step, stepIndex) => {
       if (typeof step === 'string') {
         // Simple node reference
         nodeIds.add(step);
-        
-        // Check if base node type exists in registry (strip ... suffix for loop nodes)
+
+        // Validate state setter syntax if applicable
+        if (this.isStateSetter(step)) {
+          const statePath = this.extractStatePath(step);
+          const validationError = this.validateStatePath(statePath, step);
+          if (validationError) {
+            errors.push({
+              path: `/workflow[${stepIndex}]`,
+              message: validationError,
+              code: 'INVALID_STATE_SETTER_SYNTAX'
+            });
+          }
+        }
+
+        // Check if base node type exists in registry (strip ... suffix for loop nodes, or resolve state setter)
         const baseNodeType = this.getBaseNodeType(step);
         if (!this.nodeRegistry.hasNode(baseNodeType)) {
           errors.push({
@@ -131,8 +190,21 @@ export class WorkflowParser {
         // Node configuration object
         for (const nodeId of Object.keys(step)) {
           nodeIds.add(nodeId);
-          
-          // Check if base node type exists in registry (strip ... suffix for loop nodes)
+
+          // Validate state setter syntax if applicable
+          if (this.isStateSetter(nodeId)) {
+            const statePath = this.extractStatePath(nodeId);
+            const validationError = this.validateStatePath(statePath, nodeId);
+            if (validationError) {
+              errors.push({
+                path: `/workflow[${stepIndex}]/${nodeId}`,
+                message: validationError,
+                code: 'INVALID_STATE_SETTER_SYNTAX'
+              });
+            }
+          }
+
+          // Check if base node type exists in registry (strip ... suffix for loop nodes, or resolve state setter)
           const baseNodeType = this.getBaseNodeType(nodeId);
           if (!this.nodeRegistry.hasNode(baseNodeType)) {
             errors.push({
@@ -150,7 +222,7 @@ export class WorkflowParser {
       if (typeof step === 'object') {
         for (const [nodeId, nodeConfig] of Object.entries(step)) {
           const { edges } = this.separateParametersAndEdges(nodeConfig);
-          
+
           for (const [edgeName, edgeRoute] of Object.entries(edges)) {
             const edgeErrors = this.validateEdgeRoute(
               edgeRoute,
@@ -224,7 +296,20 @@ export class WorkflowParser {
     const errors: ValidationError[] = [];
 
     for (const [nodeId, nodeConfig] of Object.entries(config)) {
-      // Check if base node type exists in registry (strip ... suffix for loop nodes)
+      // Validate state setter syntax if applicable
+      if (this.isStateSetter(nodeId)) {
+        const statePath = this.extractStatePath(nodeId);
+        const validationError = this.validateStatePath(statePath, nodeId);
+        if (validationError) {
+          errors.push({
+            path: `${path}/${nodeId}`,
+            message: validationError,
+            code: 'INVALID_STATE_SETTER_SYNTAX'
+          });
+        }
+      }
+
+      // Check if base node type exists in registry (strip ... suffix for loop nodes, or resolve state setter)
       const baseNodeType = this.getBaseNodeType(nodeId);
       if (!this.nodeRegistry.hasNode(baseNodeType)) {
         errors.push({
@@ -282,20 +367,37 @@ export class WorkflowParser {
   }
 
   private parseNodeRecursively(
-    nodeId: string, 
-    nodeConfig: NodeConfiguration, 
-    depth: number, 
+    nodeId: string,
+    nodeConfig: NodeConfiguration,
+    depth: number,
     uniqueId: string,
     parent?: ParsedNode
   ): ParsedNode {
     const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
-    
+
     const isLoop = this.isLoopNode(nodeId);
+    const isStateSetter = this.isStateSetter(nodeId);
     const baseType = this.getBaseNodeType(nodeId);
-    
+
+    // Transform config for state setters
+    let finalConfig: Record<string, any>;
+    if (isStateSetter) {
+      // Extract the state path (without $. prefix)
+      const statePath = this.extractStatePath(nodeId);
+
+      // Transform config to include statePath parameter
+      // The 'value' parameter should already be in parameters
+      finalConfig = {
+        statePath,
+        ...parameters
+      };
+    } else {
+      finalConfig = parameters;
+    }
+
     const parsedNode: ParsedNode = {
       nodeId,
-      config: parameters,
+      config: finalConfig,
       edges: {},
       children: [],
       parent,

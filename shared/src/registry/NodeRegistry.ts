@@ -37,6 +37,42 @@ interface NodeRegistration {
 export class NodeRegistry {
   private nodes: Map<string, NodeRegistration> = new Map();
   private instances: Map<string, WorkflowNode> = new Map();
+  private builtInNodesRegistered: boolean = false;
+
+  /**
+   * Register built-in nodes that are always available
+   * This is called automatically when needed
+   */
+  private async registerBuiltInNodes(): Promise<void> {
+    if (this.builtInNodesRegistered) {
+      return; // Already registered
+    }
+
+    try {
+      // Import and register StateSetterNode
+      const { StateSetterNode } = await import('../../nodes/StateSetterNode');
+      await this.register(StateSetterNode, {
+        singleton: false,
+        source: 'universal'
+      });
+
+      this.builtInNodesRegistered = true;
+    } catch (error) {
+      console.warn('Failed to register built-in nodes:', error);
+      throw new NodeRegistrationError(
+        'Failed to register built-in nodes: ' + (error instanceof Error ? error.message : 'Unknown error')
+      );
+    }
+  }
+
+  /**
+   * Ensure built-in nodes are registered before operations
+   */
+  private async ensureBuiltInNodes(): Promise<void> {
+    if (!this.builtInNodesRegistered) {
+      await this.registerBuiltInNodes();
+    }
+  }
 
   /**
    * Register a workflow node class
@@ -97,6 +133,9 @@ export class NodeRegistry {
    * @param environment Target environment ('server' | 'client' | 'universal')
    */
   async discoverFromPackages(environment: Environment = 'universal'): Promise<void> {
+    // Register built-in nodes first
+    await this.ensureBuiltInNodes();
+
     // In browser environment, log warning and suggest manual registration
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       console.warn('File-based node discovery is not available in browser environment. Use registerClientNodes() method instead.');
@@ -104,7 +143,7 @@ export class NodeRegistry {
     }
 
     const discoveryPaths = this.getDiscoveryPaths(environment);
-    
+
     for (const { path: discoveryPath, source } of discoveryPaths) {
       await this.discoverFromPath(discoveryPath, source);
     }
@@ -273,6 +312,18 @@ export class NodeRegistry {
    * @returns A new or singleton instance of the node
    */
   getInstance(nodeId: string, environment?: Environment): WorkflowNode {
+    // Ensure built-in nodes are registered (synchronous check for built-ins)
+    if (nodeId === '__state_setter__' && !this.builtInNodesRegistered) {
+      // Register synchronously for built-in nodes
+      try {
+        const { StateSetterNode } = require('../../nodes/StateSetterNode');
+        this.registerSync(StateSetterNode, { singleton: false, source: 'universal' });
+        this.builtInNodesRegistered = true;
+      } catch (error) {
+        throw new NodeNotFoundError(`Failed to register built-in node: ${nodeId}`);
+      }
+    }
+
     const registration = this.nodes.get(nodeId);
     if (!registration) {
       throw new NodeNotFoundError(nodeId);
@@ -293,6 +344,47 @@ export class NodeRegistry {
 
     // Create new instance
     return new (registration.nodeClass as any)();
+  }
+
+  /**
+   * Synchronous version of register for built-in nodes
+   */
+  private registerSync(
+    nodeClass: typeof WorkflowNode,
+    options?: { singleton?: boolean; source?: NodeSource }
+  ): void {
+    // Create a temporary instance to get metadata
+    let instance: WorkflowNode;
+    try {
+      instance = new (nodeClass as any)();
+    } catch (error) {
+      throw new NodeRegistrationError(
+        `Failed to instantiate node class: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+
+    const metadata = instance.metadata;
+
+    // Validate metadata
+    if (!metadata || !metadata.id || !metadata.name || !metadata.version) {
+      throw new NodeRegistrationError(
+        'Node metadata must include id, name, and version',
+        metadata?.id
+      );
+    }
+
+    // Register the node
+    this.nodes.set(metadata.id, {
+      nodeClass,
+      metadata,
+      singleton: options?.singleton ?? false,
+      source: options?.source ?? 'universal'
+    });
+
+    // If singleton, create the instance now
+    if (options?.singleton) {
+      this.instances.set(metadata.id, instance);
+    }
   }
 
   /**
@@ -350,6 +442,11 @@ export class NodeRegistry {
    * @returns True if the node is registered
    */
   hasNode(nodeId: string): boolean {
+    // Check if it's a built-in node that hasn't been registered yet
+    if (nodeId === '__state_setter__' && !this.builtInNodesRegistered) {
+      // Synchronously mark as true since we'll register it lazily
+      return true;
+    }
     return this.nodes.has(nodeId);
   }
 

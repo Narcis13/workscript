@@ -909,11 +909,89 @@ export class StateManager {
     }
     if (options.enableBatching !== undefined) {
       this.enableBatching = options.enableBatching;
-      
+
       // If disabling batching, flush any pending updates
       if (!options.enableBatching) {
         this.flushBatchedUpdates().catch(console.error);
       }
     }
+  }
+
+  /**
+   * Set a value at a nested path in the state (e.g., 'user.profile.name')
+   * Creates intermediate objects as needed
+   * Supports syntactic sugar for state setting: $.path.to.state
+   */
+  async setNestedPath(
+    executionId: string,
+    path: string,
+    value: any
+  ): Promise<void> {
+    const state = this.states.get(executionId);
+    if (!state) {
+      throw new StateNotFoundError(executionId);
+    }
+
+    // Parse the path into segments
+    const segments = path.split('.').filter(seg => seg.length > 0);
+
+    if (segments.length === 0) {
+      throw new Error('Invalid state path: path cannot be empty');
+    }
+
+    // Get current state data (deep copy to avoid mutations)
+    const currentData = { ...state.data };
+
+    // Navigate to the parent object, creating intermediate objects as needed
+    let current: any = currentData;
+
+    for (let i = 0; i < segments.length - 1; i++) {
+      const segment = segments[i]!;
+
+      // If the segment doesn't exist or isn't an object, create a new object
+      if (!(segment in current) || typeof current[segment] !== 'object' || current[segment] === null) {
+        current[segment] = {};
+      } else {
+        // Deep copy the nested object to avoid mutations
+        current[segment] = { ...current[segment] };
+      }
+
+      current = current[segment];
+    }
+
+    // Set the final value
+    const finalSegment = segments[segments.length - 1]!;
+    current[finalSegment] = value;
+
+    // Update the entire state atomically
+    await this.updateState(executionId, currentData);
+  }
+
+  /**
+   * Get a value from a nested path in the state
+   * Returns undefined if the path doesn't exist
+   */
+  async getNestedPath(
+    executionId: string,
+    path: string
+  ): Promise<any> {
+    const currentState = await this.getState(executionId);
+
+    const segments = path.split('.').filter(seg => seg.length > 0);
+
+    if (segments.length === 0) {
+      return undefined;
+    }
+
+    let current: any = currentState;
+
+    for (const segment of segments) {
+      if (current === null || current === undefined || typeof current !== 'object') {
+        return undefined;
+      }
+      current = current[segment];
+    }
+
+    return current;
   }
 }
