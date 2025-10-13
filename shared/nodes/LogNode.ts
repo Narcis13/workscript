@@ -15,7 +15,7 @@ export class LogNode extends WorkflowNode {
     const { message } = config || {};
 
     // Log the resolved message
-    console.log('📝 Log Node Message:', message);
+    console.log('📝 Log Node Message:', message, context.state);
 
     // Store the logged message in state for potential use by other nodes
     context.state.lastLoggedMessage = message;

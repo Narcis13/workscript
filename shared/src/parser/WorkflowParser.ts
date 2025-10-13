@@ -221,15 +221,18 @@ export class WorkflowParser {
     workflow.workflow.forEach((step, stepIndex) => {
       if (typeof step === 'object') {
         for (const [nodeId, nodeConfig] of Object.entries(step)) {
-          const { edges } = this.separateParametersAndEdges(nodeConfig);
+          // Skip edge validation for state setters with primitive values
+          if (typeof nodeConfig === 'object' && !Array.isArray(nodeConfig) && nodeConfig !== null) {
+            const { edges } = this.separateParametersAndEdges(nodeConfig as NodeConfiguration);
 
-          for (const [edgeName, edgeRoute] of Object.entries(edges)) {
-            const edgeErrors = this.validateEdgeRoute(
-              edgeRoute,
-              nodeIds,
-              `/workflow[${stepIndex}]/${nodeId}/${edgeName}?`
-            );
-            errors.push(...edgeErrors);
+            for (const [edgeName, edgeRoute] of Object.entries(edges)) {
+              const edgeErrors = this.validateEdgeRoute(
+                edgeRoute,
+                nodeIds,
+                `/workflow[${stepIndex}]/${nodeId}/${edgeName}?`
+              );
+              errors.push(...edgeErrors);
+            }
           }
         }
       }
@@ -319,15 +322,17 @@ export class WorkflowParser {
         });
       }
 
-      // Recursively validate nested edges
-      const { edges } = this.separateParametersAndEdges(nodeConfig);
-      for (const [edgeName, edgeRoute] of Object.entries(edges)) {
-        const edgeErrors = this.validateEdgeRoute(
-          edgeRoute,
-          validNodeIds,
-          `${path}/${nodeId}/${edgeName}?`
-        );
-        errors.push(...edgeErrors);
+      // Recursively validate nested edges (skip for primitive values)
+      if (typeof nodeConfig === 'object' && !Array.isArray(nodeConfig) && nodeConfig !== null) {
+        const { edges } = this.separateParametersAndEdges(nodeConfig as NodeConfiguration);
+        for (const [edgeName, edgeRoute] of Object.entries(edges)) {
+          const edgeErrors = this.validateEdgeRoute(
+            edgeRoute,
+            validNodeIds,
+            `${path}/${nodeId}/${edgeName}?`
+          );
+          errors.push(...edgeErrors);
+        }
       }
     }
 
@@ -368,31 +373,83 @@ export class WorkflowParser {
 
   private parseNodeRecursively(
     nodeId: string,
-    nodeConfig: NodeConfiguration,
+    nodeConfig: NodeConfiguration | ParameterValue,
     depth: number,
     uniqueId: string,
     parent?: ParsedNode
   ): ParsedNode {
-    const { parameters, edges } = this.separateParametersAndEdges(nodeConfig);
-
     const isLoop = this.isLoopNode(nodeId);
     const isStateSetter = this.isStateSetter(nodeId);
     const baseType = this.getBaseNodeType(nodeId);
 
     // Transform config for state setters
     let finalConfig: Record<string, any>;
+    let edges: Record<string, EdgeRoute> = {};
+
     if (isStateSetter) {
       // Extract the state path (without $. prefix)
       const statePath = this.extractStatePath(nodeId);
 
-      // Transform config to include statePath parameter
-      // The 'value' parameter should already be in parameters
-      finalConfig = {
-        statePath,
-        ...parameters
-      };
+      // Handle shorthand syntax where nodeConfig can be a primitive value
+      if (typeof nodeConfig === 'string' || typeof nodeConfig === 'number' ||
+          typeof nodeConfig === 'boolean' || nodeConfig === null ||
+          Array.isArray(nodeConfig)) {
+        // Primitive or array value - use directly as the value
+        finalConfig = {
+          statePath,
+          value: nodeConfig
+        };
+      } else if (typeof nodeConfig === 'object') {
+        // Object - separate parameters and edges
+        const { parameters, edges: extractedEdges } = this.separateParametersAndEdges(nodeConfig as NodeConfiguration);
+        edges = extractedEdges;
+
+        const paramKeys = Object.keys(parameters);
+        const nonEdgeParamKeys = paramKeys.filter(k => !k.endsWith('?'));
+
+        if ('value' in parameters) {
+          // Explicit value parameter
+          const { value, ...rest } = parameters;
+          finalConfig = {
+            statePath,
+            value,
+            ...rest
+          };
+        } else if (nonEdgeParamKeys.length === 0) {
+          // No non-edge parameters - this is an error, state setter requires a value
+          finalConfig = {
+            statePath,
+            // Will fail at execution time with proper error message
+          };
+        } else {
+          // Treat all non-edge parameters as the value
+          // If there's only one, unwrap it; otherwise create an object
+          if (nonEdgeParamKeys.length === 1) {
+            finalConfig = {
+              statePath,
+              value: parameters[nonEdgeParamKeys[0]!]
+            };
+          } else {
+            finalConfig = {
+              statePath,
+              value: Object.fromEntries(
+                nonEdgeParamKeys.map(k => [k, parameters[k]])
+              )
+            };
+          }
+        }
+      } else {
+        // Fallback - shouldn't reach here
+        finalConfig = {
+          statePath,
+          value: nodeConfig
+        };
+      }
     } else {
+      // Regular node
+      const { parameters, edges: extractedEdges } = this.separateParametersAndEdges(nodeConfig as NodeConfiguration);
       finalConfig = parameters;
+      edges = extractedEdges;
     }
 
     const parsedNode: ParsedNode = {

@@ -39,6 +39,8 @@ export function WorkflowDemo() {
         },
         workflow: [
           'log-input',
+          {'$.author': {'name': 'Narcis Brindusescu'}},
+         
           'empty',
           'log'
         ]

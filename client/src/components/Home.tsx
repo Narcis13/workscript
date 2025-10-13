@@ -144,6 +144,7 @@ export function Home() {
               }
             }
           },
+          {'$.author': 'Petru Brindusescu'},
           {
             'log': {
               message: '$.developer'

@@ -12,6 +12,7 @@ export { LogicNode } from './LogicNode';
 export { DataTransformNode } from './DataTransformNode';
 export { EmptyNode } from './EmptyNode';
 export { LogNode } from './LogNode';
+export { StateSetterNode } from './StateSetterNode';
 
 // Import for array creation
 import { MathNode } from './MathNode';
@@ -19,6 +20,7 @@ import { LogicNode } from './LogicNode';
 import { DataTransformNode } from './DataTransformNode';
 import { EmptyNode } from './EmptyNode';
 import { LogNode } from './LogNode';
+import { StateSetterNode } from './StateSetterNode';
 import type { WorkflowNode } from '../src/types';
 
 /**
@@ -30,7 +32,8 @@ export const UNIVERSAL_NODES: Array<typeof WorkflowNode> = [
   LogicNode,
   DataTransformNode,
   EmptyNode,
-  LogNode
+  LogNode,
+  StateSetterNode
 ];
 
 /**

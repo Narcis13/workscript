@@ -274,8 +274,9 @@ export class ExecutionEngine {
         data: { nodeConfig: node.config }
       });
 
-      // Get node instance from registry (strip ... suffix for loop nodes)
-      const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
+      // Get node instance from registry
+      // Use baseNodeType for special nodes (loop nodes, state setters, etc.)
+      const nodeTypeId = node.baseNodeType;
       const instance = this.registry.getInstance(nodeTypeId);
 
       // Resolve state references in node configuration

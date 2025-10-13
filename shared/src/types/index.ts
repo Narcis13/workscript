@@ -39,9 +39,9 @@ export interface WorkflowDefinition {
   workflow: WorkflowStep[];
 }
 
-export type WorkflowStep = 
+export type WorkflowStep =
   | string                           // Simple node reference without configuration
-  | { [nodeId: string]: NodeConfiguration };  // Node with configuration
+  | { [nodeId: string]: NodeConfiguration | ParameterValue };  // Node with configuration (or direct value for state setters)
 
 export interface NodeConfiguration {
   [key: string]: ParameterValue | EdgeRoute;
@@ -64,7 +64,7 @@ export type EdgeRouteItem =
   | NestedNodeConfiguration;  // Nested config in sequence
 
 export interface NestedNodeConfiguration {
-  [nodeId: string]: NodeConfiguration;
+  [nodeId: string]: NodeConfiguration | ParameterValue;
 }
 
 export interface ValidationResult {

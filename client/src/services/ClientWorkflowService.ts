@@ -74,6 +74,7 @@ export class ClientWorkflowService {
       // This replaces the file-based discovery used on the server
       
       console.log('📦 Registering universal nodes...');
+
       // Register universal nodes from shared package
       for (const nodeClass of UNIVERSAL_NODES) {
         try {

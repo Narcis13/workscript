@@ -41,20 +41,23 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
-          "description": "Simple node reference without configuration (supports loop syntax with ... suffix)"
+          "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
+          "description": "Simple node reference without configuration (supports loop syntax with ... suffix and state setter syntax with $. prefix)"
         },
         {
           "type": "object",
           "patternProperties": {
             "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
               "$ref": "#/definitions/nodeConfiguration"
+            },
+            "^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$": {
+              "$ref": "#/definitions/stateSetterConfiguration"
             }
           },
           "additionalProperties": false,
           "minProperties": 1,
           "maxProperties": 1,
-          "description": "Node with configuration parameters and/or edge routes"
+          "description": "Node with configuration parameters and/or edge routes (supports state setter syntax with $. prefix)"
         }
       ]
     },
@@ -105,8 +108,8 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
-          "description": "Direct reference to a node ID"
+          "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
+          "description": "Direct reference to a node ID (supports state setter syntax with $. prefix)"
         },
         {
           "type": "array",
@@ -125,8 +128,8 @@
       "oneOf": [
         {
           "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
-          "description": "Node ID reference in sequence"
+          "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
+          "description": "Node ID reference in sequence (supports state setter syntax with $. prefix)"
         },
         {
           "$ref": "#/definitions/nestedNodeConfiguration"
@@ -139,11 +142,51 @@
       "patternProperties": {
         "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
           "$ref": "#/definitions/nodeConfiguration"
+        },
+        "^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$": {
+          "$ref": "#/definitions/stateSetterConfiguration"
         }
       },
       "additionalProperties": false,
       "minProperties": 1,
       "maxProperties": 1
+    },
+    "stateSetterConfiguration": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Direct string value assignment for state setter (shorthand syntax)"
+        },
+        {
+          "type": "number",
+          "description": "Direct number value assignment for state setter (shorthand syntax)"
+        },
+        {
+          "type": "boolean",
+          "description": "Direct boolean value assignment for state setter (shorthand syntax)"
+        },
+        {
+          "type": "array",
+          "description": "Direct array value assignment for state setter (shorthand syntax)",
+          "items": {
+            "$ref": "#/definitions/parameterValue"
+          }
+        },
+        {
+          "type": "object",
+          "description": "Object value or configuration with explicit parameters and optional edge routes",
+          "properties": {},
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
+              "$ref": "#/definitions/parameterValue"
+            },
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?\\?$": {
+              "$ref": "#/definitions/edgeRoute"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   }
 }

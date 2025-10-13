@@ -197,8 +197,7 @@ export class NodeRegistry {
     }
     
     let currentDir = process.cwd();
-   // console.log(`🔍 [DEBUG] Finding monorepo root, starting from: ${currentDir}`);
-    
+
     // Walk up the directory tree to find the monorepo root
     while (currentDir !== path.dirname(currentDir)) {
       try {
@@ -209,15 +208,11 @@ export class NodeRegistry {
         const nodeFs = require('fs');
         const sharedExists = nodeFs.existsSync(sharedPath);
         const serverExists = nodeFs.existsSync(serverPath);
-        
-       // console.log(`🔍 [DEBUG] Checking ${currentDir}: shared=${sharedExists}, server=${serverExists}`);
-        
+
         if (sharedExists && serverExists) {
-        //  console.log(`✅ [DEBUG] Found monorepo root: ${currentDir}`);
           return currentDir;
         }
       } catch (error) {
-        console.log(`❌ [DEBUG] Error checking ${currentDir}:`, error);
         // Continue searching
       }
       
@@ -225,7 +220,6 @@ export class NodeRegistry {
     }
     
     // Fallback to current working directory
-    console.log(`⚠️  [DEBUG] Monorepo root not found, using fallback: ${process.cwd()}`);
     return process.cwd();
   }
 
@@ -241,15 +235,11 @@ export class NodeRegistry {
       return;
     }
 
-  //  console.log(`🔍 [DEBUG] Checking directory: ${directory} (source: ${source})`);
-
     // Check if directory exists before trying to glob
     try {
       await fs.access(directory);
-    //  console.log(`✅ [DEBUG] Directory exists: ${directory}`);
     } catch {
       // Directory doesn't exist, skip silently
-      console.log(`❌ [DEBUG] Directory does not exist: ${directory}`);
       return;
     }
 
@@ -268,39 +258,30 @@ export class NodeRegistry {
       return;
     }
     const pattern = path.join(directory, '**/*.{ts,js}');
-   // console.log(`🔍 [DEBUG] Scanning pattern: ${pattern}`);
     const files = await glob(pattern, { absolute: true });
-  //  console.log(`📁 [DEBUG] Found ${files.length} files:`, files);
 
     for (const file of files) {
       try {
         // Skip test files and index files
         if (file.includes('.test.') || file.endsWith('index.ts') || file.endsWith('index.js')) {
-          console.log(`⏭️  [DEBUG] Skipping ${file} (test/index file)`);
           continue;
         }
 
-      //  console.log(`📂 [DEBUG] Importing ${file}...`);
         const module = await import(/* @vite-ignore */ file);
-     //   console.log(`📦 [DEBUG] Module exports:`, Object.keys(module));
-        
+
         // Check for default export
         if (module.default && this.isWorkflowNode(module.default)) {
-      //    console.log(`✅ [DEBUG] Registering default export from ${file} as ${source} node`);
           await this.register(module.default, { source });
-        } else if (module.default) {
-          console.log(`❌ [DEBUG] Default export from ${file} is not a WorkflowNode`);
         }
         
         // Check for named exports
         for (const [exportName, exportValue] of Object.entries(module)) {
           if (exportName !== 'default' && this.isWorkflowNode(exportValue)) {
-         //   console.log(`✅ [DEBUG] Registering named export ${exportName} from ${file} as ${source} node`);
             await this.register(exportValue as typeof WorkflowNode, { source });
           }
         }
       } catch (error) {
-        console.warn(`❌ [DEBUG] Failed to load node from ${file}:`, error);
+        console.warn(`Failed to load node from ${file}:`, error);
       }
     }
   }
@@ -312,19 +293,28 @@ export class NodeRegistry {
    * @returns A new or singleton instance of the node
    */
   getInstance(nodeId: string, environment?: Environment): WorkflowNode {
-    // Ensure built-in nodes are registered (synchronous check for built-ins)
-    if (nodeId === '__state_setter__' && !this.builtInNodesRegistered) {
-      // Register synchronously for built-in nodes
-      try {
-        const { StateSetterNode } = require('../../nodes/StateSetterNode');
-        this.registerSync(StateSetterNode, { singleton: false, source: 'universal' });
-        this.builtInNodesRegistered = true;
-      } catch (error) {
-        throw new NodeNotFoundError(`Failed to register built-in node: ${nodeId}`);
+    // Check if node is already registered first
+    let registration = this.nodes.get(nodeId);
+
+    // Only attempt lazy load if node is NOT registered and it's a built-in node
+    // AND we're in Node.js environment (not browser)
+    if (!registration && nodeId === '__state_setter__' && !this.builtInNodesRegistered) {
+      // Check if we're in Node.js environment before attempting require()
+      const isNodeEnvironment = typeof globalThis === 'undefined' || !('window' in globalThis);
+
+      if (isNodeEnvironment) {
+        // Register synchronously for built-in nodes
+        try {
+          const { StateSetterNode } = require('../../nodes/StateSetterNode');
+          this.registerSync(StateSetterNode, { singleton: false, source: 'universal' });
+          this.builtInNodesRegistered = true;
+          registration = this.nodes.get(nodeId);
+        } catch (error) {
+          throw new NodeNotFoundError(`Failed to register built-in node: ${nodeId}`);
+        }
       }
     }
 
-    const registration = this.nodes.get(nodeId);
     if (!registration) {
       throw new NodeNotFoundError(nodeId);
     }
