@@ -15,7 +15,16 @@ export class FetchNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Browser-specific HTTP fetch operations - make API calls from the browser',
     inputs: ['url', 'method', 'headers', 'body'],
-    outputs: ['result', 'success', 'error']
+    outputs: ['result', 'success', 'error'],
+    ai_hints: {
+      purpose: 'Make HTTP requests from the browser using the Fetch API',
+      when_to_use: 'When you need to call REST APIs, fetch data from external services, or send HTTP requests from the client',
+      expected_edges: ['success', 'error'],
+      example_usage: '{"fetch-1": {"url": "https://api.example.com/data", "method": "GET", "success?": "process-response"}}',
+      example_config: '{"url": "string", "method?": "GET|POST|PUT|DELETE|PATCH", "headers?": "{}", "body?": "any"}',
+      get_from_state: [],
+      post_to_state: ['fetchResponse', 'fetchError']
+    }
   };
 
   async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {

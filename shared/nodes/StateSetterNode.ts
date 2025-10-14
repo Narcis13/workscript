@@ -18,9 +18,12 @@ export class StateSetterNode extends WorkflowNode {
     outputs: ['success', 'error'],
     ai_hints: {
       purpose: 'Set nested state values using $.path.to.state syntax',
-      when_to_use: 'Automatically used by parser when $.syntax is detected',
+      when_to_use: 'Automatically used by parser when $.syntax is detected in workflow definitions',
       expected_edges: ['success', 'error'],
-      example_usage: '{"$.config.timeout": {"value": 30, "success?": "next-node"}}'
+      example_usage: '{"$.config.timeout": {"value": 30, "success?": "next-node"}}',
+      example_config: '{"statePath": "string", "value": "any"}',
+      get_from_state: [],
+      post_to_state: ['<dynamic-path-from-config>', '_lastStateSet']
     }
   };
 

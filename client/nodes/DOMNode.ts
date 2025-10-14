@@ -15,7 +15,16 @@ export class DOMNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Browser-specific DOM manipulation operations',
     inputs: ['operation', 'selector', 'content', 'attribute'],
-    outputs: ['result', 'found', 'not_found']
+    outputs: ['result', 'found', 'not_found'],
+    ai_hints: {
+      purpose: 'Manipulate DOM elements in the browser (find, set text/HTML, manage attributes and classes)',
+      when_to_use: 'When you need to dynamically modify the HTML page structure or content in browser workflows',
+      expected_edges: ['success', 'error', 'found', 'not_found'],
+      example_usage: '{"dom-1": {"operation": "setText", "selector": "#message", "content": "Hello World", "success?": "next-node"}}',
+      example_config: '{"operation": "find|setText|setHTML|getAttribute|setAttribute|addClass|removeClass", "selector": "string", "content?": "string", "attribute?": "string"}',
+      get_from_state: [],
+      post_to_state: ['domElement', 'domTextSet', 'domHTMLSet', 'domAttribute', 'domAttributeSet', 'domClassAdded', 'domClassRemoved']
+    }
   };
 
   async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {

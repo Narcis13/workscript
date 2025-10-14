@@ -10,7 +10,16 @@ export class FileSystemNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Server-specific file system operations - read, write, and manage files',
     inputs: ['operation', 'path', 'content'],
-    outputs: ['result', 'content', 'exists']
+    outputs: ['result', 'content', 'exists'],
+    ai_hints: {
+      purpose: 'Perform file system operations on the server (read, write, delete, create directories)',
+      when_to_use: 'When you need to interact with the file system in server environments',
+      expected_edges: ['success', 'error', 'exists', 'not_exists'],
+      example_usage: '{"fs-1": {"operation": "read", "path": "/tmp/data.txt", "success?": "process-data"}}',
+      example_config: '{"operation": "read|write|exists|delete|mkdir", "path": "string", "content?": "string"}',
+      get_from_state: [],
+      post_to_state: ['fileContent', 'fileWritten', 'fileExists', 'fileDeleted', 'dirCreated']
+    }
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {

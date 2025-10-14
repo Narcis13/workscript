@@ -422,21 +422,14 @@ export class WorkflowParser {
             // Will fail at execution time with proper error message
           };
         } else {
-          // Treat all non-edge parameters as the value
-          // If there's only one, unwrap it; otherwise create an object
-          if (nonEdgeParamKeys.length === 1) {
-            finalConfig = {
-              statePath,
-              value: parameters[nonEdgeParamKeys[0]!]
-            };
-          } else {
-            finalConfig = {
-              statePath,
-              value: Object.fromEntries(
-                nonEdgeParamKeys.map(k => [k, parameters[k]])
-              )
-            };
-          }
+          // Treat all non-edge parameters as the value object
+          // Always preserve the object structure to avoid unwrapping
+          finalConfig = {
+            statePath,
+            value: Object.fromEntries(
+              nonEdgeParamKeys.map(k => [k, parameters[k]])
+            )
+          };
         }
       } else {
         // Fallback - shouldn't reach here

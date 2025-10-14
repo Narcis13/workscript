@@ -8,7 +8,16 @@ export class MathNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Universal math node - performs basic mathematical operations',
     inputs: ['operation', 'values'],
-    outputs: ['result']
+    outputs: ['result'],
+    ai_hints: {
+      purpose: 'Perform mathematical operations on numeric values',
+      when_to_use: 'When you need to calculate sums, differences, products, or quotients in a workflow',
+      expected_edges: ['success', 'error'],
+      example_usage: '{"math-1": {"operation": "add", "values": [10, 20, 30], "success?": "next-node"}}',
+      example_config: '{"operation": "add|subtract|multiply|divide", "values": "[number, ...]"}',
+      get_from_state: [],
+      post_to_state: ['mathResult']
+    }
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {

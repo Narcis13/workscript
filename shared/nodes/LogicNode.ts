@@ -8,7 +8,16 @@ export class LogicNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Universal logic node - performs boolean logic operations',
     inputs: ['operation', 'values'],
-    outputs: ['result']
+    outputs: ['result'],
+    ai_hints: {
+      purpose: 'Perform boolean logic operations and comparisons',
+      when_to_use: 'When you need conditional branching based on boolean logic (and, or, not) or value comparisons (equal, greater, less)',
+      expected_edges: ['true', 'false', 'error'],
+      example_usage: '{"logic-1": {"operation": "equal", "values": [10, 10], "true?": "success-path", "false?": "failure-path"}}',
+      example_config: '{"operation": "and|or|not|equal|greater|less", "values": "[any, ...]"}',
+      get_from_state: [],
+      post_to_state: ['logicResult']
+    }
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {

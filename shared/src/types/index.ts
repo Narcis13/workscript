@@ -9,6 +9,9 @@ export interface AIHints {
   when_to_use: string;
   expected_edges: string[];
   example_usage?: string;
+  example_config?: string; // Stringified JSON object showing expected config structure (use ? for optional keys)
+  get_from_state?: string[]; // Array of state keys that the node reads during execution
+  post_to_state?: string[]; // Array of state keys that the node writes to during execution
 }
 export interface NodeMetadata {
   id: string;

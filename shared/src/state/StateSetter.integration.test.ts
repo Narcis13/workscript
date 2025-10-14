@@ -53,6 +53,55 @@ describe('State Setter Integration Tests', () => {
       expect(result.finalState?.config).toEqual({ timeout: 30 });
     });
 
+    it('should preserve object structure with shorthand syntax (no explicit value key)', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'test-shorthand-object',
+        name: 'Test Shorthand Object',
+        version: '1.0.0',
+        workflow: [
+          {
+            '$.author': {
+              name: 'Narcis Brindusescu'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      // Should store the entire object, not just the value
+      expect(result.finalState?.author).toEqual({ name: 'Narcis Brindusescu' });
+    });
+
+    it('should preserve multi-property object structure with shorthand syntax', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'test-multi-property-object',
+        name: 'Test Multi-Property Object',
+        version: '1.0.0',
+        workflow: [
+          {
+            '$.user': {
+              name: 'John Doe',
+              email: 'john@example.com',
+              age: 30
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.user).toEqual({
+        name: 'John Doe',
+        email: 'john@example.com',
+        age: 30
+      });
+    });
+
     it('should set deeply nested state', async () => {
       const workflow: WorkflowDefinition = {
         id: 'test-deep-nested',

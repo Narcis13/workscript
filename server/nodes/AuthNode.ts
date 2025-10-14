@@ -9,7 +9,16 @@ export class AuthNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Server-specific authentication operations - hash passwords, validate tokens, etc.',
     inputs: ['operation', 'data', 'secret'],
-    outputs: ['result', 'valid', 'invalid']
+    outputs: ['result', 'valid', 'invalid'],
+    ai_hints: {
+      purpose: 'Perform cryptographic operations for authentication (hashing, token generation, signature verification)',
+      when_to_use: 'When you need to hash passwords, verify credentials, generate tokens, or sign/verify data in server environments',
+      expected_edges: ['success', 'error', 'valid', 'invalid'],
+      example_usage: '{"auth-1": {"operation": "hash", "data": "password123", "success?": "store-hash"}}',
+      example_config: '{"operation": "hash|verify|generate_token|sign|verify_signature", "data": "string|object", "secret?": "string"}',
+      get_from_state: [],
+      post_to_state: ['hashedPassword', 'authValid', 'authToken', 'signature', 'signatureValid']
+    }
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {

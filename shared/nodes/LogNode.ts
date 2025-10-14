@@ -8,7 +8,16 @@ export class LogNode extends WorkflowNode {
     version: '1.0.0',
     description: 'A node that logs messages with state resolution support',
     inputs: ['message'],
-    outputs: ['message']
+    outputs: ['message'],
+    ai_hints: {
+      purpose: 'Log messages to console for debugging and monitoring workflow execution',
+      when_to_use: 'When you need to output debugging information or track workflow progress',
+      expected_edges: ['success'],
+      example_usage: '{"log-1": {"message": "Processing started", "success?": "next-node"}}',
+      example_config: '{"message": "string"}',
+      get_from_state: [],
+      post_to_state: ['lastLoggedMessage', 'logNodeExecuted']
+    }
   };
 
   async execute(context: ExecutionContext,config?: any): Promise<EdgeMap> {

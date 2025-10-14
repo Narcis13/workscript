@@ -8,7 +8,16 @@ export class DataTransformNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Universal data transformation node - transforms data between formats',
     inputs: ['operation', 'data'],
-    outputs: ['result']
+    outputs: ['result'],
+    ai_hints: {
+      purpose: 'Transform data between different formats and apply string/array operations',
+      when_to_use: 'When you need to convert JSON, change text case, trim strings, get lengths, or reverse arrays/strings',
+      expected_edges: ['success', 'error'],
+      example_usage: '{"transform-1": {"operation": "stringify", "data": {"key": "value"}, "success?": "next-node"}}',
+      example_config: '{"operation": "stringify|parse|uppercase|lowercase|trim|length|reverse", "data": "any"}',
+      get_from_state: [],
+      post_to_state: ['transformResult']
+    }
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {

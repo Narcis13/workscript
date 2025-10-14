@@ -38,10 +38,11 @@ export function WorkflowDemo() {
           developer: 'Narcis Brindusescu'
         },
         workflow: [
+          'empty',
           'log-input',
           {'$.author': {'name': 'Narcis Brindusescu'}},
          
-          'empty',
+        
           'log'
         ]
       };

@@ -8,7 +8,16 @@ export class DatabaseNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Server-specific database operations - mock database for demonstration',
     inputs: ['operation', 'table', 'data', 'query'],
-    outputs: ['result', 'found', 'not_found']
+    outputs: ['result', 'found', 'not_found'],
+    ai_hints: {
+      purpose: 'Perform CRUD operations on an in-memory mock database',
+      when_to_use: 'When you need to insert, find, update, delete, or list database records in server environments',
+      expected_edges: ['success', 'error', 'found', 'not_found'],
+      example_usage: '{"db-1": {"operation": "insert", "table": "users", "data": {"id": "1", "name": "John"}, "success?": "next-node"}}',
+      example_config: '{"operation": "insert|find|update|delete|list", "table": "string", "data?": "object", "query?": "object"}',
+      get_from_state: [],
+      post_to_state: ['dbInserted', 'dbRecord', 'dbUpdated', 'dbDeleted', 'dbRecords']
+    }
   };
 
   private static mockDB: Map<string, Map<string, any>> = new Map();

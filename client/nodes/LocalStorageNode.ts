@@ -14,7 +14,16 @@ export class LocalStorageNode extends WorkflowNode {
     version: '1.0.0',
     description: 'Browser-specific local storage operations - store and retrieve data in browser',
     inputs: ['operation', 'key', 'value'],
-    outputs: ['result', 'found', 'not_found']
+    outputs: ['result', 'found', 'not_found'],
+    ai_hints: {
+      purpose: 'Persist and retrieve data in browser localStorage',
+      when_to_use: 'When you need to store data in the browser that persists across sessions',
+      expected_edges: ['success', 'error', 'found', 'not_found'],
+      example_usage: '{"storage-1": {"operation": "set", "key": "username", "value": "john", "success?": "next-node"}}',
+      example_config: '{"operation": "set|get|remove|clear|keys", "key": "string", "value?": "any"}',
+      get_from_state: [],
+      post_to_state: ['localStorageSet', 'localStorageValue', 'localStorageRemoved', 'localStorageCleared', 'localStorageKeys']
+    }
   };
 
   async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {
