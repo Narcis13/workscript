@@ -75,13 +75,13 @@ export class PropertyRepository {
 
   async findByType(propertyType: string, transactionType?: string, agencyId?: number): Promise<Property[]> {
     let whereClause = eq(properties.propertyType, propertyType as any);
-    
+
     if (transactionType) {
-      whereClause = and(whereClause, eq(properties.transactionType, transactionType as any));
+      whereClause = and(whereClause, eq(properties.transactionType, transactionType as any))!;
     }
-    
+
     if (agencyId) {
-      whereClause = and(whereClause, eq(properties.agencyId, agencyId));
+      whereClause = and(whereClause, eq(properties.agencyId, agencyId))!;
     }
 
     return db.select()
@@ -92,9 +92,9 @@ export class PropertyRepository {
 
   async findByPriceRange(minPrice: number, maxPrice: number, agencyId?: number): Promise<Property[]> {
     let whereClause = between(properties.price, minPrice.toString(), maxPrice.toString());
-    
+
     if (agencyId) {
-      whereClause = and(whereClause, eq(properties.agencyId, agencyId));
+      whereClause = and(whereClause, eq(properties.agencyId, agencyId))!;
     }
 
     return db.select()
@@ -105,9 +105,9 @@ export class PropertyRepository {
 
   async findByCity(city: string, agencyId?: number): Promise<Property[]> {
     let whereClause = eq(properties.city, city);
-    
+
     if (agencyId) {
-      whereClause = and(whereClause, eq(properties.agencyId, agencyId));
+      whereClause = and(whereClause, eq(properties.agencyId, agencyId))!;
     }
 
     return db.select()

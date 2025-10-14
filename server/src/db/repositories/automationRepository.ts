@@ -158,10 +158,12 @@ export class AutomationRepository {
 
   // Advanced queries with joins
   async findAutomationsWithWorkflow(): Promise<(Automation & { workflow: any })[]> {
-    return db.select()
+    const result = await db.select()
       .from(automations)
       .leftJoin(workflows, eq(automations.workflowId, workflows.id))
       .orderBy(desc(automations.createdAt));
+
+    return result.map(row => ({ ...row.automations, workflow: row.workflows }));
   }
 
   async findAutomationWithWorkflowById(id: string): Promise<(Automation & { workflow: any }) | null> {
@@ -169,8 +171,8 @@ export class AutomationRepository {
       .from(automations)
       .leftJoin(workflows, eq(automations.workflowId, workflows.id))
       .where(eq(automations.id, id));
-    
-    return result[0] || null;
+
+    return result[0] ? { ...result[0].automations, workflow: result[0].workflows } : null;
   }
 
   // Statistics and analytics

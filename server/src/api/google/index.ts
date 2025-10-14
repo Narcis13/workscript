@@ -130,7 +130,7 @@ googleAuthRoutes.get('/status', (c) => {
             authenticated: true,
             email: storedTokens.user_email,
             hasRefreshToken: !!storedTokens.refresh_token,
-            tokenExpires: new Date(storedTokens.expiry_date).toISOString()
+            tokenExpires: storedTokens.expiry_date ? new Date(storedTokens.expiry_date).toISOString() : null
         });
     } else {
         return c.json({ authenticated: false, email });

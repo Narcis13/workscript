@@ -461,7 +461,11 @@ export class ContactRepository {
       .where(eq(contacts.id, contactId))
       .limit(1);
 
-    const contact = contactResult.length > 0 ? contactResult[0] : null;
+    const contact: (Contact & { assignedAgentName?: string; assignedAgentPhone?: string }) | null = contactResult.length > 0 ? {
+      ...contactResult[0],
+      assignedAgentName: (contactResult[0]?.assignedAgentName) ?? undefined,
+      assignedAgentPhone: (contactResult[0]?.assignedAgentPhone) ?? undefined
+    } as Contact & { assignedAgentName?: string; assignedAgentPhone?: string } : null;
     if (!contact) {
       return {
         contact: null,

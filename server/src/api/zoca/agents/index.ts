@@ -68,7 +68,7 @@ agents.post('/import', async (c) => {
         }
 
         // Parse first name from Nume (first two words)
-        const nameParts = nume.split(' ').filter(part => part.length > 0)
+        const nameParts = nume.split(' ').filter((part: string) => part.length > 0)
         const firstName = nameParts.slice(0, 2).join(' ')
         const lastName = nameParts.slice(2).join(' ') || ''
 

@@ -50,7 +50,7 @@ export function saveOrUpdateTokens(email: string, tokens: Credentials): void {
             SET access_token = ?, scope = ?, token_type = ?, expiry_date = ?, updated_at = CURRENT_TIMESTAMP
             WHERE user_email = ?
         `);
-        stmt.run(tokens.access_token, tokens.scope, tokens.token_type, tokens.expiry_date, email);
+        stmt.run(tokens.access_token ?? null, tokens.scope ?? null, tokens.token_type ?? null, tokens.expiry_date ?? null, email);
         console.log(`Tokens updated for ${email} (without changing refresh_token).`);
     } else {
         // This is for the first-time login or when a new refresh token is explicitly granted.
@@ -64,7 +64,7 @@ export function saveOrUpdateTokens(email: string, tokens: Credentials): void {
                 expiry_date = excluded.expiry_date,
                 updated_at = CURRENT_TIMESTAMP;
         `);
-        stmt.run(email, tokens.access_token, tokens.refresh_token, tokens.scope, tokens.token_type, tokens.expiry_date);
+        stmt.run(email, tokens.access_token ?? null, tokens.refresh_token ?? null, tokens.scope ?? null, tokens.token_type ?? null, tokens.expiry_date ?? null);
         console.log(`Tokens saved/updated for ${email} (with new refresh_token).`);
     }
 }
@@ -96,7 +96,7 @@ export async function getValidAccessToken(email: string, oauth2Helper: GoogleOAu
     }
 
     // Check if the token is expired or will expire in the next 60 seconds
-    const isExpired = Date.now() >= (storedTokens.expiry_date - 60000);
+    const isExpired = storedTokens.expiry_date ? Date.now() >= (storedTokens.expiry_date - 60000) : true;
 
     if (isExpired) {
         console.log(`Access token for ${email} has expired. Refreshing...`);

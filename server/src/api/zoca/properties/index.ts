@@ -145,16 +145,21 @@ async function transformPropertyData(incomingData: any) {
         if (!finalAgentId) {
             const activeAgents = await agentsRepository.findActiveByAgency(agencyId)
             if (activeAgents.length > 0) {
-                finalAgentId = activeAgents[0].id
+                finalAgentId = activeAgents[0]?.id ?? null
             } else {
                 // Fallback: get any agent from the agency
                 const allAgents = await agentsRepository.findByAgency(agencyId)
                 if (allAgents.length > 0) {
-                    finalAgentId = allAgents[0].id
+                    finalAgentId = allAgents[0]?.id ?? null
                 } else {
                     throw new Error('No agents found in the agency. Please create at least one agent before importing properties.')
                 }
             }
+        }
+
+        // Ensure finalAgentId is not null before creating property
+        if (!finalAgentId) {
+            throw new Error('Could not determine agent ID for property.')
         }
         
         // Determine property and transaction types
@@ -187,8 +192,8 @@ async function transformPropertyData(incomingData: any) {
             sector: locationData.sector,
             neighborhood: locationData.neighborhood,
             address: address,
-            latitude: descriptionResult.latitude,
-            longitude: descriptionResult.longitude,
+            latitude: descriptionResult.latitude !== null ? descriptionResult.latitude.toString() : null,
+            longitude: descriptionResult.longitude !== null ? descriptionResult.longitude.toString() : null,
             
             // Property details
             surfaceArea: surfaceArea > 0 ? surfaceArea.toString() : null,
@@ -269,14 +274,14 @@ function parseSurface(surfaceStr: string | undefined): number {
     if (!surfaceStr) return 0
     // Extract number from strings like "66.00 m" or "55.00 m"
     const match = surfaceStr.match(/(\d+(?:\.\d+)?)/);
-    return match ? parseFloat(match[1]) : 0
+    return match && match[1] ? parseFloat(match[1]) : 0
 }
 
 function parseRooms(roomStr: string | undefined): number {
     if (!roomStr) return 0
     // Extract number from strings like "2 cam." or "1 dorm."
     const match = roomStr.match(/(\d+)/);
-    return match ? parseInt(match[1], 10) : 0
+    return match && match[1] ? parseInt(match[1], 10) : 0
 }
 
 function parseFloorData(floorStr: string): { floor: number | null, totalFloors: number | null } {
