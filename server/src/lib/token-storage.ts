@@ -81,6 +81,16 @@ export function getTokensForUser(email: string): StoredTokenInfo | null {
 }
 
 /**
+ * Deletes stored tokens for a user (e.g., when the refresh token is invalid).
+ * @param email The user's email.
+ */
+export function deleteTokensForUser(email: string): void {
+    const stmt = db.prepare("DELETE FROM google_tokens WHERE user_email = ?");
+    stmt.run(email);
+    console.log(`Deleted tokens for ${email}.`);
+}
+
+/**
  * Gets a valid access token for a user, automatically refreshing it if it's expired.
  * This is the primary function your application should use to get a token for API calls.
  * @param email The user's email.
@@ -115,9 +125,18 @@ export async function getValidAccessToken(email: string, oauth2Helper: GoogleOAu
             saveOrUpdateTokens(email, updatedTokens);
 
             return updatedTokens.access_token!;
-        } catch (error) {
+        } catch (error: any) {
             console.error(`Failed to refresh access token for ${email}:`, error);
-            return null; // Refresh failed
+
+            // Check if this is an invalid_grant error (refresh token expired/revoked)
+            if (error.message?.includes('invalid_grant') || error.response?.data?.error === 'invalid_grant') {
+                console.warn(`Refresh token for ${email} is invalid (expired or revoked). Deleting stored tokens.`);
+                deleteTokensForUser(email);
+                // Throw a specific error that the API can catch
+                throw new Error('REFRESH_TOKEN_EXPIRED');
+            }
+
+            return null; // Other refresh errors
         }
     } else {
         console.log(`Existing access token for ${email} is still valid.`);

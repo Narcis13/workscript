@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { GoogleOAuth2Helper } from '../../lib/google-oauth2';
-import { saveOrUpdateTokens, getTokensForUser, getValidAccessToken } from '../../lib/token-storage';
+import { saveOrUpdateTokens, getTokensForUser, getValidAccessToken, deleteTokensForUser } from '../../lib/token-storage';
 
 const googleAuthRoutes = new Hono();
 
@@ -137,7 +137,7 @@ googleAuthRoutes.get('/status', (c) => {
     }
 });
 
-// Gmail profile route (unchanged)
+// Gmail profile route
 googleAuthRoutes.get('/gmail/profile', async (c) => {
     const email = c.req.query('email');
     if (!email) {
@@ -159,8 +159,20 @@ googleAuthRoutes.get('/gmail/profile', async (c) => {
             token:accessToken
         });
 
-    } catch(error) {
+    } catch(error: any) {
         console.error("Error fetching gmail profile:", error);
+
+        // Handle expired refresh token specifically
+        if (error.message === 'REFRESH_TOKEN_EXPIRED') {
+            return c.json({
+                error: `The refresh token for ${email} has expired or been revoked. Please re-authenticate.`,
+                code: 'REFRESH_TOKEN_EXPIRED',
+                requiresReauth: true,
+                authUrl: '/auth/google',
+                suggestion: `Visit http://localhost:3013/auth/google to re-authenticate with your Google account.`
+            }, 401);
+        }
+
         return c.json({ error: "Failed to fetch profile." }, 500);
     }
 });

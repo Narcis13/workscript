@@ -66,8 +66,7 @@ export class GoogleOAuth2Helper {
         const authParams: any = {
             access_type: 'offline',
             scope: this.scopes,
-           // prompt: 'consent',
-          //  state: Date.now().toString()
+            prompt: 'consent', // Force consent screen to always get a refresh token
         };
 
         if (usePKCE) {
