@@ -9,26 +9,26 @@ export class ListEmailsNode extends WorkflowNode {
         name: 'List Gmail Emails',
         description: 'Lists emails from a Gmail account with optional filtering and detailed retrieval',
         version: '1.0.0',
-        inputs: ['userId', 'query', 'labelIds', 'maxResults', 'pageToken', 'includeSpamTrash', 'getFullDetails'],
+        inputs: ['userId', 'mailbox', 'query', 'labelIds', 'maxResults', 'pageToken', 'includeSpamTrash', 'getFullDetails'],
         outputs: ['success', 'error', 'config_error', 'no_results'],
         ai_hints: {
             purpose: 'List emails from a Gmail account',
             when_to_use: 'When you need to retrieve a list of emails from a Gmail account',
             expected_edges: ['success', 'error', 'config_error', 'no_results'],
-            example_usage: 'List emails from a Gmail account with optional query filters and pagination'
+            example_usage: 'List emails from a Gmail account. Use mailbox parameter to specify "inbox", "sent", "drafts", "spam", "trash", or "all". Advanced users can use labelIds directly for custom label filtering.'
         }
     }
 
     async execute(context: ExecutionContext, config?: Record<string, any>): Promise<EdgeMap> {
-        console.log('========== ListEmailsNode.execute() START ==========');
-        console.log('Config:', config);
+      //  console.log('========== ListEmailsNode.execute() START ==========');
+      //  console.log('Config:', config);
         
         const accessToken = context.state.google_token;
         const profile = context.state.gmail_profile;
         
-        console.log('Access token:', accessToken ? 'present' : 'missing');
-        console.log('Profile:', profile);
-        console.log(`Listing emails for user: ${profile?.emailAddress || 'unknown'}`);
+     //   console.log('Access token:', accessToken ? 'present' : 'missing');
+      //  console.log('Profile:', profile);
+      //  console.log(`Listing emails for user: ${profile?.emailAddress || 'unknown'}`);
 
         interface EmailHeader {
             name?: string | null | undefined;
@@ -51,18 +51,38 @@ export class ListEmailsNode extends WorkflowNode {
             oauth2Client.setCredentials({ access_token: accessToken });
             const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+            // Map user-friendly mailbox parameter to Gmail labelIds
+            let labelIds = config?.labelIds;
+            if (config?.mailbox && !labelIds) {
+                const mailboxMap: Record<string, string[]> = {
+                    'inbox': ['INBOX'],
+                    'sent': ['SENT'],
+                    'drafts': ['DRAFT'],
+                    'spam': ['SPAM'],
+                    'trash': ['TRASH'],
+                    'all': undefined as any, // Explicitly fetch all
+                };
+
+                const mailboxLower = config.mailbox.toLowerCase();
+                if (mailboxMap[mailboxLower] !== undefined) {
+                    labelIds = mailboxMap[mailboxLower];
+                } else {
+                    console.warn(`Unknown mailbox value: ${config.mailbox}. Using default (all emails).`);
+                }
+            }
+
             const requestParams = {
                 userId: config?.userId || profile?.emailAddress || "me",
                 q: config?.query,
-                labelIds: config?.labelIds,
+                labelIds: labelIds,
                 maxResults: config?.maxResults || 25,
                 pageToken: config?.pageToken,
                 includeSpamTrash: config?.includeSpamTrash || false,
             };
-            
+
             // Remove undefined values
-            Object.keys(requestParams).forEach(key => 
-                requestParams[key as keyof typeof requestParams] === undefined && 
+            Object.keys(requestParams).forEach(key =>
+                requestParams[key as keyof typeof requestParams] === undefined &&
                 delete requestParams[key as keyof typeof requestParams]
             );
 
@@ -123,7 +143,7 @@ export class ListEmailsNode extends WorkflowNode {
                 resultPayload
             });
             
-            console.log(finalEmails[0]);
+          //  console.log(finalEmails[0]);
             return { success: () => resultPayload };
 
         } catch (error) {
