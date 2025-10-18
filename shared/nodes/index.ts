@@ -14,6 +14,34 @@ export { EmptyNode } from './EmptyNode';
 export { LogNode } from './LogNode';
 export { StateSetterNode } from './StateSetterNode';
 
+// Import data manipulation nodes
+export { SplitOutNode } from './data/SplitOutNode';
+export { AggregateNode } from './data/AggregateNode';
+export { RemoveDuplicatesNode } from './data/RemoveDuplicatesNode';
+export { SortNode } from './data/SortNode';
+export { LimitNode } from './data/LimitNode';
+
+// Import data transformation nodes
+export { EditFieldsNode } from './data/EditFieldsNode';
+export { SummarizeNode } from './data/SummarizeNode';
+
+// Import object manipulation nodes
+export { TransformObjectNode } from './data/TransformObjectNode';
+export { JSONExtractNode } from './data/JSONExtractNode';
+
+// Import string manipulation nodes
+export { StringOperationsNode } from './data/StringOperationsNode';
+export { ExtractTextNode } from './data/ExtractTextNode';
+
+// Import comparison & filtering nodes
+export { FilterNode } from './data/FilterNode';
+export { CompareDatasetsNode } from './data/CompareDatasetsNode';
+export { SwitchNode } from './data/SwitchNode';
+
+// Import calculation nodes
+export { CalculateFieldNode } from './data/CalculateFieldNode';
+export { MathOperationsNode } from './data/MathOperationsNode';
+
 // Import for array creation
 import { MathNode } from './MathNode';
 import { LogicNode } from './LogicNode';
@@ -21,6 +49,22 @@ import { DataTransformNode } from './DataTransformNode';
 import { EmptyNode } from './EmptyNode';
 import { LogNode } from './LogNode';
 import { StateSetterNode } from './StateSetterNode';
+import { SplitOutNode } from './data/SplitOutNode';
+import { AggregateNode } from './data/AggregateNode';
+import { RemoveDuplicatesNode } from './data/RemoveDuplicatesNode';
+import { SortNode } from './data/SortNode';
+import { LimitNode } from './data/LimitNode';
+import { EditFieldsNode } from './data/EditFieldsNode';
+import { SummarizeNode } from './data/SummarizeNode';
+import { TransformObjectNode } from './data/TransformObjectNode';
+import { JSONExtractNode } from './data/JSONExtractNode';
+import { StringOperationsNode } from './data/StringOperationsNode';
+import { ExtractTextNode } from './data/ExtractTextNode';
+import { FilterNode } from './data/FilterNode';
+import { CompareDatasetsNode } from './data/CompareDatasetsNode';
+import { SwitchNode } from './data/SwitchNode';
+import { CalculateFieldNode } from './data/CalculateFieldNode';
+import { MathOperationsNode } from './data/MathOperationsNode';
 import type { WorkflowNode } from '../src/types';
 
 /**
@@ -33,7 +77,29 @@ export const UNIVERSAL_NODES: Array<typeof WorkflowNode> = [
   DataTransformNode,
   EmptyNode,
   LogNode,
-  StateSetterNode
+  StateSetterNode,
+  // Data manipulation nodes
+  SplitOutNode,
+  AggregateNode,
+  RemoveDuplicatesNode,
+  SortNode,
+  LimitNode,
+  // Data transformation nodes
+  EditFieldsNode,
+  SummarizeNode,
+  // Object manipulation nodes
+  TransformObjectNode,
+  JSONExtractNode,
+  // String manipulation nodes
+  StringOperationsNode,
+  ExtractTextNode,
+  // Comparison & filtering nodes
+  FilterNode,
+  CompareDatasetsNode,
+  SwitchNode,
+  // Calculation nodes
+  CalculateFieldNode,
+  MathOperationsNode
 ];
 
 /**

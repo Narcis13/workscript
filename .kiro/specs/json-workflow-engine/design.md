@@ -1,198 +1,1602 @@
-# Design Document
+# Design Document - Agentic Workflow Orchestration System
+
+## Document Metadata
+
+**Version:** 2.0.0
+**Last Updated:** 2025-01-18
+**Status:** Current Implementation
+**Architecture:** Shared-Core Multi-Environment
+
+---
+
+## Executive Summary
+
+The Agentic Workflow Orchestration System is a sophisticated, production-grade workflow execution engine built on a **shared-core architecture** that enables workflow execution across multiple environments (server, client, CLI). The system processes JSON-defined workflows through a comprehensive TypeScript implementation featuring advanced capabilities including lifecycle hooks, real-time event streaming, database persistence, UI workflow generation, and distributed node architectures.
+
+**Key Architectural Achievements:**
+- ✅ Fully implemented shared-core engine in `/shared` package
+- ✅ Advanced hook system for workflow lifecycle management
+- ✅ State resolution with `$.key` syntax sugar for elegant state access
+- ✅ State setter nodes with `$.path` syntax for direct state manipulation
+- ✅ WebSocket-based real-time event system for workflow monitoring
+- ✅ Database-backed workflow persistence and automation scheduling
+- ✅ UI workflow system for generating interactive user interfaces
+- ✅ Comprehensive data manipulation node library
+- ✅ Multi-environment node discovery and registration
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [System Architecture](#system-architecture)
+3. [Core Components](#core-components)
+4. [Advanced Features](#advanced-features)
+5. [Node Architecture](#node-architecture)
+6. [State Management](#state-management)
+7. [Hook System](#hook-system)
+8. [WebSocket Integration](#websocket-integration)
+9. [Database Layer](#database-layer)
+10. [Data Models](#data-models)
+11. [API Design](#api-design)
+12. [Testing Strategy](#testing-strategy)
+13. [Implementation Patterns](#implementation-patterns)
+14. [Technology Stack](#technology-stack)
+15. [Deployment Architecture](#deployment-architecture)
+
+---
 
 ## Overview
 
-The Agentic Workflow Engine is a sophisticated, node-based workflow execution system designed to process JSON-defined workflows with dynamic routing capabilities across **multiple environments** (server, client, CLI). The architecture leverages TypeScript's type system for compile-time safety while providing runtime flexibility through an abstract node system and edge-based routing. The engine enables complex business logic orchestration through a declarative JSON format, making workflow creation accessible to non-programmers while maintaining the power and extensibility needed for complex enterprise scenarios.
+### System Purpose
 
-The system is built on a **shared, modular architecture** that separates concerns into distinct components: workflow parsing and validation, node registry and discovery, execution orchestration, and state management. Each component is designed to be independently testable and scalable, following SOLID principles and leveraging modern TypeScript patterns. The **monorepo structure with shared core engine** ensures type safety across packages while enabling **multi-environment deployment** and **distributed node architectures**.
+The Agentic Workflow Orchestration System provides a declarative, JSON-based approach to defining and executing complex workflows with support for:
 
-**Implementation Status**: The core components are fully implemented with advanced features including AST-like workflow parsing, comprehensive state management with snapshots and locking, and sophisticated edge routing with nested configurations. The execution engine supports both simple and complex workflow patterns with robust error handling and loop detection. **The architecture is being migrated to a shared model** to enable the same engine to run across server, client, and future CLI environments with **distributed node discovery**.
+- **Conditional routing** - Dynamic execution paths based on node outcomes
+- **Loop control** - Iterative processing with automatic loop detection
+- **State management** - Shared state with atomic updates, snapshots, and change tracking
+- **Multi-environment execution** - Same workflows run on server, client, or CLI
+- **Real-time monitoring** - WebSocket-based event streaming
+- **Database persistence** - Workflow storage and scheduled automation
+- **UI generation** - Dynamic user interface creation from workflow definitions
+- **Extensibility** - Plugin architecture for custom nodes and integrations
 
-## Key Implementation Enhancements
+### Design Philosophy
 
-The current implementation significantly exceeds the original requirements with these advanced features:
+The system follows these core principles:
 
-### 1. AST-like Workflow Parsing
-- **Enhanced ParsedNode Structure**: Includes parent/child relationships, depth tracking, and unique IDs
-- **Tree-based Parsing**: Full recursive parsing creating hierarchical workflow structures
-- **Complex Edge Types**: Three distinct edge types (simple, sequence, nested) with typed routing
+1. **Shared-Core Architecture** - Core engine resides in shared package, enabling multi-environment deployment
+2. **Distributed Nodes** - Nodes organized by environment compatibility (universal, server, client)
+3. **Type Safety** - Full TypeScript implementation with comprehensive type definitions
+4. **Event-Driven** - Lifecycle hooks and real-time event system for observability
+5. **Declarative Workflows** - JSON-based workflow definitions accessible to non-programmers
+6. **Zero External Dependencies in Core** - Shared engine has minimal dependencies for maximum portability
+7. **Single Responsibility** - Each component has a clear, focused purpose
 
-### 2. Advanced State Management
-- **Atomic Updates**: Thread-safe state modifications with optional key locking
-- **Snapshot System**: Memento pattern implementation for state rollback capability
-- **Edge Context Passing**: Temporary data passing between nodes via edges
-- **Persistence Adapter**: Optional external storage support for workflow state
-- **Automatic Cleanup**: Scheduled state cleanup for completed executions
+### Implementation Status
 
-### 3. Sophisticated Execution Engine
-- **Loop Node Support**: Built-in loop node execution with `...` suffix syntax
-- **Loop Detection**: Built-in iteration limits and loop tracking with MAX_LOOP_ITERATIONS safety
-- **Loop Execution Logic**: Automatic loop-back routing when nodes return 'loop' edges
-- **Error Recovery**: Comprehensive error handling with typed exceptions
-- **Nested Node Execution**: Full support for deeply nested workflow configurations
-- **Context Enhancement**: Extended execution context with edge data integration
-- **Registry Mapping**: Smart node instance lookup for loop nodes using base node types
+**Current State:** Production-ready with advanced features
 
-### 4. Enhanced Type Safety
-- **Comprehensive Error Types**: Specific error classes for different failure scenarios
-- **Typed Edge Routing**: Strongly typed edge structures for better compile-time safety
-- **Advanced Interfaces**: Rich type definitions supporting complex workflow patterns
+| Component | Status | Location | Notes |
+|-----------|--------|----------|-------|
+| ExecutionEngine | ✅ Complete | `/shared/src/engine/` | Full AST-based execution with hooks |
+| WorkflowParser | ✅ Complete | `/shared/src/parser/` | JSON Schema + semantic validation |
+| StateManager | ✅ Complete | `/shared/src/state/` | Snapshots, watchers, change detection |
+| NodeRegistry | ✅ Complete | `/shared/src/registry/` | Multi-package discovery |
+| HookManager | ✅ Complete | `/shared/src/hooks/` | Lifecycle hook system |
+| StateResolver | ✅ Complete | `/shared/src/state/` | $.key syntax resolution |
+| WebSocket System | ✅ Complete | `/shared/src/events/` + `/server/src/services/` | Real-time event streaming |
+| Database Layer | ✅ Complete | `/server/src/db/` | Drizzle ORM with MySQL |
+| UI Workflow System | ✅ Complete | `/shared/src/types/` + `/client/nodes/ui/` | UINode base class |
+| Data Manipulation Nodes | ✅ Complete | `/shared/nodes/data/` | Comprehensive library |
+| REST API | ✅ Complete | `/server/src/api/` | Hono-based endpoints |
+| CronScheduler | ✅ Complete | `/server/src/services/` | Automated workflow execution |
 
-### 5. Production-Ready Features
-- **Unique ID Generation**: UUID-based execution and node identification
-- **Timeout Support**: Configurable execution timeouts
-- **Memory Management**: Automatic cleanup and resource management
-- **Extensible Architecture**: Plugin-ready design with adapter patterns
+---
 
-### 6. Single-Edge Design Pattern
-- **Simplified Node Logic**: Nodes determine internally which single edge to return (99% use case)
-- **Context-Driven Decisions**: Edge selection based on execution context, state, and configuration
-- **Clean Data Flow**: Each node returns one edge with data for the next node
-- **Predictable Execution**: Eliminates complex conditional edge mapping for better maintainability
-
-## Architecture
-
-### Shared Multi-Environment Architecture
-
-The Agentic Workflow Engine follows a **shared-core architecture** pattern with the core engine residing in a shared package that can be imported and used across multiple environments. The architecture provides clear separation between the shared workflow engine, environment-specific implementations, and distributed node systems.
-
-**Key Architectural Principles:**
-- **Shared Core Engine**: All core workflow logic resides in `/shared` package
-- **Environment-Agnostic Design**: Core engine works in browser, server, CLI contexts
-- **Distributed Node Architecture**: Nodes are organized by environment compatibility
-- **Zero External Dependencies**: Shared engine has minimal dependencies for maximum portability
-- **Type Safety**: Full TypeScript support across all environments
+## System Architecture
 
 ### High-Level Architecture
 
-The system is designed for **multi-environment deployment** with the same core engine running in server APIs, client applications, CLI tools, and future environments.
+The system implements a **shared-core monorepo architecture** with three main packages:
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        WD[Workflow Definition JSON]
-        API[REST API Client]
+    subgraph "Client Layer (Browser)"
+        CL[Client Application]
+        CLUI[UI Components]
+        CLNODES[Client Nodes]
     end
-    
-    subgraph "Server Layer"
-        HAPI[Hono API Server]
-        WP[Workflow Parser]
+
+    subgraph "API Layer (Server)"
+        API[Hono REST API]
+        WS[WebSocket Server]
+        CRON[Cron Scheduler]
+        SVNODES[Server Nodes]
+    end
+
+    subgraph "Shared Core Engine"
         EE[Execution Engine]
+        WP[Workflow Parser]
         NR[Node Registry]
         SM[State Manager]
+        SR[State Resolver]
+        HM[Hook Manager]
+        ES[Event System]
+        UNNODES[Universal Nodes]
     end
-    
-    subgraph "Node Layer"
-        CN[Core Nodes]
-        UN[User Nodes]
-        EN[External Nodes]
+
+    subgraph "Persistence Layer"
+        DB[(Database - MySQL)]
+        FS[(File System)]
     end
-    
-    subgraph "Data Layer"
-        MS[Memory Store]
-        PS[Persistent Store]
-    end
-    
-    WD --> HAPI
-    API --> HAPI
-    HAPI --> WP
-    WP --> NR
-    HAPI --> EE
+
+    CL --> API
+    CL --> WS
+    API --> EE
+    API --> DB
+    WS --> EE
+    CRON --> EE
+    CRON --> DB
+
+    EE --> WP
     EE --> NR
     EE --> SM
-    NR --> CN
-    NR --> UN
-    NR --> EN
-    SM --> MS
-    SM --> PS
-    
-    style HAPI fill:#f9f,stroke:#333,stroke-width:4px
+    EE --> HM
+    SM --> SR
+    EE --> ES
+
+    NR --> UNNODES
+    NR --> SVNODES
+    NR --> CLNODES
+
+    SVNODES --> DB
+    SVNODES --> FS
+
+    CLUI --> CLNODES
+
     style EE fill:#bbf,stroke:#333,stroke-width:4px
+    style API fill:#f9f,stroke:#333,stroke-width:4px
+    style DB fill:#bfb,stroke:#333,stroke-width:2px
 ```
 
-### Component Architecture
+### Package Architecture
 
-The system is organized as a monorepo with three main packages following the bhvr stack (Bun + Hono + Vite + React): **shared engine and types**, server implementation, and client implementation. Each package has specific responsibilities and dependencies, with the **core workflow engine residing in the shared package** for multi-environment usage.
+The monorepo consists of three main packages with clear dependency relationships:
 
 ```mermaid
 graph LR
-    subgraph "Shared Package (Core Engine)"
-        ST[Shared Types]
-        WPC[WorkflowParser]
-        EEC[ExecutionEngine]
-        NRC[NodeRegistry]
-        SMC[StateManager]
-        S[Schemas]
+    subgraph "Shared Package (Core)"
+        ST[Types & Interfaces]
+        EEC[Execution Engine]
+        WPC[Workflow Parser]
+        NRC[Node Registry]
+        SMC[State Manager]
+        SRC[State Resolver]
+        HMC[Hook Manager]
+        ESC[Event System]
         SN[Universal Nodes]
     end
-    
+
     subgraph "Server Package"
         subgraph "API Layer"
-            HA[Hono App]
-            R[Routes]
-            M[Middleware]
+            HA[Hono Application]
+            RT[REST Routes]
+            WSM[WebSocket Manager]
+            MW[Middleware]
         end
-        
+
+        subgraph "Services"
+            WFS[Workflow Service]
+            CS[Cron Scheduler]
+        end
+
+        subgraph "Data Layer"
+            DBL[Database Schema]
+            REPO[Repositories]
+        end
+
         subgraph "Server Nodes"
-            FSN[FileSystem Nodes]
-            DBN[Database Nodes]
-            AN[Auth Nodes]
+            FSN[FileSystem Node]
+            DBN[Database Node]
+            AN[Auth Node]
+            GN[Google Nodes]
+            ZN[Zoca Nodes]
         end
     end
-    
+
     subgraph "Client Package"
         subgraph "UI Layer"
-            RC[React Components]
-            UI[UI Components]
+            APP[React App]
+            COMP[Components]
         end
-        
+
         subgraph "Client Nodes"
-            DN[DOM Nodes]
-            LSN[LocalStorage Nodes]
-            FN[Fetch Nodes]
+            LSN[LocalStorage Node]
+            FN[Fetch Node]
+            DN[DOM Node]
+            UIN[UI Nodes]
         end
     end
-    
-    %% All packages import from shared
-    ST --> HA
-    WPC --> HA
-    EEC --> HA
-    NRC --> HA
-    SMC --> HA
-    
-    ST --> RC
-    WPC --> RC
-    EEC --> RC
-    NRC --> RC
-    SMC --> RC
-    
-    %% Node discovery
+
+    %% Dependencies
+    HA --> EEC
+    HA --> WPC
+    HA --> NRC
+    WFS --> EEC
+    WFS --> SMC
+    WFS --> HMC
+    CS --> EEC
+
+    APP --> EEC
+    APP --> WPC
+
     NRC --> SN
     NRC --> FSN
     NRC --> DBN
     NRC --> AN
-    NRC --> DN
     NRC --> LSN
     NRC --> FN
-    
-    %% API uses server nodes
-    R --> FSN
-    R --> DBN
-    R --> AN
-    
-    %% UI uses client nodes
-    UI --> DN
-    UI --> LSN
-    UI --> FN
+    NRC --> DN
 ```
 
-## Components and Interfaces
+### Component Interaction Flow
 
-### Core Interfaces (shared/src/types/) - ENHANCED FOR MULTI-ENVIRONMENT
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as REST API
+    participant WS as WebSocket
+    participant WS_MGR as WorkflowService
+    participant Engine as ExecutionEngine
+    participant Parser as WorkflowParser
+    participant Registry as NodeRegistry
+    participant State as StateManager
+    participant Hooks as HookManager
+    participant DB as Database
 
-#### WorkflowNode Abstract Class (IMPLEMENTED)
+    Client->>API: POST /workflows/execute
+    API->>WS_MGR: getInstance()
+    WS_MGR->>Parser: parse(workflow)
+    Parser->>Registry: validate nodes
+    Registry-->>Parser: validation result
+    Parser-->>WS_MGR: ParsedWorkflow
+
+    WS_MGR->>Engine: execute(workflow)
+    Engine->>State: initialize(initialState)
+    Engine->>Hooks: emit('workflow:before-start')
+    Hooks->>WS: broadcast event
+    WS-->>Client: workflow:started
+
+    loop For Each Node
+        Engine->>Registry: getInstance(nodeId)
+        Registry-->>Engine: node instance
+        Engine->>State: getState()
+        State-->>Engine: current state
+        Engine->>Engine: execute node
+        Engine->>State: updateState()
+        Engine->>Hooks: emit('node:after-execute')
+    end
+
+    Engine->>Hooks: emit('workflow:after-end')
+    Hooks->>WS: broadcast event
+    WS-->>Client: workflow:completed
+    Engine->>State: getState()
+    State-->>Engine: final state
+    Engine-->>WS_MGR: ExecutionResult
+    WS_MGR->>DB: saveWorkflowExecution()
+    WS_MGR-->>API: result
+    API-->>Client: 200 OK + result
+```
+
+---
+
+## Core Components
+
+### 1. ExecutionEngine
+
+**Location:** `/shared/src/engine/ExecutionEngine.ts`
+
+The ExecutionEngine is the central orchestrator responsible for workflow execution with comprehensive lifecycle management.
+
+#### Architecture
+
 ```typescript
-// shared/src/types/index.ts
+export class ExecutionEngine {
+  private static readonly MAX_LOOP_ITERATIONS = 1000;
+  private static readonly DEFAULT_TIMEOUT = 30000;
+  private stateResolver: StateResolver;
+
+  constructor(
+    private registry: NodeRegistry,
+    private stateManager: StateManager,
+    private hookManager: HookManager = new HookManager()
+  ) {
+    this.stateResolver = StateResolver.createDefault();
+  }
+
+  async execute(workflow: ParsedWorkflow): Promise<ExecutionResult>
+  private async executeWorkflowSequence(workflow: ParsedWorkflow, context: ExecutionContext): Promise<void>
+  private async executeNode(node: ParsedNode, context: ExecutionContext): Promise<NodeExecutionResult>
+  private async executeNestedNode(parsedNode: ParsedNode, context: ExecutionContext): Promise<void>
+  private async resolveEdgeRoute(result: NodeExecutionResult, node: ParsedNode, workflow: ParsedWorkflow, currentIndex: number, context: ExecutionContext): Promise<number>
+  private async executeSequenceFromParsedEdge(sequence: Array<string | ParsedNode>, context: ExecutionContext): Promise<void>
+  private async executeNodeFromRegistry(nodeId: string, context: ExecutionContext): Promise<void>
+  private async executeHooks(eventType: HookEventType, context: Partial<HookContext>): Promise<void>
+  private createInitialContext(workflow: ParsedWorkflow, executionId: string): ExecutionContext
+  private generateExecutionId(): string
+}
+```
+
+#### Key Features
+
+1. **Lifecycle Hooks Integration**
+   - `workflow:before-start` - Before workflow initialization
+   - `workflow:after-start` - After state initialization
+   - `node:before-execute` - Before each node execution
+   - `node:after-execute` - After each node execution
+   - `workflow:before-end` - Before workflow completion
+   - `workflow:after-end` - After workflow completion
+   - `workflow:on-error` - On any workflow error
+
+2. **State Resolution**
+   - Automatic resolution of `$.key` syntax in node configurations
+   - Deep nested object and array resolution
+   - Graceful handling of missing keys
+
+3. **Loop Detection and Control**
+   - Identifies loop nodes by `...` suffix
+   - Tracks iteration counts per loop node
+   - Enforces MAX_LOOP_ITERATIONS safety limit
+   - Automatic loop-back routing for configured edges
+
+4. **Error Handling**
+   - Comprehensive try-catch with typed errors
+   - Automatic cleanup scheduling
+   - Error hook execution
+   - Partial state preservation
+
+5. **Edge Routing Types**
+   - **Simple** - Direct node reference
+   - **Sequence** - Array of nodes/configs to execute
+   - **Nested** - Inline nested configuration
+
+#### Execution Flow
+
+```typescript
+// Example execution flow
+async execute(workflow: ParsedWorkflow): Promise<ExecutionResult> {
+  const executionId = this.generateExecutionId();
+  const startTime = new Date();
+
+  try {
+    // 1. Execute pre-start hooks
+    await this.executeHooks('workflow:before-start', { workflowId: workflow.id, data: { workflow } });
+
+    // 2. Initialize state
+    await this.stateManager.initialize(executionId, workflow.initialState || {});
+
+    // 3. Create execution context
+    const context = this.createInitialContext(workflow, executionId);
+
+    // 4. Execute post-start hooks
+    await this.executeHooks('workflow:after-start', { workflowId: workflow.id, executionContext: context });
+
+    // 5. Execute workflow sequence
+    await this.executeWorkflowSequence(workflow, context);
+
+    // 6. Get final state
+    const finalState = await this.stateManager.getState(executionId);
+
+    // 7. Execute pre-end hooks
+    await this.executeHooks('workflow:before-end', { workflowId: workflow.id, executionContext: context, data: { finalState } });
+
+    // 8. Create result
+    const result: ExecutionResult = {
+      executionId,
+      workflowId: workflow.id,
+      status: 'completed',
+      finalState,
+      startTime,
+      endTime: new Date()
+    };
+
+    // 9. Execute post-end hooks
+    await this.executeHooks('workflow:after-end', { workflowId: workflow.id, executionContext: context, data: { result } });
+
+    return result;
+  } catch (error) {
+    // Execute error hooks
+    await this.executeHooks('workflow:on-error', { workflowId: workflow.id, data: { error } });
+
+    return {
+      executionId,
+      workflowId: workflow.id,
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      startTime,
+      endTime: new Date()
+    };
+  } finally {
+    // Schedule cleanup
+    setTimeout(() => this.stateManager.cleanup(executionId).catch(console.error), 60000);
+  }
+}
+```
+
+---
+
+### 2. WorkflowParser
+
+**Location:** `/shared/src/parser/WorkflowParser.ts`
+
+The WorkflowParser validates and transforms JSON workflow definitions into executable AST-like structures.
+
+#### Architecture
+
+```typescript
+export interface ParsedNode {
+  nodeId: string;
+  config: Record<string, ParameterValue>;
+  edges: Record<string, ParsedEdge>;
+  children: ParsedNode[];
+  parent?: ParsedNode;
+  depth: number;
+  uniqueId: string;
+  isLoopNode: boolean;
+  baseNodeType: string;
+}
+
+export interface ParsedEdge {
+  type: 'simple' | 'sequence' | 'nested';
+  target?: string;
+  sequence?: Array<string | ParsedNode>;
+  nestedNode?: ParsedNode;
+}
+
+export interface ParsedWorkflow {
+  id: string;
+  name: string;
+  version?: string;
+  initialState?: Record<string, any>;
+  nodes: ParsedNode[];
+}
+
+export class WorkflowParser {
+  private ajv: Ajv;
+  private nodeRegistry: NodeRegistry;
+
+  constructor(nodeRegistry: NodeRegistry)
+
+  public parse(workflowDefinition: unknown): ParsedWorkflow
+  public validate(workflowDefinition: unknown): ValidationResult
+
+  private parseNodes(workflowSteps: WorkflowStep[]): ParsedNode[]
+  private parseNodeRecursively(nodeId: string, nodeConfig: NodeConfiguration, depth: number, uniqueId: string, parent?: ParsedNode): ParsedNode
+  private parseEdgeRecursively(edgeRoute: EdgeRoute, depth: number, parent: ParsedNode): ParsedEdge
+  private separateParametersAndEdges(nodeConfig: NodeConfiguration): { parameters: Record<string, ParameterValue>; edges: Record<string, EdgeRoute> }
+  private validateSemantics(workflow: WorkflowDefinition): ValidationError[]
+  private validateEdgeRoute(edgeRoute: EdgeRoute, nodeIds: Set<string>, path: string): ValidationError[]
+
+  private isLoopNode(nodeId: string): boolean
+  private isStateSetter(nodeId: string): boolean
+  private extractStatePath(nodeId: string): string
+  private validateStatePath(path: string, fullNodeId: string): string | null
+  private getBaseNodeType(nodeId: string): string
+}
+```
+
+#### Validation Layers
+
+1. **JSON Schema Validation** (using Ajv)
+   - Structural validation against `workflow-schema.json`
+   - Type checking for all workflow properties
+   - Required field validation
+
+2. **Semantic Validation**
+   - Node type existence in registry
+   - Edge route target validation
+   - State setter path syntax validation
+   - Circular reference detection
+
+3. **Loop Node Processing**
+   - Identifies nodes ending with `...`
+   - Extracts base node type for registry lookup
+   - Validates base node existence
+   - Sets `isLoopNode` flag
+
+4. **State Setter Processing**
+   - Identifies nodes starting with `$.`
+   - Extracts and validates state path
+   - Maps to internal `__state_setter__` node
+   - Validates path syntax
+
+#### AST-like Parsing
+
+The parser creates a hierarchical tree structure:
+
+```typescript
+// Example parsed structure
+{
+  nodeId: "process-data",
+  config: { operation: "transform" },
+  edges: {
+    success: {
+      type: "nested",
+      nestedNode: {
+        nodeId: "validate-result",
+        config: { rules: ["required"] },
+        edges: {},
+        children: [],
+        depth: 1,
+        uniqueId: "validate-result_123",
+        isLoopNode: false,
+        baseNodeType: "validate-result"
+      }
+    }
+  },
+  children: [/* nested nodes */],
+  depth: 0,
+  uniqueId: "process-data_122",
+  isLoopNode: false,
+  baseNodeType: "process-data"
+}
+```
+
+---
+
+### 3. StateManager
+
+**Location:** `/shared/src/state/StateManager.ts`
+
+The StateManager provides advanced state management with atomic updates, change detection, snapshots, and watchers.
+
+#### Architecture
+
+```typescript
+export interface WorkflowState {
+  data: Record<string, any>;
+  version: number;
+  lastModified: Date;
+  locks: Set<string>;
+  previousData?: Record<string, any>;
+}
+
+export interface StateSnapshot {
+  readonly data: Record<string, any>;
+  readonly version: number;
+  readonly timestamp: Date;
+}
+
+export interface StateChange {
+  key: string;
+  oldValue: any;
+  newValue: any;
+  timestamp: Date;
+}
+
+export interface StateDiff {
+  added: Record<string, any>;
+  updated: Record<string, { oldValue: any; newValue: any }>;
+  removed: string[];
+  timestamp: Date;
+}
+
+export interface StateWatcher {
+  id: string;
+  executionId: string;
+  keys: string[] | '*';
+  condition?: (change: StateChange) => boolean;
+  callback: (changes: StateChange[]) => Promise<void> | void;
+  debounceMs?: number;
+  enabled?: boolean;
+}
+
+export class StateManager {
+  private states: Map<string, WorkflowState> = new Map();
+  private snapshots: Map<string, StateSnapshot[]> = new Map();
+  private watchers: Map<string, StateWatcher> = new Map();
+  private hookManager?: HookManager;
+
+  constructor(
+    persistenceAdapter?: StatePersistenceAdapter,
+    hookManager?: HookManager,
+    options?: { maxCacheSize?: number; batchWindowMs?: number; enableBatching?: boolean }
+  )
+
+  // Core state operations
+  async initialize(executionId: string, initialState?: Record<string, any>): Promise<void>
+  async getState(executionId: string): Promise<Record<string, any>>
+  async updateState(executionId: string, updates: Record<string, any>, lockKeys?: string[]): Promise<void>
+  async setState(executionId: string, newState: Record<string, any>): Promise<void>
+
+  // Snapshot management
+  async createSnapshot(executionId: string): Promise<string>
+  async rollback(executionId: string, snapshotId: string): Promise<void>
+  async listSnapshots(executionId: string): Promise<StateSnapshot[]>
+
+  // Change detection
+  async getChanges(executionId: string): Promise<StateChange[]>
+  async getDiff(executionId: string): Promise<StateDiff>
+  async clearChanges(executionId: string): Promise<void>
+
+  // State watchers
+  addWatcher(watcher: StateWatcher): string
+  removeWatcher(watcherId: string): boolean
+  enableWatcher(watcherId: string): boolean
+  disableWatcher(watcherId: string): boolean
+
+  // Edge context (temporary data passing)
+  async setEdgeContext(executionId: string, edgeData: Record<string, any>): Promise<void>
+  async getAndClearEdgeContext(executionId: string): Promise<Record<string, any> | null>
+
+  // Key locking
+  async lockKeys(executionId: string, keys: string[]): Promise<() => void>
+
+  // Lifecycle
+  async cleanup(executionId: string): Promise<void>
+  async exists(executionId: string): Promise<boolean>
+}
+```
+
+#### Advanced Features
+
+1. **Atomic Updates**
+   - Version-controlled state modifications
+   - Optional key locking for concurrent access
+   - Automatic timestamp tracking
+
+2. **Snapshot System (Memento Pattern)**
+   - Point-in-time state capture
+   - Rollback capability
+   - Automatic snapshot management
+
+3. **Change Detection**
+   - Tracks all state modifications
+   - Provides detailed diffs (added, updated, removed)
+   - Hook integration for state:change events
+
+4. **State Watchers**
+   - Monitor specific keys or all state changes
+   - Conditional callbacks
+   - Debouncing support
+   - Enable/disable controls
+
+5. **Edge Context Passing**
+   - Temporary data passing between nodes
+   - Automatic cleanup after consumption
+   - Separate from persistent state
+
+6. **Persistence Adapter Pattern**
+   - Optional external storage support
+   - Automatic save on updates
+   - Load on demand
+
+#### Usage Example
+
+```typescript
+// Initialize state
+await stateManager.initialize('exec-123', { counter: 0 });
+
+// Create snapshot
+const snapshotId = await stateManager.createSnapshot('exec-123');
+
+// Update state atomically
+await stateManager.updateState('exec-123', { counter: 1, processed: true });
+
+// Get changes
+const changes = await stateManager.getChanges('exec-123');
+// [{key: 'counter', oldValue: 0, newValue: 1, timestamp: ...}, ...]
+
+// Add watcher
+stateManager.addWatcher({
+  id: 'counter-watcher',
+  executionId: 'exec-123',
+  keys: ['counter'],
+  callback: async (changes) => {
+    console.log('Counter changed:', changes);
+  }
+});
+
+// Rollback if needed
+await stateManager.rollback('exec-123', snapshotId);
+```
+
+---
+
+### 4. NodeRegistry
+
+**Location:** `/shared/src/registry/NodeRegistry.ts`
+
+The NodeRegistry manages node discovery, registration, and instantiation with multi-package support.
+
+#### Architecture
+
+```typescript
+export interface NodeRegistration {
+  nodeClass: typeof WorkflowNode;
+  metadata: NodeMetadata;
+  singleton: boolean;
+  source: 'universal' | 'server' | 'client' | 'custom';
+  filePath?: string;
+}
+
+export class NodeRegistry {
+  private nodes: Map<string, NodeRegistration> = new Map();
+  private instances: Map<string, WorkflowNode> = new Map();
+
+  // Registration
+  async register(nodeClass: typeof WorkflowNode, options?: { singleton?: boolean; source?: string }): Promise<void>
+  async discover(directory: string, source?: 'universal' | 'server' | 'client' | 'custom'): Promise<void>
+  async discoverFromPackages(environment: 'universal' | 'server' | 'client'): Promise<void>
+
+  // Node access
+  getInstance(nodeId: string): WorkflowNode
+  getMetadata(nodeId: string): NodeMetadata
+  hasNode(nodeId: string): boolean
+
+  // Queries
+  listNodes(): NodeMetadata[]
+  listNodesBySource(source: 'universal' | 'server' | 'client' | 'custom'): Array<NodeMetadata & { source: string }>
+  getNodesByCategory(category: string): NodeMetadata[]
+
+  // Management
+  unregister(nodeId: string): void
+  clear(): void
+
+  get size(): number
+
+  private isWorkflowNode(value: any): value is typeof WorkflowNode
+}
+```
+
+#### Multi-Package Discovery
+
+The registry implements intelligent node discovery based on environment:
+
+```typescript
+async discoverFromPackages(environment: 'universal' | 'server' | 'client'): Promise<void> {
+  const basePath = process.cwd();
+  const monorepoRoot = path.resolve(basePath, '..');
+
+  const packagePaths = {
+    universal: [
+      path.join(monorepoRoot, 'shared/nodes'),      // Universal nodes
+    ],
+    server: [
+      path.join(monorepoRoot, 'shared/nodes'),      // Universal nodes
+      path.join(monorepoRoot, 'server/nodes'),      // Server-specific nodes
+    ],
+    client: [
+      path.join(monorepoRoot, 'shared/nodes'),      // Universal nodes
+      path.join(monorepoRoot, 'client/nodes'),      // Client-specific nodes
+    ]
+  };
+
+  for (const [index, nodePath] of packagePaths[environment].entries()) {
+    const source = index === 0 ? 'universal' : environment;
+    await this.discover(nodePath, source as any);
+  }
+}
+```
+
+#### Node Lifecycle
+
+1. **Discovery** - Automatic file system scanning
+2. **Validation** - Verify WorkflowNode interface
+3. **Registration** - Store in registry with metadata
+4. **Instantiation** - Create instances (singleton or per-use)
+5. **Execution** - Provide instances to ExecutionEngine
+
+---
+
+### 5. HookManager
+
+**Location:** `/shared/src/hooks/HookManager.ts`
+
+The HookManager provides a comprehensive lifecycle hook system for workflow observability and extension.
+
+#### Architecture
+
+```typescript
+export type HookEventType =
+  | 'workflow:before-start'
+  | 'workflow:after-start'
+  | 'node:before-execute'
+  | 'node:after-execute'
+  | 'workflow:before-end'
+  | 'workflow:after-end'
+  | 'workflow:on-error'
+  | 'state:change'
+  | 'state:snapshot-created'
+  | 'state:rollback';
+
+export interface HookOptions {
+  name: string;
+  handler: (context: HookContext) => Promise<void> | void;
+  priority?: number;
+  condition?: (context: HookContext) => boolean;
+  once?: boolean;
+}
+
+export interface RegisteredHook extends HookOptions {
+  id: string;
+  eventType: HookEventType;
+  executed: boolean;
+}
+
+export interface HookContext {
+  eventType: HookEventType;
+  workflowId?: string;
+  executionId?: string;
+  nodeId?: string;
+  executionContext?: ExecutionContext;
+  timestamp: Date;
+  data?: any;
+}
+
+export interface HookExecutionResult {
+  hookId: string;
+  hookName: string;
+  success: boolean;
+  error?: string;
+  duration: number;
+  skipped?: boolean;
+}
+
+export class HookManager {
+  private hooks: Map<HookEventType, RegisteredHook[]> = new Map();
+  private eventEmitter: EventEmitter = new EventEmitter();
+
+  register(eventType: HookEventType, options: HookOptions): string
+  unregister(hookId: string): boolean
+  unregisterAll(eventType?: HookEventType): void
+
+  async emit(eventType: HookEventType, context: Partial<HookContext>): Promise<HookExecutionResult[]>
+  async executeHooks(eventType: HookEventType, context: HookContext): Promise<HookExecutionResult[]>
+
+  listHooks(eventType?: HookEventType): RegisteredHook[]
+  hasHooks(eventType: HookEventType): boolean
+  getHook(hookId: string): RegisteredHook | undefined
+}
+```
+
+#### Hook Execution Flow
+
+```typescript
+async executeHooks(eventType: HookEventType, context: HookContext): Promise<HookExecutionResult[]> {
+  const eventHooks = this.hooks.get(eventType);
+  if (!eventHooks || eventHooks.length === 0) return [];
+
+  const results: HookExecutionResult[] = [];
+
+  for (const hook of eventHooks) {
+    // Skip if condition not met
+    if (hook.condition && !hook.condition(context)) {
+      results.push({
+        hookId: hook.id,
+        hookName: hook.name,
+        success: true,
+        skipped: true,
+        duration: 0
+      });
+      continue;
+    }
+
+    const startTime = Date.now();
+    try {
+      await hook.handler(context);
+      results.push({
+        hookId: hook.id,
+        hookName: hook.name,
+        success: true,
+        duration: Date.now() - startTime
+      });
+
+      // Mark as executed for once-only hooks
+      if (hook.once) {
+        hook.executed = true;
+      }
+    } catch (error) {
+      results.push({
+        hookId: hook.id,
+        hookName: hook.name,
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration: Date.now() - startTime
+      });
+    }
+  }
+
+  // Remove executed once-only hooks
+  const remainingHooks = eventHooks.filter(h => !h.once || !h.executed);
+  if (remainingHooks.length < eventHooks.length) {
+    this.hooks.set(eventType, remainingHooks);
+  }
+
+  return results;
+}
+```
+
+#### Hook Use Cases
+
+1. **Monitoring** - Track workflow execution progress
+2. **Logging** - Capture detailed execution logs
+3. **WebSocket Broadcasting** - Real-time event streaming
+4. **Metrics** - Collect performance metrics
+5. **Validation** - Pre-execution validation
+6. **Cleanup** - Post-execution cleanup tasks
+
+---
+
+### 6. StateResolver
+
+**Location:** `/shared/src/state/StateResolver.ts`
+
+The StateResolver provides elegant state access through `$.key` syntax sugar.
+
+#### Architecture
+
+```typescript
+export interface StateResolverOptions {
+  onMissingKey?: 'undefined' | 'preserve' | 'throw';
+  maxDepth?: number;
+  pattern?: RegExp;
+}
+
+export class StateResolver {
+  private static readonly DEFAULT_PATTERN = /^\$\.([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)$/;
+  private static readonly DEFAULT_MAX_DEPTH = 10;
+
+  private readonly options: Required<StateResolverOptions>;
+
+  constructor(options?: StateResolverOptions)
+
+  static createDefault(): StateResolver
+  static createStrict(): StateResolver
+  static createPreserving(): StateResolver
+
+  resolve(config: any, state: Record<string, any>, path?: string[], depth?: number): any
+
+  private resolveStringValue(value: string, state: Record<string, any>, path: string[]): any
+  private getNestedValue(obj: Record<string, any>, keyPath: string): any
+}
+```
+
+#### Resolution Examples
+
+```typescript
+// Given state
+const state = {
+  developer: "Alice",
+  config: {
+    timeout: 3000,
+    retries: 3
+  },
+  items: [1, 2, 3]
+};
+
+// Simple reference
+resolver.resolve("$.developer", state)
+// Result: "Alice"
+
+// Nested path
+resolver.resolve("$.config.timeout", state)
+// Result: 3000
+
+// In object
+resolver.resolve({ name: "$.developer", timeout: "$.config.timeout" }, state)
+// Result: { name: "Alice", timeout: 3000 }
+
+// In array
+resolver.resolve(["$.developer", "$.config.retries"], state)
+// Result: ["Alice", 3]
+
+// Deep nested
+resolver.resolve({
+  user: "$.developer",
+  settings: {
+    limits: {
+      timeout: "$.config.timeout",
+      max: "$.config.retries"
+    }
+  }
+}, state)
+// Result: {
+//   user: "Alice",
+//   settings: {
+//     limits: {
+//       timeout: 3000,
+//       max: 3
+//     }
+//   }
+// }
+```
+
+#### Integration with ExecutionEngine
+
+```typescript
+// In ExecutionEngine.executeNode()
+private async executeNode(node: ParsedNode, context: ExecutionContext): Promise<NodeExecutionResult> {
+  // Get current state
+  const currentState = await this.stateManager.getState(context.executionId);
+
+  // Resolve state references in config
+  const resolvedConfig = this.stateResolver.resolve(node.config, currentState);
+
+  // Execute node with resolved config
+  const instance = this.registry.getInstance(nodeTypeId);
+  const edgeMap = await instance.execute(nodeContext, resolvedConfig);
+
+  // ...
+}
+```
+
+---
+
+## Advanced Features
+
+### 1. State Setter Nodes
+
+State setter nodes provide direct state manipulation using `$.path` syntax, eliminating the need for dedicated state manipulation nodes.
+
+#### Syntax
+
+```json
+{
+  "workflow": [
+    { "$.developer": "Alice" },
+    { "$.config.timeout": 5000 },
+    { "$.results": [] }
+  ]
+}
+```
+
+#### Implementation
+
+The parser transforms state setters into internal `__state_setter__` node calls:
+
+```typescript
+// WorkflowParser processing
+private isStateSetter(nodeId: string): boolean {
+  return nodeId.startsWith('$.');
+}
+
+private getBaseNodeType(nodeId: string): string {
+  if (this.isStateSetter(nodeId)) {
+    return '__state_setter__';
+  }
+  return this.isLoopNode(nodeId) ? nodeId.slice(0, -3) : nodeId;
+}
+```
+
+The StateSetterNode handles execution:
+
+```typescript
+export class StateSetterNode extends WorkflowNode {
+  metadata = {
+    id: '__state_setter__',
+    name: 'State Setter',
+    version: '1.0.0'
+  };
+
+  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+    const statePath = context.nodeId.substring(2); // Remove '$.''
+    const value = config;
+
+    // Set nested value using path
+    this.setNestedValue(context.state, statePath, value);
+
+    return {
+      success: () => ({ path: statePath, value })
+    };
+  }
+
+  private setNestedValue(obj: any, path: string, value: any): void {
+    const keys = path.split('.');
+    const lastKey = keys.pop()!;
+
+    let current = obj;
+    for (const key of keys) {
+      if (!(key in current)) {
+        current[key] = {};
+      }
+      current = current[key];
+    }
+
+    current[lastKey] = value;
+  }
+}
+```
+
+### 2. Loop Nodes
+
+Loop nodes enable iterative processing with automatic loop-back routing.
+
+#### Syntax
+
+```json
+{
+  "process-items...": {
+    "again?": {
+      "log": { "message": "Processing..." }
+    }
+  }
+}
+```
+
+#### Execution Flow
+
+```typescript
+// ExecutionEngine.executeWorkflowSequence()
+private async executeWorkflowSequence(workflow: ParsedWorkflow, context: ExecutionContext): Promise<void> {
+  let currentIndex = 0;
+  const loopCounts = new Map<string, number>();
+
+  while (currentIndex < workflow.nodes.length) {
+    const node = workflow.nodes[currentIndex];
+
+    // Loop detection
+    if (node.isLoopNode) {
+      const baseNodeId = node.baseNodeType;
+      const loopCount = loopCounts.get(baseNodeId) || 0;
+
+      if (loopCount >= ExecutionEngine.MAX_LOOP_ITERATIONS) {
+        throw new LoopLimitError(context.executionId, node.nodeId);
+      }
+
+      loopCounts.set(baseNodeId, loopCount + 1);
+    }
+
+    // Execute node
+    const result = await this.executeNode(node, context);
+
+    // Edge routing with loop-back logic
+    const nextIndex = await this.resolveEdgeRoute(result, node, workflow, currentIndex, context);
+
+    // Reset loop counter if exiting loop
+    if (node.isLoopNode && nextIndex !== currentIndex) {
+      loopCounts.delete(node.baseNodeType);
+    }
+
+    currentIndex = nextIndex;
+  }
+}
+```
+
+### 3. UI Workflow System
+
+The UI workflow system enables workflows to generate interactive user interfaces.
+
+#### UINode Base Class
+
+```typescript
+export abstract class UINode extends WorkflowNode {
+  abstract metadata: UINodeMetadata;
+
+  async execute(context: ExecutionContext, config?: any): Promise<UIEdgeMap> {
+    const renderData = await this.prepareRenderData(context, config);
+    const edges = await this.getEdges(context, config);
+
+    return {
+      ...edges,
+      __ui_render: () => ({
+        component: this.getComponentName(),
+        props: renderData,
+        nodeId: context.nodeId,
+        onInteraction: this.createInteractionHandler(context)
+      })
+    };
+  }
+
+  protected abstract prepareRenderData(context: ExecutionContext, config?: any): Promise<any>;
+  protected abstract getEdges(context: ExecutionContext, config?: any): Promise<EdgeMap>;
+  protected abstract getComponentName(): string;
+
+  protected createInteractionHandler(context: ExecutionContext) {
+    return (event: UIInteractionEvent) => {
+      this.handleInteraction(event, context);
+    };
+  }
+
+  protected handleInteraction(event: UIInteractionEvent, context: ExecutionContext): void {
+    this.updateStateFromInteraction(event, context);
+    this.emitWorkflowEvent(event, context);
+  }
+}
+```
+
+#### Example: FormUINode
+
+```typescript
+export class FormUINode extends UINode {
+  metadata: UINodeMetadata = {
+    id: 'form-ui',
+    name: 'Form UI',
+    version: '1.0.0',
+    category: 'ui-form',
+    renderMode: 'component'
+  };
+
+  protected async prepareRenderData(context: ExecutionContext, config?: any): Promise<any> {
+    const { fields, submitLabel, cancelLabel } = config || {};
+
+    return {
+      fields: fields || [],
+      submitLabel: submitLabel || 'Submit',
+      cancelLabel: cancelLabel || 'Cancel',
+      initialValues: context.state.formData || {}
+    };
+  }
+
+  protected async getEdges(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+    const interactionData = context.state[`${context.nodeId}_interaction`];
+
+    if (interactionData?.type === 'submit') {
+      return {
+        submit: () => ({ formData: interactionData.data })
+      };
+    }
+
+    if (interactionData?.type === 'cancel') {
+      return {
+        cancel: () => ({})
+      };
+    }
+
+    return {};
+  }
+
+  protected getComponentName(): string {
+    return 'FormComponent';
+  }
+}
+```
+
+### 4. WebSocket Event System
+
+The WebSocket system provides real-time workflow event streaming.
+
+#### Architecture
+
+```typescript
+export class WebSocketManager {
+  private static instance: WebSocketManager;
+  private clients: Map<string, WebSocketClient> = new Map();
+  private channels: Map<string, Set<string>> = new Map();
+
+  static getInstance(): WebSocketManager
+
+  // Connection management
+  addClient(ws: WebSocket, clientId: string, metadata?: any): WebSocketClient
+  removeClient(clientId: string): boolean
+  getClient(clientId: string): WebSocketClient | undefined
+  getConnectedClients(): WebSocketClient[]
+
+  // Channel management
+  subscribeToChannel(clientId: string, channel: string): boolean
+  unsubscribeFromChannel(clientId: string, channel: string): boolean
+
+  // Broadcasting
+  broadcast(message: WebSocketMessage, options?: BroadcastOptions): number
+  broadcastToChannel(channel: string, message: WebSocketMessage): number
+  sendToClient(clientId: string, message: WebSocketMessage): boolean
+
+  // Statistics
+  getStats(): WebSocketStats
+}
+```
+
+#### Message Types
+
+```typescript
+export type AnyWebSocketMessage =
+  | ConnectionOpenMessage
+  | ConnectionCloseMessage
+  | SystemPingMessage
+  | SystemPongMessage
+  | WorkflowExecuteMessage
+  | WorkflowResultMessage
+  | WorkflowStatusMessage
+  | WorkflowProgressMessage
+  | NodeListRequestMessage
+  | NodeListResponseMessage
+  | ErrorMessage
+  | NotificationMessage;
+```
+
+#### Integration with Hooks
+
+```typescript
+// In WorkflowService.setupHooks()
+this.hookManager.register('workflow:before-start', {
+  name: 'websocket-workflow-start-broadcaster',
+  handler: async (context) => {
+    this.webSocketManager.broadcastToChannel('workflow-events', {
+      type: 'workflow:started',
+      payload: {
+        workflowId: context.workflowId,
+        timestamp: Date.now(),
+        state: 'starting'
+      }
+    });
+  }
+});
+
+this.hookManager.register('workflow:after-end', {
+  name: 'websocket-workflow-end-broadcaster',
+  handler: async (context) => {
+    this.webSocketManager.broadcastToChannel('workflow-events', {
+      type: 'workflow:completed',
+      payload: {
+        workflowId: context.workflowId,
+        result: context.data?.result,
+        timestamp: Date.now()
+      }
+    });
+  }
+});
+```
+
+---
+
+## Node Architecture
+
+### Node Categories
+
+The system organizes nodes into three categories based on environment compatibility:
+
+#### 1. Universal Nodes (`/shared/nodes/`)
+
+**Characteristics:**
+- Zero external dependencies
+- Pure computation and logic
+- Environment-agnostic
+- Work in any JavaScript runtime
+
+**Examples:**
+- `MathNode` - Mathematical operations
+- `LogicNode` - Boolean logic and comparisons
+- `DataTransformNode` - Object/array transformations
+- `StateSetterNode` - Direct state manipulation
+- `FilterNode` - Array filtering with conditions
+- `SortNode` - Array sorting
+- `AggregateNode` - Data aggregation
+- `SummarizeNode` - Data summarization
+
+#### 2. Server Nodes (`/server/nodes/`)
+
+**Characteristics:**
+- Server-specific dependencies (fs, databases, etc.)
+- Infrastructure access
+- Network operations
+- Authentication
+
+**Examples:**
+- `FileSystemNode` - File operations
+- `DatabaseNode` - Database queries
+- `AuthNode` - Authentication operations
+- `GoogleEmailNode` - Gmail integration
+- `ZocaContactNode` - Zoca API integration
+
+#### 3. Client Nodes (`/client/nodes/`)
+
+**Characteristics:**
+- Browser-specific APIs
+- DOM manipulation
+- Client storage
+- UI rendering
+
+**Examples:**
+- `LocalStorageNode` - Browser storage
+- `FetchNode` - HTTP requests
+- `DOMNode` - DOM manipulation
+- `FormUINode` - Form rendering
+- `DataTableUINode` - Table rendering
+- `ChartUINode` - Chart visualization
+
+### Node Implementation Pattern
+
+```typescript
+import { WorkflowNode } from 'shared';
+import type { ExecutionContext, EdgeMap } from 'shared';
+
+export class ExampleNode extends WorkflowNode {
+  metadata = {
+    id: 'example',
+    name: 'Example Node',
+    version: '1.0.0',
+    description: 'Demonstrates node implementation pattern',
+    inputs: ['input1', 'input2'],
+    outputs: ['result', 'error'],
+    ai_hints: {
+      purpose: 'What this node does',
+      when_to_use: 'When to use this node',
+      expected_edges: ['success', 'error'],
+      example_usage: '{"example-1": {"param": "value", "success?": "next"}}',
+      example_config: '{"param": "string", "option?": "boolean"}',
+      get_from_state: ['requiredStateKey'],
+      post_to_state: ['outputStateKey']
+    }
+  };
+
+  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
+    // 1. Extract parameters from config
+    const { param, option } = config || {};
+
+    // 2. Validate inputs
+    if (!param) {
+      return {
+        error: () => ({ error: 'Missing required parameter' })
+      };
+    }
+
+    try {
+      // 3. Perform operation
+      const result = this.processData(param, option);
+
+      // 4. Update state
+      context.state.outputStateKey = result;
+
+      // 5. Return edge with data
+      return {
+        success: () => ({ result })
+      };
+    } catch (error) {
+      // 6. Handle errors
+      return {
+        error: () => ({ error: error instanceof Error ? error.message : 'Unknown error' })
+      };
+    }
+  }
+
+  private processData(param: any, option?: any): any {
+    // Implementation
+  }
+}
+
+export default ExampleNode;
+```
+
+### Node Best Practices
+
+1. **Single Responsibility** - Each node should do one thing well
+2. **Explicit Metadata** - Complete metadata including AI hints
+3. **Validation** - Always validate inputs
+4. **Error Handling** - Return error edges, don't throw
+5. **State Updates** - Update state for important results
+6. **Edge Data** - Return meaningful data with edges
+7. **Type Safety** - Use TypeScript types throughout
+8. **Documentation** - Include JSDoc comments
+
+---
+
+## Database Layer
+
+### Schema
+
+**Location:** `/server/src/db/schema.ts`
+
+The database layer uses Drizzle ORM with MySQL for workflow persistence and automation.
+
+```typescript
+// Workflows table
+export const workflows = mysqlTable('workflows', {
+  id: int('id').primaryKey().autoincrement(),
+  workflowId: varchar('workflow_id', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 255 }).notNull(),
+  version: varchar('version', { length: 50 }).notNull(),
+  description: text('description'),
+  definition: json('definition').notNull(),
+  initialState: json('initial_state'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+
+// Workflow executions table
+export const workflowExecutions = mysqlTable('workflow_executions', {
+  id: int('id').primaryKey().autoincrement(),
+  executionId: varchar('execution_id', { length: 255 }).notNull().unique(),
+  workflowId: varchar('workflow_id', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(),
+  initialState: json('initial_state'),
+  finalState: json('final_state'),
+  error: text('error'),
+  startTime: timestamp('start_time').notNull(),
+  endTime: timestamp('end_time'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Automations table
+export const automations = mysqlTable('automations', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  workflowId: varchar('workflow_id', { length: 255 }).notNull(),
+  schedule: varchar('schedule', { length: 255 }).notNull(), // Cron expression
+  enabled: boolean('enabled').default(true).notNull(),
+  lastRunAt: timestamp('last_run_at'),
+  nextRunAt: timestamp('next_run_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+});
+```
+
+### Repositories
+
+The repository pattern encapsulates database access:
+
+```typescript
+export class WorkflowRepository {
+  async create(workflow: WorkflowDefinition): Promise<number>
+  async findById(id: number): Promise<WorkflowDefinition | null>
+  async findByWorkflowId(workflowId: string): Promise<WorkflowDefinition | null>
+  async update(id: number, updates: Partial<WorkflowDefinition>): Promise<void>
+  async delete(id: number): Promise<void>
+  async list(options?: { limit?: number; offset?: number }): Promise<WorkflowDefinition[]>
+}
+
+export class AutomationRepository {
+  async create(automation: Automation): Promise<number>
+  async findById(id: number): Promise<Automation | null>
+  async findEnabled(): Promise<Automation[]>
+  async updateSchedule(id: number, schedule: string): Promise<void>
+  async updateStatus(id: number, enabled: boolean): Promise<void>
+  async updateLastRun(id: number, timestamp: Date): Promise<void>
+  async delete(id: number): Promise<void>
+}
+```
+
+### CronScheduler Integration
+
+```typescript
+export class CronScheduler {
+  private static instance: CronScheduler;
+  private jobs: Map<number, CronJob> = new Map();
+
+  static getInstance(): CronScheduler
+
+  async start(): Promise<void> {
+    // Load enabled automations
+    const automations = await automationRepo.findEnabled();
+
+    // Schedule each automation
+    for (const automation of automations) {
+      this.scheduleAutomation(automation);
+    }
+  }
+
+  private scheduleAutomation(automation: Automation): void {
+    const job = new CronJob(automation.schedule, async () => {
+      // Execute workflow
+      const workflowService = await WorkflowService.getInstance();
+      const workflow = await workflowRepo.findByWorkflowId(automation.workflowId);
+
+      if (workflow) {
+        const parsed = workflowService.parse(workflow);
+        await workflowService.execute(parsed);
+
+        // Update last run time
+        await automationRepo.updateLastRun(automation.id, new Date());
+      }
+    });
+
+    job.start();
+    this.jobs.set(automation.id, job);
+  }
+}
+```
+
+---
+
+## Data Models
+
+### Core Type Definitions
+
+**Location:** `/shared/src/types/index.ts`
+
+```typescript
+// Node Metadata
 export interface NodeMetadata {
   id: string;
   name: string;
@@ -200,8 +1604,20 @@ export interface NodeMetadata {
   version?: string;
   inputs?: string[];
   outputs?: string[];
+  ai_hints?: AIHints;
 }
 
+export interface AIHints {
+  purpose: string;
+  when_to_use: string;
+  expected_edges: string[];
+  example_usage?: string;
+  example_config?: string;
+  get_from_state?: string[];
+  post_to_state?: string[];
+}
+
+// Execution Context
 export interface ExecutionContext {
   state: Record<string, any>;
   inputs: Record<string, any>;
@@ -210,35 +1626,10 @@ export interface ExecutionContext {
   executionId: string;
 }
 
+// Edge Map
 export type EdgeMap = Record<string, any>;
 
-export abstract class WorkflowNode {
-  abstract metadata: NodeMetadata;
-  
-  abstract execute(
-    context: ExecutionContext,
-    config?: Record<string, any>
-  ): Promise<EdgeMap>;
-}
-
-// Design Pattern: Single Edge Return
-// Nodes should determine internally which single edge to return based on 
-// context, state, and config. In 99% of use cases, only one edge should
-// be returned with the data for the next node.
-//
-// Example:
-// return {
-//   success: () => ({ processedData: result })
-// };
-// OR
-// return {
-//   error: () => ({ errorMessage: "Processing failed" })
-// };
-```
-
-#### Workflow Definition Types
-```typescript
-// shared/src/types/index.ts
+// Workflow Definition
 export interface WorkflowDefinition {
   id: string;
   name: string;
@@ -248,982 +1639,35 @@ export interface WorkflowDefinition {
   workflow: WorkflowStep[];
 }
 
-export type WorkflowStep = 
-  | string                           // Simple node reference without configuration
-  | { [nodeId: string]: NodeConfiguration };  // Node with configuration
+export type WorkflowStep =
+  | string
+  | { [nodeId: string]: NodeConfiguration | ParameterValue };
 
 export interface NodeConfiguration {
   [key: string]: ParameterValue | EdgeRoute;
 }
 
-export type ParameterValue = 
-  | string 
+export type ParameterValue =
+  | string
   | number
   | boolean
   | Array<ParameterValue>
   | { [key: string]: ParameterValue };
 
-export type EdgeRoute = 
-  | string                    // Single node reference
-  | EdgeRouteItem[]           // Sequence of nodes/configs
-  | NestedNodeConfiguration;  // Nested configuration
+export type EdgeRoute =
+  | string
+  | EdgeRouteItem[]
+  | NestedNodeConfiguration;
 
-export type EdgeRouteItem = 
-  | string                    // Node ID in sequence
-  | NestedNodeConfiguration;  // Nested config in sequence
+export type EdgeRouteItem =
+  | string
+  | NestedNodeConfiguration;
 
 export interface NestedNodeConfiguration {
-  [nodeId: string]: NodeConfiguration;
-}
-```
-
-### Node Registry (shared/src/registry/) - ENHANCED FOR MULTI-PACKAGE DISCOVERY
-
-#### NodeRegistry Class
-```typescript
-// server/src/registry/NodeRegistry.ts
-interface NodeRegistration {
-  nodeClass: typeof WorkflowNode;
-  metadata: NodeMetadata;
-  singleton: boolean;
+  [nodeId: string]: NodeConfiguration | ParameterValue;
 }
 
-export class NodeRegistry {
-  private nodes: Map<string, NodeRegistration> = new Map();
-  private instances: Map<string, WorkflowNode> = new Map();
-
-  /**
-   * Register a workflow node class
-   */
-  async register(
-    nodeClass: typeof WorkflowNode,
-    options?: { singleton?: boolean }
-  ): Promise<void> {
-    // Create a temporary instance to get metadata
-    let instance: WorkflowNode;
-    try {
-      instance = new (nodeClass as any)();
-    } catch (error) {
-      throw new NodeRegistrationError(
-        `Failed to instantiate node class: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-
-    const metadata = instance.metadata;
-
-    // Validate metadata
-    if (!metadata || !metadata.id || !metadata.name || !metadata.version) {
-      throw new NodeRegistrationError(
-        'Node metadata must include id, name, and version',
-        metadata?.id
-      );
-    }
-
-    // Register the node
-    this.nodes.set(metadata.id, {
-      nodeClass,
-      metadata,
-      singleton: options?.singleton ?? false
-    });
-
-    // If singleton, create the instance now
-    if (options?.singleton) {
-      this.instances.set(metadata.id, instance);
-    }
-  }
-
-  /**
-   * Discover and register nodes from a directory
-   */
-  async discover(directory: string): Promise<void> {
-    const pattern = path.join(directory, '**/*.{ts,js}');
-    const files = await glob(pattern, { absolute: true });
-
-    for (const file of files) {
-      try {
-        // Skip test files and index files
-        if (file.includes('.test.') || file.endsWith('index.ts') || file.endsWith('index.js')) {
-          continue;
-        }
-
-        const module = await import(file);
-        
-        // Check for default export
-        if (module.default && this.isWorkflowNode(module.default)) {
-          await this.register(module.default);
-        }
-        
-        // Check for named exports
-        for (const [exportName, exportValue] of Object.entries(module)) {
-          if (exportName !== 'default' && this.isWorkflowNode(exportValue)) {
-            await this.register(exportValue as typeof WorkflowNode);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to load node from ${file}:`, error);
-      }
-    }
-  }
-
-  getInstance(nodeId: string): WorkflowNode {
-    const registration = this.nodes.get(nodeId);
-    if (!registration) {
-      throw new NodeNotFoundError(nodeId);
-    }
-
-    // Return singleton instance if available
-    if (registration.singleton) {
-      if (!this.instances.has(nodeId)) {
-        this.instances.set(nodeId, new (registration.nodeClass as any)());
-      }
-      return this.instances.get(nodeId)!;
-    }
-
-    // Create new instance
-    return new (registration.nodeClass as any)();
-  }
-
-  getMetadata(nodeId: string): NodeMetadata {
-    const registration = this.nodes.get(nodeId);
-    if (!registration) {
-      throw new NodeNotFoundError(nodeId);
-    }
-    return registration.metadata;
-  }
-
-  listNodes(): NodeMetadata[] {
-    return Array.from(this.nodes.values()).map(r => r.metadata);
-  }
-
-  hasNode(nodeId: string): boolean {
-    return this.nodes.has(nodeId);
-  }
-
-  unregister(nodeId: string): void {
-    if (!this.nodes.has(nodeId)) {
-      throw new NodeNotFoundError(nodeId);
-    }
-    
-    this.nodes.delete(nodeId);
-    this.instances.delete(nodeId);
-  }
-
-  clear(): void {
-    this.nodes.clear();
-    this.instances.clear();
-  }
-
-  get size(): number {
-    return this.nodes.size;
-  }
-
-  private isWorkflowNode(value: any): value is typeof WorkflowNode {
-    return (
-      typeof value === 'function' &&
-      value.prototype &&
-      (value.prototype instanceof WorkflowNode ||
-        value.prototype.constructor === WorkflowNode ||
-        // Check for matching interface structure
-        (typeof value.prototype.execute === 'function' &&
-         value.prototype.metadata !== undefined))
-    );
-  }
-}
-```
-
-### Workflow Parser (server/src/parser/) - FULLY IMPLEMENTED
-
-#### Advanced ParsedNode and ParsedWorkflow Interfaces
-```typescript
-// server/src/parser/WorkflowParser.ts - ENHANCED IMPLEMENTATION
-export interface ParsedNode {
-  nodeId: string;
-  config: Record<string, ParameterValue>;
-  edges: Record<string, ParsedEdge>;        // Enhanced with typed edges
-  children: ParsedNode[];                   // AST-like tree structure
-  parent?: ParsedNode;                      // Parent reference for traversal
-  depth: number;                            // Nesting depth tracking
-  uniqueId: string;                         // Unique identifier for tree nodes
-  isLoopNode: boolean;                      // Loop node identification (ends with '...')
-  baseNodeType: string;                     // Base node type without '...' suffix for registry lookup
-}
-
-export interface ParsedEdge {
-  type: 'simple' | 'sequence' | 'nested';   // Typed edge routing
-  target?: string;                          // Simple target reference
-  sequence?: Array<string | ParsedNode>;    // Complex sequence with nested nodes
-  nestedNode?: ParsedNode;                  // Fully parsed nested configuration
-}
-
-export interface ParsedWorkflow {
-  id: string;
-  name: string;
-  version?: string;                         // Optional version (flexible schema)
-  initialState?: Record<string, any>;
-  nodes: ParsedNode[];                      // Array of root-level parsed nodes
-}
-```
-
-#### WorkflowParser Class - FULLY IMPLEMENTED
-```typescript
-// server/src/parser/WorkflowParser.ts - ENHANCED WITH AST PARSING
-export class WorkflowParser {
-  private ajv: Ajv;
-  private nodeRegistry: NodeRegistry;
-
-  constructor(nodeRegistry: NodeRegistry) {
-    this.nodeRegistry = nodeRegistry;
-    this.ajv = new Ajv({ allErrors: true, verbose: true });
-  }
-
-  public parse(workflowDefinition: unknown): ParsedWorkflow {
-    const validationResult = this.validate(workflowDefinition);
-    
-    if (!validationResult.valid) {
-      throw new WorkflowValidationError('Workflow validation failed', validationResult.errors);
-    }
-
-    const workflow = workflowDefinition as WorkflowDefinition;
-    // Enhanced parsing creates AST-like tree structure
-    const parsedNodes = this.parseNodes(workflow.workflow);
-
-    return {
-      id: workflow.id,
-      name: workflow.name,
-      version: workflow.version,
-      initialState: workflow.initialState,
-      nodes: parsedNodes
-    };
-  }
-
-  // Advanced recursive parsing methods with loop node support
-  private parseNodeRecursively(
-    nodeId: string, 
-    nodeConfig: NodeConfiguration, 
-    depth: number, 
-    uniqueId: string,
-    parent?: ParsedNode
-  ): ParsedNode {
-    // Creates hierarchical node structure with parent/child relationships
-    // Generates unique IDs for each node in the tree
-    // Tracks nesting depth for execution planning
-    // Identifies loop nodes (ending with '...') and extracts base node type
-    // Validates base node type exists in registry for loop nodes
-  }
-
-  /**
-   * Check if a node ID has loop syntax (ends with ...)
-   */
-  private isLoopNode(nodeId: string): boolean {
-    return nodeId.endsWith('...');
-  }
-
-  /**
-   * Get the base node type from a potentially loop node ID
-   */
-  private getBaseNodeType(nodeId: string): string {
-    return this.isLoopNode(nodeId) ? nodeId.slice(0, -3) : nodeId;
-  }
-
-  private parseEdgeRecursively(
-    edgeRoute: EdgeRoute, 
-    depth: number, 
-    parent: ParsedNode
-  ): ParsedEdge {
-    // Recursively parses edges into typed structures
-    // Handles simple, sequence, and nested edge types
-    // Builds tree of nested configurations
-  }
-
-  public validate(workflowDefinition: unknown): ValidationResult {
-    const errors: ValidationError[] = [];
-
-    // JSON Schema validation
-    const schemaValid = this.ajv.validate(workflowSchema, workflowDefinition);
-    
-    if (!schemaValid && this.ajv.errors) {
-      errors.push(...this.ajv.errors.map(error => ({
-        path: error.instancePath || '/',
-        message: error.message || 'Unknown validation error',
-        code: 'SCHEMA_VALIDATION_ERROR'
-      })));
-    }
-
-    // If schema validation passes, perform semantic validation
-    if (errors.length === 0 && workflowDefinition && typeof workflowDefinition === 'object') {
-      const workflow = workflowDefinition as WorkflowDefinition;
-      const semanticErrors = this.validateSemantics(workflow);
-      errors.push(...semanticErrors);
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors
-    };
-  }
-
-  private validateSemantics(workflow: WorkflowDefinition): ValidationError[] {
-    const errors: ValidationError[] = [];
-    const nodeIds = new Set<string>();
-    
-    // First pass: collect all node IDs from workflow steps
-    workflow.workflow.forEach((step, stepIndex) => {
-      if (typeof step === 'string') {
-        // Simple node reference
-        nodeIds.add(step);
-        
-        // Check if base node type exists in registry (strip ... suffix for loop nodes)
-        const baseNodeType = this.getBaseNodeType(step);
-        if (!this.nodeRegistry.hasNode(baseNodeType)) {
-          errors.push({
-            path: `/workflow[${stepIndex}]`,
-            message: `Node type '${baseNodeType}' not found in registry`,
-            code: 'NODE_TYPE_NOT_FOUND'
-          });
-        }
-      } else {
-        // Node configuration object
-        for (const nodeId of Object.keys(step)) {
-          nodeIds.add(nodeId);
-          
-          // Check if base node type exists in registry (strip ... suffix for loop nodes)
-          const baseNodeType = this.getBaseNodeType(nodeId);
-          if (!this.nodeRegistry.hasNode(baseNodeType)) {
-            errors.push({
-              path: `/workflow[${stepIndex}]/${nodeId}`,
-              message: `Node type '${baseNodeType}' not found in registry`,
-              code: 'NODE_TYPE_NOT_FOUND'
-            });
-          }
-        }
-      }
-    });
-
-    // Second pass: validate edge routes for configured nodes
-    workflow.workflow.forEach((step, stepIndex) => {
-      if (typeof step === 'object') {
-        for (const [nodeId, nodeConfig] of Object.entries(step)) {
-          const { edges } = this.separateParametersAndEdges(nodeConfig);
-          
-          for (const [edgeName, edgeRoute] of Object.entries(edges)) {
-            const edgeErrors = this.validateEdgeRoute(
-              edgeRoute,
-              nodeIds,
-              `/workflow[${stepIndex}]/${nodeId}/${edgeName}?`
-            );
-            errors.push(...edgeErrors);
-          }
-        }
-      }
-    });
-
-    return errors;
-  }
-
-  private parseNodes(workflowSteps: WorkflowStep[]): ParsedNode[] {
-    const parsedNodes: ParsedNode[] = [];
-
-    workflowSteps.forEach((step) => {
-      if (typeof step === 'string') {
-        // Simple node reference without configuration
-        const isLoop = this.isLoopNode(step);
-        const baseType = this.getBaseNodeType(step);
-        
-        parsedNodes.push({
-          nodeId: step,
-          config: {},
-          edges: {},
-          children: [],
-          depth: 0,
-          uniqueId: `${step}_${nodeCounter++}`,
-          isLoopNode: isLoop,
-          baseNodeType: baseType
-        });
-      } else {
-        // Node configuration object
-        for (const [nodeId, nodeConfig] of Object.entries(step)) {
-          const parsedNode = this.parseNodeRecursively(nodeId, nodeConfig, 0, `${nodeId}_${nodeCounter++}`);
-          parsedNodes.push(parsedNode);
-        }
-      }
-    });
-
-    return parsedNodes;
-  }
-
-  private separateParametersAndEdges(
-    nodeConfig: NodeConfiguration
-  ): { parameters: Record<string, ParameterValue>; edges: Record<string, EdgeRoute> } {
-    const parameters: Record<string, ParameterValue> = {};
-    const edges: Record<string, EdgeRoute> = {};
-
-    for (const [key, value] of Object.entries(nodeConfig)) {
-      if (key.endsWith('?')) {
-        // This is an edge route
-        const edgeName = key.slice(0, -1);
-        edges[edgeName] = value as EdgeRoute;
-      } else {
-        // This is a parameter
-        parameters[key] = value as ParameterValue;
-      }
-    }
-
-    return { parameters, edges };
-  }
-}
-```
-
-### Execution Engine (server/src/engine/) - FULLY IMPLEMENTED
-
-> **Implementation Status**: ✅ **FULLY IMPLEMENTED** - Complete execution engine with advanced features including AST traversal, loop detection, error handling, and edge context passing.
-
-#### ExecutionEngine Class - IMPLEMENTED
-```typescript
-// server/src/engine/ExecutionEngine.ts - FULLY IMPLEMENTED
-export class ExecutionEngine {
-  private static readonly MAX_LOOP_ITERATIONS = 1000;
-  private static readonly DEFAULT_TIMEOUT = 30000;
-
-  constructor(
-    private registry: NodeRegistry,
-    private stateManager: StateManager
-  ) {}
-
-  async execute(workflow: ParsedWorkflow): Promise<ExecutionResult> {
-    const executionId = this.generateExecutionId();
-    const startTime = new Date();
-    
-    try {
-      // Initialize state with workflow initial state
-      await this.stateManager.initialize(executionId, workflow.initialState || {});
-
-      // Create initial execution context
-      const context = this.createInitialContext(workflow, executionId);
-
-      // Execute workflow with enhanced routing and loop detection
-      await this.executeWorkflowSequence(workflow, context);
-
-      const finalState = await this.stateManager.getState(executionId);
-      
-      return {
-        executionId,
-        workflowId: workflow.id,
-        status: 'completed',
-        finalState,
-        startTime,
-        endTime: new Date()
-      };
-
-    } catch (error) {
-      return {
-        executionId,
-        workflowId: workflow.id,
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        startTime,
-        endTime: new Date()
-      };
-    } finally {
-      // Automatic cleanup scheduling
-      setTimeout(() => {
-        this.stateManager.cleanup(executionId).catch(console.error);
-      }, 60000);
-    }
-  }
-
-  // Advanced execution methods with loop node support
-  private async executeWorkflowSequence(
-    workflow: ParsedWorkflow,
-    context: ExecutionContext
-  ): Promise<void> {
-    let currentIndex = 0;
-    const loopCounts = new Map<string, number>();
-
-    while (currentIndex < workflow.nodes.length) {
-      const node = workflow.nodes[currentIndex];
-      
-      // Check for loop node (ending with '...')
-      const isLoopNode = node.nodeId.endsWith('...');
-      if (isLoopNode) {
-        const baseNodeId = node.nodeId.slice(0, -3);
-        const loopCount = loopCounts.get(baseNodeId) || 0;
-        
-        if (loopCount >= ExecutionEngine.MAX_LOOP_ITERATIONS) {
-          throw new LoopLimitError(context.executionId, node.nodeId);
-        }
-        
-        loopCounts.set(baseNodeId, loopCount + 1);
-      }
-
-      // Execute the current node
-      const result = await this.executeNode(node, context);
-
-      // Handle edge routing with loop-back logic
-      const nextIndex = await this.resolveEdgeRoute(
-        result, 
-        node, 
-        workflow, 
-        currentIndex,
-        context
-      );
-
-      if (nextIndex === -1) {
-        break; // End execution
-      }
-
-      // Reset loop counter if we're not returning to the same loop node
-      if (isLoopNode && nextIndex !== currentIndex) {
-        const baseNodeId = node.nodeId.slice(0, -3);
-        loopCounts.delete(baseNodeId);
-      }
-
-      currentIndex = nextIndex;
-    }
-  }
-
-  private async executeNestedNode(
-    parsedNode: ParsedNode,
-    context: ExecutionContext
-  ): Promise<void> {
-    // Executes nodes from parsed AST structure
-    // Handles recursive edge routing through tree
-  }
-
-  private async resolveEdgeRoute(
-    result: NodeExecutionResult,
-    node: ParsedNode,
-    workflow: ParsedWorkflow,
-    currentIndex: number,
-    context: ExecutionContext
-  ): Promise<number> {
-    // No edge taken - continue to next node
-    if (!result.edge || !node.edges[result.edge]) {
-      return currentIndex + 1;
-    }
-
-    const parsedEdge = node.edges[result.edge];
-    const isLoopNode = node.nodeId.endsWith('...');
-
-    switch (parsedEdge.type) {
-      case 'simple':
-        // Direct node reference - first try to find in workflow nodes
-        if (parsedEdge.target) {
-          const targetIndex = workflow.nodes.findIndex(n => n.nodeId === parsedEdge.target);
-          if (targetIndex >= 0) {
-            return targetIndex;
-          }
-          
-          // If not found in workflow, execute from Registry and continue
-          if (this.registry.hasNode(parsedEdge.target)) {
-            await this.executeNodeFromRegistry(parsedEdge.target, context);
-            // For loop nodes with 'loop' edge, return to same node
-            if (isLoopNode && result.edge === 'loop') {
-              return currentIndex;
-            }
-            return currentIndex + 1;
-          }
-        }
-        break;
-
-      case 'sequence':
-        // Execute sequence of nodes/configs
-        if (parsedEdge.sequence) {
-          await this.executeSequenceFromParsedEdge(parsedEdge.sequence, context);
-        }
-        // For loop nodes with 'loop' edge, return to same node
-        if (isLoopNode && result.edge === 'loop') {
-          return currentIndex;
-        }
-        return currentIndex + 1;
-
-      case 'nested':
-        // Execute nested node from AST
-        if (parsedEdge.nestedNode) {
-          await this.executeNestedNode(parsedEdge.nestedNode, context);
-        }
-        // For loop nodes with 'loop' edge, return to same node
-        if (isLoopNode && result.edge === 'loop') {
-          return currentIndex;
-        }
-        return currentIndex + 1;
-
-      default:
-        // Unknown edge type - continue to next node
-        break;
-    }
-
-    // Fallback - continue to next node
-    return currentIndex + 1;
-  }
-
-  private async executeNode(
-    node: ParsedNode,
-    context: ExecutionContext
-  ): Promise<NodeExecutionResult> {
-    // Get node instance from registry (strip ... suffix for loop nodes)
-    const nodeTypeId = node.isLoopNode ? node.baseNodeType : node.nodeId;
-    const instance = this.registry.getInstance(nodeTypeId);
-    
-    // Update context for this node
-    const nodeContext = {
-      ...context,
-      nodeId: node.nodeId,
-      state: await this.stateManager.getState(context.executionId)
-    };
-
-    try {
-      const edgeMap = await instance.execute(nodeContext, node.config);
-      
-      // Find which edge was taken
-      let edgeTaken: string | null = null;
-      let edgeData: any = null;
-
-      for (const [edge, func] of Object.entries(edgeMap)) {
-        const data = func(nodeContext);
-        if (data !== undefined) {
-          edgeTaken = edge;
-          edgeData = data;
-          break;
-        }
-      }
-
-      // Update state with edge data
-      if (edgeData) {
-        await this.stateManager.updateState(
-          context.executionId,
-          { [`${node.nodeId}_output`]: edgeData }
-        );
-      }
-
-      return { edge: edgeTaken, data: edgeData };
-
-    } catch (error) {
-      // Try error edge if available
-      if (node.edges.error) {
-        return { edge: 'error', data: error };
-      }
-      throw error;
-    }
-  }
-
-  private async resolveEdgeRoute(
-    route: EdgeRoute,
-    workflow: ParsedWorkflow,
-    context: ExecutionContext
-  ): Promise<number> {
-    if (typeof route === 'string') {
-      // Find index of target node
-      return workflow.nodes.findIndex(n => n.nodeId === route);
-    } else if (Array.isArray(route)) {
-      // Execute sequence and return to current position
-      await this.executeSequence(route, context);
-      return workflow.nodes.length; // End workflow
-    } else {
-      // Execute nested configuration
-      const nested = await this.parseAndExecuteNested(route, context);
-      return workflow.nodes.length; // End workflow
-    }
-  }
-}
-```
-
-### State Manager (server/src/state/) - FULLY IMPLEMENTED
-
-> **Implementation Status**: ✅ **FULLY IMPLEMENTED** - Advanced state management with atomic updates, snapshots, locking, persistence, and edge context passing.
-
-#### StateManager Class - ENHANCED IMPLEMENTATION
-```typescript
-// server/src/state/StateManager.ts - FULLY IMPLEMENTED WITH ADVANCED FEATURES
-export interface WorkflowState {
-  data: Record<string, any>;
-  version: number;
-  lastModified: Date;
-  locks: Set<string>;
-}
-
-export interface StateSnapshot {
-  readonly data: Record<string, any>;
-  readonly version: number;
-  readonly timestamp: Date;
-}
-
-export interface StatePersistenceAdapter {
-  save(executionId: string, state: WorkflowState): Promise<void>;
-  load(executionId: string): Promise<WorkflowState | null>;
-  delete(executionId: string): Promise<void>;
-}
-
-export class StateManager {
-  private states: Map<string, WorkflowState> = new Map();
-  private snapshots: Map<string, StateSnapshot[]> = new Map();
-  private persistenceAdapter?: StatePersistenceAdapter;
-
-  constructor(persistenceAdapter?: StatePersistenceAdapter) {
-    this.persistenceAdapter = persistenceAdapter;
-  }
-
-  // Core state management with persistence support
-  async initialize(
-    executionId: string,
-    initialState: Record<string, any> = {}
-  ): Promise<void> {
-    // Enhanced initialization with persistence adapter
-    // Atomic state creation with version control
-  }
-
-  async getState(executionId: string): Promise<Record<string, any>> {
-    // Load from persistence if not in memory
-    // Return deep copy to prevent external modifications
-  }
-
-  async updateState(
-    executionId: string,
-    updates: Record<string, any>,
-    lockKeys: string[] = []
-  ): Promise<void> {
-    // Atomic updates with optional key locking
-    // Automatic persistence when adapter is configured
-  }
-
-  // Advanced features beyond original specification
-  async createSnapshot(executionId: string): Promise<string> {
-    // Memento pattern implementation for rollback capability
-  }
-
-  async rollback(executionId: string, snapshotId: string): Promise<void> {
-    // State rollback to specific snapshot
-  }
-
-  async setEdgeContext(
-    executionId: string,
-    edgeData: Record<string, any>
-  ): Promise<void> {
-    // Edge context passing for enhanced node communication
-  }
-
-  async getAndClearEdgeContext(executionId: string): Promise<Record<string, any> | null> {
-    // Consume edge context data (one-time use)
-  }
-
-  async lockKeys(
-    executionId: string,
-    keys: string[]
-  ): Promise<() => void> {
-    // Thread-safe key locking for concurrent access
-  }
-
-  async cleanup(executionId: string): Promise<void> {
-    // Comprehensive cleanup with persistence removal
-  }
-}
-```
-
-### Error Handler (server/src/errors/) - INTEGRATED IN EXECUTION ENGINE
-
-> **Implementation Status**: ✅ **IMPLEMENTED** - Error handling is fully integrated into the ExecutionEngine with comprehensive error types, recovery mechanisms, and proper error routing support.
-
-#### ErrorHandler Class
-```typescript
-// server/src/errors/ErrorHandler.ts
-export class ErrorHandler {
-  async handle(
-    error: Error,
-    context: ExecutionContext
-  ): Promise<ExecutionResult> {
-    const errorInfo = this.classifyError(error);
-
-    // Log error with context
-    console.error({
-      executionId: context.executionId,
-      workflowId: context.workflowId,
-      nodeId: context.nodeId,
-      error: {
-        type: errorInfo.type,
-        message: error.message,
-        stack: error.stack,
-        details: errorInfo.details
-      }
-    });
-
-    return {
-      executionId: context.executionId,
-      status: 'failed',
-      error: errorInfo,
-      partialState: context.state
-    };
-  }
-
-  private classifyError(error: Error): ErrorInfo {
-    if (error instanceof ValidationError) {
-      return {
-        type: 'validation',
-        severity: 'error',
-        recoverable: false,
-        details: error.validationErrors
-      };
-    } else if (error instanceof NodeNotFoundError) {
-      return {
-        type: 'configuration',
-        severity: 'error',
-        recoverable: false,
-        details: { nodeId: error.nodeId }
-      };
-    } else if (error instanceof StateError) {
-      return {
-        type: 'state',
-        severity: 'error',
-        recoverable: true,
-        details: { stateKey: error.key }
-      };
-    } else {
-      return {
-        type: 'runtime',
-        severity: 'critical',
-        recoverable: false,
-        details: { message: error.message }
-      };
-    }
-  }
-}
-```
-
-## Data Models
-
-### Workflow Definition Schema
-
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Workflow Definition Schema",
-  "type": "object",
-  "required": ["id", "name", "version", "workflow"],
-  "properties": {
-    "id": {
-      "type": "string",
-      "pattern": "^[a-zA-Z0-9_-]+$",
-      "description": "Unique identifier for the workflow"
-    },
-    "name": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Human-readable name for the workflow"
-    },
-    "version": {
-      "type": "string",
-      "pattern": "^\\d+\\.\\d+\\.\\d+$",
-      "description": "Semantic version of the workflow"
-    },
-    "description": {
-      "type": "string",
-      "description": "Optional description of the workflow"
-    },
-    "initialState": {
-      "type": "object",
-      "description": "Initial state for the workflow execution"
-    },
-    "workflow": {
-      "type": "array", 
-      "description": "Array of workflow steps (node references or configurations)",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/definitions/workflowStep"
-      }
-    }
-  },
-  "definitions": {
-    "workflowStep": {
-      "oneOf": [
-        {
-          "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$",
-          "description": "Simple node reference without configuration (supports loop nodes with '...' suffix)"
-        },
-        {
-          "type": "object",
-          "patternProperties": {
-            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
-              "$ref": "#/definitions/nodeConfiguration"
-            }
-          },
-          "additionalProperties": false,
-          "minProperties": 1,
-          "maxProperties": 1,
-          "description": "Node with configuration parameters and/or edge routes"
-        }
-      ]
-    },
-    "nodeConfiguration": {
-      "type": "object",
-      "description": "Node configuration with parameters and optional edge routes",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]+$": {
-          "$ref": "#/definitions/parameterValue"
-        },
-        "^[a-zA-Z0-9_-]+\\?$": {
-          "$ref": "#/definitions/edgeRoute"
-        }
-      },
-      "additionalProperties": false
-    },
-    "parameterValue": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "number" },
-        { "type": "boolean" },
-        {
-          "type": "array",
-          "items": { "$ref": "#/definitions/parameterValue" }
-        },
-        {
-          "type": "object",
-          "additionalProperties": { "$ref": "#/definitions/parameterValue" }
-        }
-      ]
-    },
-    "edgeRoute": {
-      "oneOf": [
-        {
-          "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+$",
-          "description": "Direct reference to a node ID"
-        },
-        {
-          "type": "array",
-          "description": "Sequence of nodes or configurations to execute",
-          "items": { "$ref": "#/definitions/edgeRouteItem" },
-          "minItems": 1
-        },
-        { "$ref": "#/definitions/nestedNodeConfiguration" }
-      ]
-    },
-    "edgeRouteItem": {
-      "oneOf": [
-        {
-          "type": "string",
-          "pattern": "^[a-zA-Z0-9_-]+$",
-          "description": "Node ID reference in sequence"
-        },
-        { "$ref": "#/definitions/nestedNodeConfiguration" }
-      ]
-    },
-    "nestedNodeConfiguration": {
-      "type": "object",
-      "description": "Nested node configuration for inline node definition",
-      "patternProperties": {
-        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": { "$ref": "#/definitions/nodeConfiguration" }
-      },
-      "additionalProperties": false,
-      "minProperties": 1,
-      "maxProperties": 1
-    }
-  }
-}
-```
-
-### Runtime Data Models - FULLY IMPLEMENTED
-
-```typescript
-// Implemented shared types (shared/src/types/index.ts)
+// Validation
 export interface ValidationResult {
   valid: boolean;
   errors: ValidationError[];
@@ -1235,6 +1679,7 @@ export interface ValidationError {
   code: string;
 }
 
+// Execution Results
 export interface ExecutionResult {
   executionId: string;
   workflowId: string;
@@ -1245,839 +1690,197 @@ export interface ExecutionResult {
   endTime?: Date;
 }
 
-// Enhanced implementation-specific interfaces
-export interface NodeExecutionResult {
-  edge: string | null;
-  data: any;
-}
+// Abstract Node Class
+export abstract class WorkflowNode {
+  abstract metadata: NodeMetadata;
 
-export interface ExecutionPlan {
-  type: 'continue' | 'jump' | 'sequence' | 'nested' | 'end';
-  targetIndex?: number;
-  steps?: ExecutionStep[];
-  config?: any;
-}
-
-// Advanced error types implemented in ExecutionEngine
-export class ExecutionEngineError extends Error {
-  constructor(
-    message: string,
-    public executionId: string,
-    public nodeId?: string,
-    public originalError?: Error
-  ) {
-    super(message);
-    this.name = 'ExecutionEngineError';
-  }
-}
-
-export class LoopLimitError extends ExecutionEngineError {
-  constructor(executionId: string, nodeId: string) {
-    super(`Loop limit exceeded for node: ${nodeId}`, executionId, nodeId);
-    this.name = 'LoopLimitError';
-  }
-}
-
-// Planned execution tracking interfaces
-interface ExecutionRecord {
-  id: string;
-  workflowId: string;
-  startTime: Date;
-  endTime?: Date;
-  status: 'running' | 'completed' | 'failed' | 'cancelled';
-  currentNode?: string;
-  executionPath: NodeExecution[];
-  finalState?: Record<string, any>;
-  error?: ErrorInfo;
-}
-
-interface NodeExecution {
-  nodeId: string;
-  startTime: Date;
-  endTime: Date;
-  config: Record<string, any>;
-  edgeTaken?: string;
-  outputData?: any;
-  error?: Error;
-}
-
-// Performance metrics
-interface PerformanceMetrics {
-  executionId: string;
-  totalDuration: number;
-  nodeMetrics: Record<string, NodeMetric>;
-  stateOperations: number;
-  memoryUsage: MemorySnapshot[];
-}
-
-interface NodeMetric {
-  executionCount: number;
-  totalDuration: number;
-  averageDuration: number;
-  errors: number;
-}
-```
-
-### Data Flow
-
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant API as API Server
-    participant P as Parser
-    participant E as Engine
-    participant N as Node
-    participant S as State
-
-    C->>API: Submit Workflow
-    API->>P: Parse Definition
-    P->>P: Validate Schema
-    P->>P: Resolve References
-    P-->>API: Parsed Workflow
-    API->>E: Execute Workflow
-    E->>S: Initialize State
-    
-    loop For Each Node
-        E->>N: Execute Node
-        N->>S: Read State
-        N->>N: Process Logic
-        N->>S: Update State
-        N-->>E: Return Edge
-        E->>E: Resolve Route
-    end
-    
-    E->>S: Get Final State
-    E-->>API: Execution Result
-    API-->>C: Response
-```
-
-## Loop Node Implementation
-
-### Loop Node Syntax and Semantics
-
-Loop nodes are a specialized workflow pattern that allows for iterative execution within workflows. They are identified by the `...` suffix in their node ID and implement controlled loop execution with automatic loop-back routing.
-
-#### Loop Node Syntax
-```typescript
-// Loop node definition syntax
-{
-  "loop-node...": {
-    "loop?": {
-      // Nested nodes to execute during loop iteration
-      "print-message": {
-        "message": "Loop iteration"
-      }
-    },
-    "exit?": {
-      // Nested nodes to execute when exiting loop
-      "print-message": {
-        "message": "Exiting loop"
-      }
-    }
-  }
-}
-```
-
-#### Loop Execution Flow
-1. **Node Registration**: Loop nodes register using their base type (without `...` suffix)
-2. **Loop Detection**: Parser identifies loop nodes and stores `isLoopNode: true` and `baseNodeType`
-3. **Registry Lookup**: ExecutionEngine uses `baseNodeType` to get node instance from registry
-4. **Loop Logic**: Node's `execute()` method determines which edge to return
-5. **Edge Routing**: 
-   - **Edge WITH configuration**: Execute the edge configuration and loop back to same node
-   - **Edge WITHOUT configuration**: Exit the loop and continue to next workflow node
-6. **Loop Counting**: Engine tracks iterations per loop node to prevent infinite loops
-
-**Key Insight**: The workflow developer controls loop behavior by including or excluding edge configurations. Any edge name can be used - there are no reserved words.
-
-#### Loop Node Implementation Example
-```typescript
-class LoopNode extends WorkflowNode {
-  metadata = {
-    id: 'loop-node',
-    name: 'Loop Node',
-    version: '1.0.0'
-  };
-
-  async execute(context: ExecutionContext, config?: any) {
-    context.state.loopCount = (context.state.loopCount || 0) + 1;
-    
-    if (context.state.loopCount < 5) {
-      // Continue looping - return edge that HAS configuration
-      return {
-        again: () => ({ message: 'Loop iteration' })
-      }
-    } else {
-      // Exit loop - return edge that has NO configuration
-      return {
-        finished: () => ({ message: 'Loop completed' })
-      }
-    }
-  }
-}
-
-// Corresponding workflow configuration:
-{
-  "loop-node...": {
-    "again?": {  // This edge HAS configuration → will loop back
-      "print-message": {
-        "message": "Continuing loop..."
-      }
-    }
-    // "finished?" is NOT defined → when returned, exits the loop
-  }
-}
-```
-
-#### Safety Mechanisms
-- **MAX_LOOP_ITERATIONS**: Hard limit (1000) to prevent infinite loops
-- **Loop Counter Tracking**: Per-loop-node iteration counting
-- **Loop Counter Reset**: Counters reset when exiting loop context
-- **Error Handling**: LoopLimitError thrown when limits exceeded
-
-#### Loop Node Features
-- **Flexible Edge Naming**: No reserved edge names - developers can use any names (again, continue, repeat, etc.)
-- **Configuration-Based Control**: Loop behavior controlled by presence/absence of edge configurations
-- **State Persistence**: Loop state maintained across iterations
-- **Nested Execution**: Support for complex nested node configurations within loop edges
-- **Edge Context**: Data passing between loop iterations via edge functions
-- **Dynamic Exit Conditions**: Loop exit logic determined at runtime by node implementation
-
-## Distributed Node Architecture
-
-### Node Package Organization
-
-The new shared architecture organizes nodes into three distinct categories based on their environment dependencies:
-
-#### Universal Nodes (`/shared/nodes/`)
-- **Zero External Dependencies**: Can run in any JavaScript environment
-- **Pure Computation**: Mathematical, logical, and data transformation operations
-- **Environment Agnostic**: No browser/server-specific APIs
-- **Examples**: `MathNode`, `DataTransformNode`, `LogicNode`, `ValidationNode`
-
-```typescript
-// Example: shared/nodes/MathNode.ts
-export class MathNode extends WorkflowNode {
-  metadata = {
-    id: 'math',
-    name: 'Math Operations',
-    version: '1.0.0',
-    inputs: ['operation', 'values'],
-    outputs: ['result']
-  };
-
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, values } = context.inputs;
-    
-    let result: number;
-    switch (operation) {
-      case 'add': result = values.reduce((a, b) => a + b, 0); break;
-      case 'multiply': result = values.reduce((a, b) => a * b, 1); break;
-      // ... more operations
-    }
-    
-    context.state.mathResult = result;
-    
-    return {
-      success: () => ({ result })
-    };
-  }
-}
-```
-
-#### Server Nodes (`/server/nodes/`)
-- **Server Dependencies**: File system, databases, server APIs
-- **Infrastructure Access**: Environment variables, server resources
-- **Network Operations**: HTTP clients, database connections
-- **Examples**: `FileSystemNode`, `DatabaseNode`, `AuthNode`, `EmailNode`
-
-```typescript
-// Example: server/nodes/FileSystemNode.ts
-import fs from 'fs/promises';
-import path from 'path';
-
-export class FileSystemNode extends WorkflowNode {
-  metadata = {
-    id: 'filesystem',
-    name: 'File System Operations',
-    version: '1.0.0',
-    inputs: ['operation', 'path', 'content'],
-    outputs: ['result', 'content']
-  };
-
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, filePath, content } = context.inputs;
-    
-    try {
-      switch (operation) {
-        case 'read':
-          const fileContent = await fs.readFile(filePath, 'utf-8');
-          context.state.fileContent = fileContent;
-          return { success: () => ({ content: fileContent }) };
-          
-        case 'write':
-          await fs.writeFile(filePath, content, 'utf-8');
-          return { success: () => ({ result: 'File written successfully' }) };
-          
-        case 'exists':
-          const exists = await fs.access(filePath).then(() => true).catch(() => false);
-          return { [exists ? 'exists' : 'not_exists']: () => ({ exists }) };
-      }
-    } catch (error) {
-      return { error: () => ({ error: error.message }) };
-    }
-  }
-}
-```
-
-#### Client Nodes (`/client/nodes/`)
-- **Browser APIs**: DOM manipulation, localStorage, fetch
-- **Client Resources**: Browser storage, user interactions
-- **Frontend Integrations**: UI frameworks, client libraries
-- **Examples**: `DOMNode`, `LocalStorageNode`, `FetchNode`, `UINode`
-
-```typescript
-// Example: client/nodes/LocalStorageNode.ts
-export class LocalStorageNode extends WorkflowNode {
-  metadata = {
-    id: 'localStorage',
-    name: 'Local Storage Operations',
-    version: '1.0.0',
-    inputs: ['operation', 'key', 'value'],
-    outputs: ['result', 'value']
-  };
-
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, key, value } = context.inputs;
-    
-    try {
-      switch (operation) {
-        case 'get':
-          const storedValue = localStorage.getItem(key);
-          context.state.storedValue = storedValue;
-          return { 
-            [storedValue ? 'found' : 'not_found']: () => ({ value: storedValue }) 
-          };
-          
-        case 'set':
-          localStorage.setItem(key, value);
-          return { success: () => ({ result: 'Value stored successfully' }) };
-          
-        case 'remove':
-          localStorage.removeItem(key);
-          return { success: () => ({ result: 'Value removed successfully' }) };
-      }
-    } catch (error) {
-      return { error: () => ({ error: error.message }) };
-    }
-  }
-}
-```
-
-### Enhanced NodeRegistry for Multi-Package Discovery
-
-```typescript
-// Enhanced NodeRegistry usage examples
-
-// Server environment - loads shared + server nodes
-const serverRegistry = new NodeRegistry();
-await serverRegistry.discoverFromPackages('server');
-
-// Client environment - loads shared + client nodes  
-const clientRegistry = new NodeRegistry();
-await clientRegistry.discoverFromPackages('client');
-
-// Universal environment - loads all nodes
-const universalRegistry = new NodeRegistry();
-await universalRegistry.discoverFromPackages('universal');
-
-// Query nodes by source
-const universalNodes = registry.getNodesBySource('shared');
-const serverNodes = registry.getNodesBySource('server');
-const clientNodes = registry.getNodesBySource('client');
-```
-
-### Environment Detection and Initialization
-
-```typescript
-// Factory pattern for environment-aware initialization
-export class WorkflowEngineFactory {
-  static async createForServer(): Promise<ExecutionEngine> {
-    const registry = new NodeRegistry();
-    await registry.discoverFromPackages('server');
-    
-    const stateManager = new StateManager();
-    return new ExecutionEngine(registry, stateManager);
-  }
-  
-  static async createForClient(): Promise<ExecutionEngine> {
-    const registry = new NodeRegistry();
-    await registry.discoverFromPackages('client');
-    
-    const stateManager = new StateManager();
-    return new ExecutionEngine(registry, stateManager);
-  }
-  
-  static async createUniversal(): Promise<ExecutionEngine> {
-    const registry = new NodeRegistry();
-    await registry.discoverFromPackages('universal');
-    
-    const stateManager = new StateManager();
-    return new ExecutionEngine(registry, stateManager);
-  }
-}
-```
-
-## Key Design Patterns
-
-### Template Method Pattern for Node Execution
-
-The WorkflowNode abstract class uses the Template Method pattern to define the structure of node execution while allowing subclasses to implement specific behavior:
-
-```typescript
-// Example concrete node implementation
-export class DataTransformNode extends WorkflowNode {
-  metadata = {
-    id: 'data-transform',
-    name: 'Data Transform Node',
-    version: '1.0.0',
-    inputs: ['data', 'rules'],
-    outputs: ['transformed']
-  };
-
-  async execute(
+  abstract execute(
     context: ExecutionContext,
     config?: Record<string, any>
-  ): Promise<EdgeMap> {
-    const { data, rules } = context.inputs;
-    
-    try {
-      const transformed = this.applyRules(data, rules);
-      
-      // Update state with result
-      context.state.transformed = transformed;
-      
-      return {
-        success: () => ({ transformed }),
-        validation_failed: () => ({ errors: this.validationErrors })
-      };
-    } catch (error) {
-      return {
-        error: () => ({ error: error.message })
-      };
-    }
-  }
+  ): Promise<EdgeMap>;
 }
 ```
 
-### State Management with Memento Pattern
-
-The StateManager implements a variation of the Memento pattern to provide state snapshots and rollback capabilities:
+### WebSocket Message Types
 
 ```typescript
-class StateSnapshot {
-  constructor(
-    public readonly data: Record<string, any>,
-    public readonly version: number,
-    public readonly timestamp: Date
-  ) {}
+export interface WebSocketMessage<T = any> {
+  type: string;
+  payload?: T;
+  timestamp?: number;
+  requestId?: string;
+  correlationId?: string;
 }
 
-class StateManager {
-  private snapshots: Map<string, StateSnapshot[]> = new Map();
-
-  async createSnapshot(executionId: string): Promise<string> {
-    const state = await this.getState(executionId);
-    const snapshot = new StateSnapshot(
-      { ...state },
-      this.states.get(executionId)!.version,
-      new Date()
-    );
-    
-    const snapshots = this.snapshots.get(executionId) || [];
-    snapshots.push(snapshot);
-    this.snapshots.set(executionId, snapshots);
-    
-    return snapshot.timestamp.toISOString();
-  }
-
-  async rollback(executionId: string, snapshotId: string): Promise<void> {
-    const snapshots = this.snapshots.get(executionId);
-    const snapshot = snapshots?.find(
-      s => s.timestamp.toISOString() === snapshotId
-    );
-    
-    if (!snapshot) {
-      throw new SnapshotNotFoundError(snapshotId);
-    }
-    
-    await this.setState(executionId, snapshot.data);
-  }
+export interface WorkflowExecuteMessage extends WebSocketMessage {
+  type: 'workflow:execute';
+  payload: {
+    workflowDefinition: WorkflowDefinition;
+    executionId: string;
+    initialState?: Record<string, any>;
+  };
 }
-```
 
-### Edge Resolution Algorithm
+export interface WorkflowResultMessage extends WebSocketMessage {
+  type: 'workflow:result';
+  payload: {
+    executionId: string;
+    success: true;
+    result: ExecutionResult;
+    timestamp: number;
+    duration?: number;
+  };
+}
 
-```typescript
-class EdgeResolver {
-  async resolve(
-    edge: string,
-    routes: Record<string, EdgeRoute>,
-    workflow: ParsedWorkflow
-  ): Promise<ExecutionPlan> {
-    const route = routes[edge];
-    
-    if (!route) {
-      // No route defined - continue sequentially
-      return { type: 'continue' };
-    }
-    
-    if (typeof route === 'string') {
-      // Direct node reference
-      const index = workflow.nodes.findIndex(n => n.nodeId === route);
-      return { type: 'jump', targetIndex: index };
-    }
-    
-    if (Array.isArray(route)) {
-      // Sequence of nodes
-      const plan = route.map(item => {
-        if (typeof item === 'string') {
-          return { type: 'node', nodeId: item };
-        } else {
-          return { type: 'nested', config: item };
-        }
-      });
-      return { type: 'sequence', steps: plan };
-    }
-    
-    // Nested configuration
-    return { type: 'nested', config: route };
-  }
+export interface WorkflowProgressMessage extends WebSocketMessage {
+  type: 'workflow:progress';
+  payload: {
+    executionId: string;
+    nodeId: string;
+    nodeStatus: 'starting' | 'executing' | 'completed' | 'failed';
+    timestamp: number;
+    data?: Record<string, any>;
+  };
 }
 ```
 
-### Loop Detection and Prevention
-
-```typescript
-class LoopDetector {
-  private executionHistory: Map<string, NodeVisit[]> = new Map();
-
-  recordVisit(executionId: string, nodeId: string): void {
-    const history = this.executionHistory.get(executionId) || [];
-    history.push({
-      nodeId,
-      timestamp: Date.now(),
-      iteration: this.countIterations(history, nodeId) + 1
-    });
-    this.executionHistory.set(executionId, history);
-  }
-
-  detectInfiniteLoop(executionId: string, nodeId: string): boolean {
-    const history = this.executionHistory.get(executionId) || [];
-    const iterations = this.countIterations(history, nodeId);
-    
-    // Check for rapid repeated execution
-    const recentVisits = history
-      .filter(v => v.nodeId === nodeId)
-      .slice(-5);
-    
-    if (recentVisits.length >= 5) {
-      const timeSpan = recentVisits[4].timestamp - recentVisits[0].timestamp;
-      if (timeSpan < 1000) { // 5 visits in 1 second
-        return true;
-      }
-    }
-    
-    return iterations > MAX_LOOP_ITERATIONS;
-  }
-
-  private countIterations(history: NodeVisit[], nodeId: string): number {
-    return history.filter(v => v.nodeId === nodeId).length;
-  }
-}
-```
-
-## Error Handling
-
-### Error Categories
-
-1. **Validation Errors**: Schema violations, invalid JSON, missing required fields
-2. **Configuration Errors**: Unknown nodes, invalid parameters, circular dependencies
-3. **Runtime Errors**: Node execution failures, state conflicts, resource exhaustion
-4. **System Errors**: Network failures, storage errors, memory limits
-
-### Error Handling Strategy
-
-The system implements a multi-level error handling strategy:
-
-```typescript
-// Error hierarchy
-abstract class WorkflowError extends Error {
-  abstract readonly code: string;
-  abstract readonly recoverable: boolean;
-}
-
-class ValidationError extends WorkflowError {
-  code = 'VALIDATION_ERROR';
-  recoverable = false;
-  
-  constructor(
-    message: string,
-    public validationErrors: ValidationIssue[]
-  ) {
-    super(message);
-  }
-}
-
-class NodeExecutionError extends WorkflowError {
-  code = 'NODE_EXECUTION_ERROR';
-  recoverable = true;
-  
-  constructor(
-    public nodeId: string,
-    public originalError: Error
-  ) {
-    super(`Node ${nodeId} failed: ${originalError.message}`);
-  }
-}
-
-// Recovery strategies
-interface RecoveryStrategy {
-  canRecover(error: WorkflowError): boolean;
-  recover(error: WorkflowError, context: ExecutionContext): Promise<void>;
-}
-
-class RetryStrategy implements RecoveryStrategy {
-  canRecover(error: WorkflowError): boolean {
-    return error.recoverable && error instanceof NodeExecutionError;
-  }
-  
-  async recover(
-    error: NodeExecutionError,
-    context: ExecutionContext
-  ): Promise<void> {
-    // Implement exponential backoff retry
-  }
-}
-```
-
-### Recovery Mechanisms
-
-1. **Automatic Retry**: Transient errors trigger automatic retry with exponential backoff
-2. **Error Routes**: Workflow-defined error handling paths
-3. **State Rollback**: Revert to previous state snapshot on critical errors
-4. **Circuit Breaker**: Prevent cascading failures by stopping problematic nodes
-
-## Testing Strategy
-
-### Unit Testing
-
-Focus on testing individual components in isolation:
-
-```typescript
-// Example node test
-describe('DataTransformNode', () => {
-  let node: DataTransformNode;
-  let mockContext: ExecutionContext;
-  
-  beforeEach(() => {
-    node = new DataTransformNode();
-    mockContext = createMockContext({
-      inputs: { data: testData, rules: testRules }
-    });
-  });
-  
-  it('should transform data according to rules', async () => {
-    const edges = await node.execute(mockContext, {});
-    const result = edges.success(mockContext);
-    
-    expect(result.transformed).toEqual(expectedOutput);
-    expect(mockContext.state.transformed).toEqual(expectedOutput);
-  });
-  
-  it('should return validation_failed edge on invalid data', async () => {
-    mockContext.inputs.data = invalidData;
-    const edges = await node.execute(mockContext, {});
-    
-    expect(edges.validation_failed).toBeDefined();
-    expect(edges.success).not.toBeDefined();
-  });
-});
-```
-
-### Integration Testing
-
-Test component interactions and workflow execution:
-
-```typescript
-// Workflow execution test
-describe('WorkflowEngine Integration', () => {
-  let engine: ExecutionEngine;
-  let registry: NodeRegistry;
-  
-  beforeEach(async () => {
-    registry = new NodeRegistry();
-    await registry.discover('./test-nodes');
-    
-    engine = new ExecutionEngine(
-      registry,
-      new StateManager(),
-      new ErrorHandler()
-    );
-  });
-  
-  it('should execute complete workflow', async () => {
-    const workflow = await loadTestWorkflow('data-pipeline.json');
-    const result = await engine.execute(workflow);
-    
-    expect(result.status).toBe('completed');
-    expect(result.finalState.outputFile).toBeDefined();
-  });
-});
-```
-
-### Test Data Strategy
-
-```typescript
-// Test data factory
-class TestDataFactory {
-  static createWorkflow(options: Partial<WorkflowDefinition>): WorkflowDefinition {
-    return {
-      id: 'test-workflow',
-      name: 'Test Workflow',
-      version: '1.0.0',
-      initialState: {},
-      workflow: [],
-      ...options
-    };
-  }
-  
-  static createExecutionContext(
-    overrides: Partial<ExecutionContext>
-  ): ExecutionContext {
-    return {
-      state: {},
-      inputs: {},
-      workflowId: 'test-workflow',
-      nodeId: 'test-node',
-      executionId: generateId(),
-      ...overrides
-    };
-  }
-}
-```
-
-### Performance Testing
-
-```typescript
-// Performance benchmarks
-describe('Performance', () => {
-  it('should handle 1000 node executions under 10 seconds', async () => {
-    const workflow = createLargeWorkflow(1000);
-    const start = Date.now();
-    
-    const result = await engine.execute(workflow);
-    
-    const duration = Date.now() - start;
-    expect(duration).toBeLessThan(10000);
-    expect(result.status).toBe('completed');
-  });
-  
-  it('should maintain memory usage under 100MB', async () => {
-    const initialMemory = process.memoryUsage().heapUsed;
-    
-    for (let i = 0; i < 100; i++) {
-      await engine.execute(testWorkflow);
-    }
-    
-    const finalMemory = process.memoryUsage().heapUsed;
-    const increase = finalMemory - initialMemory;
-    
-    expect(increase).toBeLessThan(100 * 1024 * 1024);
-  });
-});
-```
+---
 
 ## API Design
 
 ### REST Endpoints
 
-```yaml
-openapi: 3.0.0
-info:
-  title: Workflow Engine API
-  version: 1.0.0
+**Base URL:** `http://localhost:3013`
 
-paths:
-  /workflows:
-    post:
-      summary: Submit workflow for execution
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/WorkflowDefinition'
-      responses:
-        '202':
-          description: Workflow accepted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  executionId:
-                    type: string
-                  status:
-                    type: string
-                  links:
-                    type: object
+#### Workflow Endpoints
 
-  /executions/{executionId}:
-    get:
-      summary: Get execution status
-      parameters:
-        - name: executionId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Execution details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExecutionResult'
+```
+POST   /workflows/validate       - Validate workflow definition
+POST   /workflows/parse          - Parse workflow definition
+POST   /workflows/execute        - Execute workflow
+GET    /workflows/:id            - Get workflow by ID
+GET    /workflows                - List all workflows
+PUT    /workflows/:id            - Update workflow
+DELETE /workflows/:id            - Delete workflow
+```
 
-  /executions/{executionId}/state:
-    get:
-      summary: Get current execution state
-      parameters:
-        - name: executionId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Current state
-          content:
-            application/json:
-              schema:
-                type: object
+#### Node Registry Endpoints
 
-  /nodes:
-    get:
-      summary: List available nodes
-      responses:
-        '200':
-          description: Node list
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/NodeMetadata'
+```
+GET    /nodes                    - List all registered nodes
+GET    /nodes/:source            - List nodes by source (universal/server/client)
+GET    /nodes/metadata/:nodeId   - Get node metadata
+```
+
+#### Automation Endpoints
+
+```
+POST   /automations              - Create automation
+GET    /automations              - List automations
+GET    /automations/:id          - Get automation by ID
+PUT    /automations/:id          - Update automation
+DELETE /automations/:id          - Delete automation
+POST   /automations/:id/enable   - Enable automation
+POST   /automations/:id/disable  - Disable automation
+```
+
+#### WebSocket Endpoints
+
+```
+GET    /ws                       - WebSocket connection endpoint
+GET    /ws/stats                 - WebSocket statistics
+GET    /ws/clients               - Connected clients list
+```
+
+### Request/Response Examples
+
+#### Execute Workflow
+
+**Request:**
+```http
+POST /workflows/execute
+Content-Type: application/json
+
+{
+  "id": "example-workflow",
+  "name": "Example Workflow",
+  "version": "1.0.0",
+  "initialState": {
+    "counter": 0
+  },
+  "workflow": [
+    {
+      "$.counter": 5
+    },
+    {
+      "math": {
+        "operation": "add",
+        "values": [10, 20, 30],
+        "success?": "log"
+      }
+    },
+    {
+      "log": {
+        "message": "Workflow completed"
+      }
+    }
+  ]
+}
+```
+
+**Response:**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "executionId": "exec-abc123",
+  "workflowId": "example-workflow",
+  "status": "completed",
+  "finalState": {
+    "counter": 5,
+    "mathResult": 60
+  },
+  "startTime": "2025-01-18T10:00:00.000Z",
+  "endTime": "2025-01-18T10:00:01.234Z"
+}
+```
+
+#### List Nodes by Source
+
+**Request:**
+```http
+GET /nodes/universal
+```
+
+**Response:**
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "nodes": [
+    {
+      "id": "math",
+      "name": "Math Operations",
+      "version": "1.0.0",
+      "description": "Universal math node - performs basic mathematical operations",
+      "inputs": ["operation", "values"],
+      "outputs": ["result"],
+      "source": "universal"
+    },
+    {
+      "id": "filter",
+      "name": "Filter",
+      "version": "1.0.0",
+      "description": "Universal node - filters items based on complex conditions",
+      "inputs": ["items", "conditions", "matchMode"],
+      "outputs": ["passed", "filtered"],
+      "source": "universal"
+    }
+  ],
+  "source": "universal"
+}
 ```
 
 ### Error Response Format
@@ -2089,190 +1892,434 @@ paths:
     "message": "Workflow validation failed",
     "details": [
       {
-        "path": "/workflow/0/process-data",
-        "message": "Unknown node: process-data",
-        "line": 15,
-        "column": 8
+        "path": "/workflow/0/math",
+        "message": "Node type 'math' not found in registry",
+        "code": "NODE_TYPE_NOT_FOUND"
       }
     ],
-    "timestamp": "2024-01-15T10:30:00Z",
-    "executionId": "exec-123",
-    "requestId": "req-456"
+    "timestamp": "2025-01-18T10:00:00.000Z",
+    "requestId": "req-123"
   }
 }
 ```
 
-## Implementation Considerations
+---
 
-### Performance Optimizations
+## Testing Strategy
 
-1. **Node Pool Management**: Reuse node instances for stateless nodes
-2. **State Batching**: Batch state updates to reduce I/O operations
-3. **Parallel Execution**: Execute independent branches concurrently
-4. **Lazy Loading**: Load nodes only when needed
-5. **Caching**: Cache parsed workflows and node metadata
+### Test Organization
+
+```
+/shared/src/
+├── engine/
+│   ├── ExecutionEngine.ts
+│   ├── ExecutionEngine.test.ts
+│   └── ExecutionEngine.ast.test.ts
+├── parser/
+│   ├── WorkflowParser.ts
+│   ├── WorkflowParser.test.ts
+│   └── WorkflowParser.ast.test.ts
+├── state/
+│   ├── StateManager.ts
+│   ├── StateManager.test.ts
+│   ├── StateResolver.ts
+│   ├── StateResolver.test.ts
+│   └── StateResolver.integration.test.ts
+├── hooks/
+│   ├── HookManager.ts
+│   ├── HookManager.test.ts
+│   ├── HookManager.unit.test.ts
+│   └── HookManager.integration.test.ts
+└── shared_integration.test.ts
+
+/server/src/
+├── integration.test.ts
+└── examples.test.ts
+```
+
+### Unit Testing
+
+Focus on individual components in isolation:
 
 ```typescript
-// Node pool implementation
-class NodePool {
-  private pools: Map<string, WorkflowNode[]> = new Map();
-  private maxPoolSize = 10;
-  
-  acquire(nodeId: string): WorkflowNode {
-    const pool = this.pools.get(nodeId) || [];
-    
-    if (pool.length > 0) {
-      return pool.pop()!;
-    }
-    
-    return this.registry.getInstance(nodeId);
+// Example: StateManager.test.ts
+describe('StateManager', () => {
+  let stateManager: StateManager;
+
+  beforeEach(() => {
+    stateManager = new StateManager();
+  });
+
+  describe('initialize', () => {
+    it('should create new state with initial values', async () => {
+      await stateManager.initialize('exec-1', { counter: 0 });
+      const state = await stateManager.getState('exec-1');
+
+      expect(state).toEqual({ counter: 0 });
+    });
+  });
+
+  describe('updateState', () => {
+    it('should update state atomically', async () => {
+      await stateManager.initialize('exec-1', { counter: 0 });
+      await stateManager.updateState('exec-1', { counter: 5 });
+
+      const state = await stateManager.getState('exec-1');
+      expect(state.counter).toBe(5);
+    });
+  });
+
+  describe('snapshots', () => {
+    it('should create and rollback snapshots', async () => {
+      await stateManager.initialize('exec-1', { counter: 0 });
+      const snapshotId = await stateManager.createSnapshot('exec-1');
+
+      await stateManager.updateState('exec-1', { counter: 10 });
+      await stateManager.rollback('exec-1', snapshotId);
+
+      const state = await stateManager.getState('exec-1');
+      expect(state.counter).toBe(0);
+    });
+  });
+});
+```
+
+### Integration Testing
+
+Test component interactions:
+
+```typescript
+// Example: shared_integration.test.ts
+describe('Workflow Engine Integration', () => {
+  let registry: NodeRegistry;
+  let stateManager: StateManager;
+  let parser: WorkflowParser;
+  let engine: ExecutionEngine;
+
+  beforeEach(async () => {
+    registry = new NodeRegistry();
+    await registry.discoverFromPackages('universal');
+    stateManager = new StateManager();
+    parser = new WorkflowParser(registry);
+    engine = new ExecutionEngine(registry, stateManager);
+  });
+
+  it('should execute complete workflow with state resolution', async () => {
+    const workflow = {
+      id: 'test-workflow',
+      name: 'Test Workflow',
+      version: '1.0.0',
+      initialState: { base: 10 },
+      workflow: [
+        { '$.multiplier': 3 },
+        {
+          math: {
+            operation: 'multiply',
+            values: ['$.base', '$.multiplier'],
+            success?: 'log'
+          }
+        },
+        {
+          log: {
+            message: 'Result: $.mathResult'
+          }
+        }
+      ]
+    };
+
+    const parsed = parser.parse(workflow);
+    const result = await engine.execute(parsed);
+
+    expect(result.status).toBe('completed');
+    expect(result.finalState.mathResult).toBe(30);
+  });
+});
+```
+
+### End-to-End Testing
+
+Test complete API flows:
+
+```typescript
+// Example: server integration test
+describe('Workflow API', () => {
+  it('should execute workflow via REST API', async () => {
+    const response = await fetch('http://localhost:3013/workflows/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(testWorkflow)
+    });
+
+    const result = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(result.status).toBe('completed');
+    expect(result.executionId).toBeDefined();
+  });
+});
+```
+
+---
+
+## Implementation Patterns
+
+### 1. Singleton Pattern
+
+Used for global service instances:
+
+```typescript
+export class WorkflowService {
+  private static instance: WorkflowService | null = null;
+
+  private constructor() {
+    // Initialize components
   }
-  
-  release(nodeId: string, instance: WorkflowNode): void {
-    const pool = this.pools.get(nodeId) || [];
-    
-    if (pool.length < this.maxPoolSize) {
-      pool.push(instance);
-      this.pools.set(nodeId, pool);
+
+  public static async getInstance(): Promise<WorkflowService> {
+    if (WorkflowService.instance === null) {
+      WorkflowService.instance = new WorkflowService();
+      await WorkflowService.instance.initialize();
     }
+    return WorkflowService.instance;
   }
 }
 ```
 
-### Security Considerations
+### 2. Factory Pattern
 
-1. **Input Sanitization**: Validate all workflow definitions against schema
-2. **Execution Isolation**: Run nodes in isolated contexts
-3. **Resource Limits**: Enforce memory and CPU limits per execution
-4. **Access Control**: Implement role-based access to workflows
-5. **Audit Trail**: Log all workflow executions and state changes
+Used for environment-aware initialization:
 
 ```typescript
-// Security middleware
-class SecurityMiddleware {
-  async validateWorkflow(
-    workflow: WorkflowDefinition,
-    user: User
-  ): Promise<void> {
-    // Check user permissions
-    if (!user.canExecute(workflow.id)) {
-      throw new UnauthorizedError();
-    }
-    
-    // Validate against whitelist
-    for (const node of workflow.workflow) {
-      const nodeId = Object.keys(node)[0];
-      if (!this.isWhitelisted(nodeId, user)) {
-        throw new ForbiddenNodeError(nodeId);
-      }
-    }
-    
-    // Check resource limits
-    if (workflow.workflow.length > MAX_NODES_PER_WORKFLOW) {
-      throw new ResourceLimitError('Too many nodes');
-    }
+export class WorkflowEngineFactory {
+  static async createForServer(): Promise<ExecutionEngine> {
+    const registry = new NodeRegistry();
+    await registry.discoverFromPackages('server');
+
+    const stateManager = new StateManager();
+    const hookManager = new HookManager();
+
+    return new ExecutionEngine(registry, stateManager, hookManager);
+  }
+
+  static async createForClient(): Promise<ExecutionEngine> {
+    const registry = new NodeRegistry();
+    await registry.discoverFromPackages('client');
+
+    const stateManager = new StateManager();
+    const hookManager = new HookManager();
+
+    return new ExecutionEngine(registry, stateManager, hookManager);
   }
 }
 ```
 
-### Scalability Design
+### 3. Observer Pattern (Hooks)
 
-1. **Distributed Execution**: Support execution across multiple workers
-2. **Event-Driven Architecture**: Use message queues for node communication
-3. **Horizontal Scaling**: Stateless design enables easy scaling
-4. **Database Sharding**: Partition execution data by workflow ID
-5. **Load Balancing**: Distribute workflows across execution nodes
+Used for event-driven architecture:
 
 ```typescript
-// Distributed execution adapter
-class DistributedExecutor {
-  constructor(
-    private queue: MessageQueue,
-    private workers: WorkerPool
-  ) {}
-  
-  async executeDistributed(
-    workflow: ParsedWorkflow
-  ): Promise<ExecutionResult> {
-    const executionId = generateId();
-    
-    // Split workflow into tasks
-    const tasks = this.createExecutionTasks(workflow);
-    
-    // Queue tasks for workers
-    for (const task of tasks) {
-      await this.queue.publish({
-        executionId,
-        task,
-        priority: this.calculatePriority(task)
-      });
-    }
-    
-    // Wait for completion
-    return this.waitForCompletion(executionId);
+// Register observers
+hookManager.register('workflow:after-end', {
+  name: 'log-completion',
+  handler: async (context) => {
+    console.log('Workflow completed:', context.workflowId);
+  }
+});
+
+// Emit events
+await hookManager.emit('workflow:after-end', {
+  workflowId: 'example',
+  executionId: 'exec-123',
+  data: { result }
+});
+```
+
+### 4. Strategy Pattern (State Resolver)
+
+Different resolution strategies:
+
+```typescript
+const defaultResolver = StateResolver.createDefault();  // undefined on missing
+const strictResolver = StateResolver.createStrict();    // throw on missing
+const preservingResolver = StateResolver.createPreserving();  // keep $.key on missing
+```
+
+### 5. Repository Pattern
+
+Encapsulate data access:
+
+```typescript
+export class WorkflowRepository {
+  private db: Database;
+
+  async findById(id: number): Promise<Workflow | null> {
+    const rows = await this.db
+      .select()
+      .from(workflows)
+      .where(eq(workflows.id, id));
+
+    return rows[0] || null;
   }
 }
 ```
 
-### Development Workflow
-
-1. **Local Development**: `bun run dev` for hot-reloading development
-2. **Testing**: Comprehensive test suite with coverage requirements
-3. **CI/CD Pipeline**: Automated testing and deployment
-4. **Documentation**: Auto-generated API docs from TypeScript
-5. **Monitoring**: OpenTelemetry integration for observability
-
-```typescript
-// Development configuration
-export const devConfig = {
-  server: {
-    port: process.env.PORT || 3013,
-    host: 'localhost',
-    cors: {
-      origin: '*',
-      credentials: true
-    }
-  },
-  engine: {
-    maxConcurrentExecutions: 10,
-    defaultTimeout: 30000,
-    enableProfiling: true
-  },
-  monitoring: {
-    enableTracing: true,
-    enableMetrics: true,
-    exportInterval: 10000
-  }
-};
-```
+---
 
 ## Technology Stack
 
 ### Core Technologies
-- **Runtime**: Bun 1.x - Fast JavaScript runtime with native TypeScript support
-- **Language**: TypeScript 5.x - Type safety and modern JavaScript features
-- **Server Framework**: Hono 4.x - Lightweight, fast web framework
-- **Validation**: Ajv 8.x - JSON Schema validation
-- **Testing**: Vitest - Fast, Vite-powered test runner
-- **Build System**: Native Bun bundler and TypeScript compiler
+
+| Category | Technology | Version | Purpose |
+|----------|-----------|---------|---------|
+| Runtime | Bun | 1.x | Fast JavaScript runtime with native TypeScript |
+| Language | TypeScript | 5.8.x | Type-safe development |
+| Server Framework | Hono | 4.7.x | Lightweight, fast web framework |
+| Client Framework | React | 19.1.x | UI library |
+| Build Tool (Client) | Vite | 6.3.x | Fast frontend tooling |
+| Database ORM | Drizzle | 0.37.x | Type-safe SQL toolkit |
+| Database | MySQL | 2.x | Relational database |
+| Validation | Ajv | 8.17.x | JSON Schema validation |
+| Testing | Vitest | 3.2.x | Fast unit testing |
+| WebSocket | Bun Native | - | Real-time communication |
+| Styling | Tailwind CSS | 4.1.x | Utility-first CSS |
 
 ### Development Tools
-- **Build Tool**: Bun's built-in bundler
-- **Linting**: ESLint with TypeScript plugin
-- **Formatting**: Prettier with consistent code style
-- **Documentation**: TypeDoc for API documentation
-- **Version Control**: Git with conventional commits
 
-### Infrastructure
-- **Container**: Docker with multi-stage builds
-- **Orchestration**: Kubernetes for production deployment
-- **Message Queue**: Redis Streams for distributed execution
-- **Database**: PostgreSQL for persistent state storage
-- **Cache**: Redis for temporary state and caching
+| Tool | Purpose |
+|------|---------|
+| ESLint | Code linting |
+| Prettier | Code formatting |
+| TypeDoc | API documentation generation |
+| Git | Version control |
+| Drizzle Kit | Database migrations |
+
+### Project Structure
+
+```
+workscript/
+├── .kiro/                      # Specifications and design docs
+│   ├── framework/              # Documentation framework
+│   └── specs/                  # Project specifications
+│       └── json-workflow-engine/
+│           ├── design.md       # This document
+│           ├── requirements.md
+│           └── tasks.md
+├── shared/                     # Shared core engine package
+│   ├── src/
+│   │   ├── engine/            # ExecutionEngine
+│   │   ├── parser/            # WorkflowParser
+│   │   ├── state/             # StateManager, StateResolver
+│   │   ├── registry/          # NodeRegistry
+│   │   ├── hooks/             # HookManager
+│   │   ├── events/            # EventEmitter, WebSocket types
+│   │   ├── types/             # Core type definitions
+│   │   └── schemas/           # JSON schemas
+│   ├── nodes/                 # Universal nodes
+│   │   └── data/              # Data manipulation nodes
+│   ├── dist/                  # Compiled output
+│   └── package.json
+├── server/                    # Server package
+│   ├── src/
+│   │   ├── api/              # REST API routes
+│   │   ├── services/         # WorkflowService, WebSocketManager, CronScheduler
+│   │   ├── db/               # Database schema and repositories
+│   │   ├── middleware/       # Express/Hono middleware
+│   │   └── lib/              # Utilities
+│   ├── nodes/                # Server-specific nodes
+│   │   └── custom/           # Business-specific integrations
+│   └── package.json
+├── client/                   # Client package
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── hooks/            # React hooks
+│   │   └── services/         # Client services
+│   ├── nodes/                # Client-specific nodes
+│   │   └── ui/               # UI workflow nodes
+│   └── package.json
+├── package.json              # Root package.json
+└── CLAUDE.md                 # Project guidance for Claude Code
+```
+
+---
+
+## Deployment Architecture
+
+### Development Environment
+
+```
+Local Development:
+- Bun runtime for server and shared packages
+- Vite dev server for client
+- MySQL database (local or Docker)
+- Concurrent development with hot reload
+
+Commands:
+- bun run dev              # Start all services
+- bun run dev:client       # Client only
+- bun run dev:server       # Server only
+- bun run dev:shared       # Shared only (watch mode)
+```
+
+### Production Environment
+
+```
+Production Stack:
+- Server: Docker container with Bun runtime
+- Client: Static files served by CDN/nginx
+- Database: Managed MySQL instance
+- WebSocket: Bun native WebSocket server
+- Reverse Proxy: nginx for load balancing
+
+Deployment Flow:
+1. Build shared package: cd shared && bun run build
+2. Build server package: cd server && bun run build
+3. Build client package: cd client && bun run build
+4. Deploy server to container platform
+5. Deploy client static files to CDN
+6. Run database migrations: bun run db:migrate
+```
 
 ### Monitoring and Observability
-- **Tracing**: OpenTelemetry for distributed tracing
-- **Metrics**: Prometheus for metrics collection
-- **Logging**: Pino for structured logging
-- **Dashboards**: Grafana for visualization
-- **Alerting**: AlertManager for incident management
+
+```
+Monitoring Components:
+- Application logs (Pino structured logging)
+- WebSocket connection metrics
+- Workflow execution metrics
+- Database query performance
+- Hook execution timing
+- State change tracking
+
+Metrics Tracked:
+- Workflow execution count
+- Average execution time
+- Node execution distribution
+- Error rates by node type
+- WebSocket connection count
+- Database query latency
+```
+
+---
+
+## Conclusion
+
+The Agentic Workflow Orchestration System represents a mature, production-ready implementation of a shared-core workflow engine with comprehensive features including:
+
+✅ **Multi-environment architecture** - Same engine runs everywhere
+✅ **Advanced state management** - Snapshots, watchers, change detection
+✅ **Lifecycle hooks** - Complete observability and extensibility
+✅ **Real-time events** - WebSocket-based monitoring
+✅ **Database persistence** - Workflow storage and automation
+✅ **UI generation** - Dynamic user interfaces from workflows
+✅ **Comprehensive node library** - Data manipulation, integrations, UI
+✅ **Type safety** - Full TypeScript implementation
+✅ **Testing coverage** - Unit, integration, and E2E tests
+
+The system is actively used in production environments and continues to evolve with new features and improvements while maintaining backward compatibility and architectural integrity.
+
+---
+
+**Document Version:** 2.0.0
+**Last Updated:** 2025-01-18
+**Maintained By:** Development Team
+**Status:** Current Implementation
