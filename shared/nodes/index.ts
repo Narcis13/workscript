@@ -42,6 +42,16 @@ export { SwitchNode } from './data/SwitchNode';
 export { CalculateFieldNode } from './data/CalculateFieldNode';
 export { MathOperationsNode } from './data/MathOperationsNode';
 
+// Import date/time nodes
+export { DateTimeNode } from './data/DateTimeNode';
+
+// Import validation nodes
+export { ValidateDataNode } from './data/ValidateDataNode';
+
+// Import utility nodes
+export { ArrayUtilitiesNode } from './data/ArrayUtilitiesNode';
+export { ObjectUtilitiesNode } from './data/ObjectUtilitiesNode';
+
 // Import for array creation
 import { MathNode } from './MathNode';
 import { LogicNode } from './LogicNode';
@@ -65,6 +75,10 @@ import { CompareDatasetsNode } from './data/CompareDatasetsNode';
 import { SwitchNode } from './data/SwitchNode';
 import { CalculateFieldNode } from './data/CalculateFieldNode';
 import { MathOperationsNode } from './data/MathOperationsNode';
+import { DateTimeNode } from './data/DateTimeNode';
+import { ValidateDataNode } from './data/ValidateDataNode';
+import { ArrayUtilitiesNode } from './data/ArrayUtilitiesNode';
+import { ObjectUtilitiesNode } from './data/ObjectUtilitiesNode';
 import type { WorkflowNode } from '../src/types';
 
 /**
@@ -99,7 +113,14 @@ export const UNIVERSAL_NODES: Array<typeof WorkflowNode> = [
   SwitchNode,
   // Calculation nodes
   CalculateFieldNode,
-  MathOperationsNode
+  MathOperationsNode,
+  // Date/time nodes
+  DateTimeNode,
+  // Validation nodes
+  ValidateDataNode,
+  // Utility nodes
+  ArrayUtilitiesNode,
+  ObjectUtilitiesNode
 ];
 
 /**

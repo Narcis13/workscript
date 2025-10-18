@@ -1138,4 +1138,4 @@ For each node, provide:
 **Last Updated:** 2025-10-17  
 **Version:** 1.0  
 **Status:** Planning Phase
-Read this guide '/Users/narcisbrindusescu/teste/workscript/NODE_DEVELOPMENT_BLUEPRINT.md' and treat it as system prompt for developing new nodes. After this proceed to implement ## Math/Calculation Nodes and only this nodes to not overwhelm you. Put the node implementation typescript file in /shared/nodes/data folder and make sure this new nodes are exported properly and imported in '/Users/narcisbrindusescu/teste/workscript/shared/nodes/index.ts' as universal nodes to be consumed in workflows.you might use subagents for this task
+Read this guide '/Users/narcisbrindusescu/teste/workscript/NODE_DEVELOPMENT_BLUEPRINT.md' and treat it as system prompt for developing new nodes. After this proceed to implement Object Utilities Node and only this nodes to not overwhelm you. Put the node implementation typescript file in /shared/nodes/data folder and make sure this new nodes are exported properly and imported in '/Users/narcisbrindusescu/teste/workscript/shared/nodes/index.ts' as universal nodes to be consumed in workflows.you might use subagents for this task
