@@ -225,7 +225,7 @@ export function Home() {
     setRunByIdLoading(true);
     try {
       // Test running workflow by ID using the server endpoint
-      const response = await fetch(`${SERVER_URL}/workflows/run/test-workflow`, {
+      const response = await fetch(`${SERVER_URL}/workflows/run/test-nodes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

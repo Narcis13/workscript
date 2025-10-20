@@ -21,7 +21,9 @@ export class EmptyNode extends WorkflowNode {
   };
 
   async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-     console.warn('Executing EmptyNode - this node does nothing');
+     console.warn('Executing EmptyNode - this node print state and inputs');
+     console.log('Current state:', context.state);
+     console.log('Current inputs:', context.inputs);
       return {
         nothing: () => ({ luckyNumber: 13 })
       };
