@@ -31,10 +31,18 @@
                     "value": "John Doe"
                   }
                 ],
-               "matchMode": "all"
-          
+               "matchMode": "all",
+
+               "passed?":[{
+                "log":{
+                  "message":"$.filterPassed"
+                }
+               },
+               "empty"
+              ]
+
            }
-         },
-      "empty"
+         }
+     
     ]
   }

@@ -127,20 +127,21 @@ export class FilterNode extends WorkflowNode {
         passRate: items.length > 0 ? (passed.length / items.length) * 100 : 0
       };
 
-      // Return both passed and filtered items via different edges
+  
       return {
+     /*   filtered: () => ({
+          items: filtered,
+          passedCount: passed.length,
+          filteredCount: filtered.length,
+          totalCount: items.length
+        }),*/
         passed: () => ({
           items: passed,
           passedCount: passed.length,
           filteredCount: filtered.length,
           totalCount: items.length
-        }),
-        filtered: () => ({
-          items: filtered,
-          passedCount: passed.length,
-          filteredCount: filtered.length,
-          totalCount: items.length
         })
+
       };
 
     } catch (error) {

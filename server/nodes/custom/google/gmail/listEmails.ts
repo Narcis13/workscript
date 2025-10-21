@@ -137,11 +137,11 @@ export class ListEmailsNode extends WorkflowNode {
                 resultSizeEstimate: listResponse.data.resultSizeEstimate || 0,
             };
 
-            context.state.lastGmailListAttempt = JSON.stringify({ 
+            context.state.lastGmailListAttempt = { 
                 status: 'success', 
                 resultsCount: finalEmails.length ,
                 resultPayload
-            });
+            };
             
           //  console.log(finalEmails[0]);
             return { success: () => resultPayload };
