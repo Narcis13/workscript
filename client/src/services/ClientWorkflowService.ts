@@ -1,6 +1,6 @@
 import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
-import { UNIVERSAL_NODES } from 'shared/nodes';
+import { UNIVERSAL_NODES } from '../../../shared/dist/nodes/index.js';
 import { CLIENT_NODES } from '../../nodes';
 import { useWebSocket, type WebSocketMessage, type WebSocketOptions } from '../hooks/useWebSocket';
 
@@ -24,7 +24,8 @@ export interface WebSocketWorkflowOptions {
  */
 export class ClientWorkflowService {
   private static instance: ClientWorkflowService | null = null;
-  
+  private static initPromise: Promise<void> | null = null;
+
   private registry: NodeRegistry;
   private stateManager: StateManager;
   private hookManager: HookManager;
@@ -52,8 +53,14 @@ export class ClientWorkflowService {
   public static async getInstance(): Promise<ClientWorkflowService> {
     if (ClientWorkflowService.instance === null) {
       ClientWorkflowService.instance = new ClientWorkflowService();
-      await ClientWorkflowService.instance.initialize();
+      ClientWorkflowService.initPromise = ClientWorkflowService.instance.initialize();
     }
+
+    // Always wait for initialization to complete, even if called multiple times concurrently
+    if (ClientWorkflowService.initPromise) {
+      await ClientWorkflowService.initPromise;
+    }
+
     return ClientWorkflowService.instance;
   }
 
@@ -68,12 +75,19 @@ export class ClientWorkflowService {
 
     console.log('🔧 Initializing ClientWorkflowService...');
     console.log('🌐 Running in browser environment - using manual node registration');
-    
+
     try {
       // In browser environment, we manually register nodes from central indexes
       // This replaces the file-based discovery used on the server
-      
+
       console.log('📦 Registering universal nodes...');
+      console.log('📊 UNIVERSAL_NODES type:', typeof UNIVERSAL_NODES);
+      console.log('📊 UNIVERSAL_NODES is array:', Array.isArray(UNIVERSAL_NODES));
+      console.log('📊 UNIVERSAL_NODES length:', UNIVERSAL_NODES?.length);
+
+      if (!UNIVERSAL_NODES || !Array.isArray(UNIVERSAL_NODES)) {
+        throw new Error(`UNIVERSAL_NODES is not properly loaded. Type: ${typeof UNIVERSAL_NODES}, Value: ${UNIVERSAL_NODES}`);
+      }
 
       // Register universal nodes from shared package
       for (const nodeClass of UNIVERSAL_NODES) {

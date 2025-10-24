@@ -8,6 +8,7 @@ import { CronScheduler } from './services/CronScheduler'
 import { initializeTokenStorage } from './lib/token-storage';
 import workflows from './api/workflows'
 import automations from './api/automations'
+import nodes from './api/nodes'
 import googleAuthRoutes from './api/google'
 import agencies from './api/zoca/agencies'
 import agents from './api/zoca/agents'
@@ -33,6 +34,7 @@ app.onError(errorHandler)
 // API routes
 app.route('/workflows', workflows)
 app.route('/automations', automations)
+app.route('/nodes', nodes)
 app.route('/api/auth', googleAuthRoutes)
 app.route('/api/zoca/agencies', agencies)
 app.route('/api/zoca/agents', agents)

@@ -16,6 +16,10 @@ export function NodesManager() {
   const [selectedNode, setSelectedNode] = useState<NodeMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [testRunNode, setTestRunNode] = useState<NodeMetadata | null>(null);
+  const [testRunBody, setTestRunBody] = useState<string>('');
+  const [testRunResult, setTestRunResult] = useState<any>(null);
+  const [testRunLoading, setTestRunLoading] = useState(false);
 
   useEffect(() => {
     loadNodes();
@@ -89,6 +93,81 @@ export function NodesManager() {
         return 'bg-purple-600 border-purple-700';
       default:
         return 'bg-gray-600 border-gray-700';
+    }
+  };
+
+  const generateStubJson = (node: NodeMetadata): string => {
+    const stub: any = {
+      config: {},
+      initialState: {}
+    };
+
+    // Generate stub config based on inputs and ai_hints
+    if (node.ai_hints?.example_config) {
+      try {
+        stub.config = JSON.parse(node.ai_hints.example_config);
+      } catch {
+        // If example_config is not valid JSON, create a basic structure
+        if (node.inputs && node.inputs.length > 0) {
+          node.inputs.forEach(input => {
+            stub.config[input] = `<${input}>`;
+          });
+        }
+      }
+    } else if (node.inputs && node.inputs.length > 0) {
+      node.inputs.forEach(input => {
+        stub.config[input] = `<${input}>`;
+      });
+    }
+
+    // Add state keys from ai_hints
+    if (node.ai_hints?.get_from_state && node.ai_hints.get_from_state.length > 0) {
+      node.ai_hints.get_from_state.forEach(key => {
+        stub.initialState[key] = `<${key}>`;
+      });
+    }
+
+    return JSON.stringify(stub, null, 2);
+  };
+
+  const openTestRunModal = (node: NodeMetadata) => {
+    setTestRunNode(node);
+    setTestRunBody(generateStubJson(node));
+    setTestRunResult(null);
+  };
+
+  const closeTestRunModal = () => {
+    setTestRunNode(null);
+    setTestRunBody('');
+    setTestRunResult(null);
+    setTestRunLoading(false);
+  };
+
+  const executeTestRun = async () => {
+    if (!testRunNode) return;
+
+    setTestRunLoading(true);
+    setTestRunResult(null);
+
+    try {
+      const body = JSON.parse(testRunBody);
+      const response = await fetch(`http://localhost:3013/nodes/run/${testRunNode.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body)
+      });
+
+      const result = await response.json();
+      setTestRunResult(result);
+    } catch (error) {
+      setTestRunResult({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to execute test run'
+      });
+    } finally {
+      setTestRunLoading(false);
     }
   };
 
@@ -246,15 +325,26 @@ export function NodesManager() {
                             {node.version || 'N/A'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedNode(node);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 font-medium"
-                            >
-                              View Details
-                            </button>
+                            <div className="flex space-x-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedNode(node);
+                                }}
+                                className="text-blue-600 hover:text-blue-900 font-medium"
+                              >
+                                View Details
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openTestRunModal(node);
+                                }}
+                                className="text-green-600 hover:text-green-900 font-medium"
+                              >
+                                Test Run
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -393,6 +483,106 @@ export function NodesManager() {
           </div>
         </div>
       </div>
+
+      {/* Test Run Modal */}
+      {testRunNode && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Test Run: {testRunNode.id}</h2>
+                <p className="text-sm text-gray-600 mt-1">{testRunNode.name || testRunNode.id}</p>
+              </div>
+              <button
+                onClick={closeTestRunModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Request Body Editor */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Request Body (JSON)
+                  </label>
+                  <textarea
+                    value={testRunBody}
+                    onChange={(e) => setTestRunBody(e.target.value)}
+                    className="w-full h-64 font-mono text-sm border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter JSON body..."
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Edit the JSON body to test the node. The request will be sent to POST /nodes/run/{testRunNode.id}
+                  </p>
+                </div>
+
+                {/* Execute Button */}
+                <div>
+                  <button
+                    onClick={executeTestRun}
+                    disabled={testRunLoading}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+                  >
+                    {testRunLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Executing...
+                      </>
+                    ) : (
+                      'Execute'
+                    )}
+                  </button>
+                </div>
+
+                {/* Result Display */}
+                {testRunResult && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Result
+                    </label>
+                    <div className={`border rounded-lg p-4 ${
+                      testRunResult.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                    }`}>
+                      <div className="flex items-start mb-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          testRunResult.success ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+                        }`}>
+                          {testRunResult.success ? 'Success' : 'Error'}
+                        </span>
+                        {testRunResult.metadata?.duration && (
+                          <span className="ml-2 text-xs text-gray-600">
+                            Duration: {testRunResult.metadata.duration}ms
+                          </span>
+                        )}
+                      </div>
+                      <pre className="text-xs text-gray-800 bg-white rounded p-3 overflow-x-auto">
+                        {JSON.stringify(testRunResult, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={closeTestRunModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
