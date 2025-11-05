@@ -1,0 +1,128 @@
+{
+  "id": "extract-text-examples",
+  "name": "ExtractTextNode Examples",
+  "version": "1.0.0",
+  "description": "Comprehensive examples demonstrating all ExtractTextNode capabilities",
+  "initialState": {
+    "emailText": "Contact us at support@example.com or sales@example.com. Our CEO is ceo@example.com.",
+    "urlText": "Visit https://example.com for more info. Check out http://blog.example.com and https://docs.example.com/api",
+    "phoneText": "Call us at 555-1234 or (555) 678-9012. International: +1-555-999-8888",
+    "delimitedText": "Name: John Doe, Age: 30, City: New York | Name: Jane Smith, Age: 25, City: Boston",
+    "productData": "Product: ABC123 - Price: $29.99 | Product: XYZ789 - Price: $49.99 | Product: DEF456 - Price: $19.99",
+    "logData": "ERROR: Connection timeout at 10:30 AM\nWARNING: High memory usage detected\nERROR: Database connection failed\nINFO: Server started successfully"
+  },
+  "workflow": [
+    {
+      "extract-all-emails": {
+        "method": "extractAll",
+        "field": "emailText",
+        "extractType": "email",
+        "outputField": "allEmails",
+        "success?": "extract-first-email"
+      }
+    },
+    {
+      "extract-first-email": {
+        "method": "extractSpecific",
+        "field": "emailText",
+        "extractType": "email",
+        "occurrence": 0,
+        "outputField": "primaryEmail",
+        "success?": "extract-urls"
+      }
+    },
+    {
+      "extract-urls": {
+        "method": "extractAll",
+        "field": "urlText",
+        "extractType": "url",
+        "outputField": "websiteUrls",
+        "success?": "extract-phones"
+      }
+    },
+    {
+      "extract-phones": {
+        "method": "extractAll",
+        "field": "phoneText",
+        "extractType": "phone",
+        "outputField": "phoneNumbers",
+        "success?": "extract-names-between"
+      }
+    },
+    {
+      "extract-names-between": {
+        "method": "between",
+        "field": "delimitedText",
+        "startDelimiter": "Name: ",
+        "endDelimiter": ",",
+        "outputField": "names",
+        "success?": "extract-cities-between"
+      }
+    },
+    {
+      "extract-cities-between": {
+        "method": "between",
+        "field": "delimitedText",
+        "startDelimiter": "City: ",
+        "endDelimiter": " |",
+        "outputField": "cities",
+        "success?": "extract-product-ids-regex"
+      }
+    },
+    {
+      "extract-product-ids-regex": {
+        "method": "regex",
+        "field": "productData",
+        "pattern": "Product: ([A-Z0-9]+)",
+        "flags": "g",
+        "outputField": "productIds",
+        "success?": "extract-prices-regex"
+      }
+    },
+    {
+      "extract-prices-regex": {
+        "method": "regex",
+        "field": "productData",
+        "pattern": "\\$([0-9.]+)",
+        "flags": "g",
+        "outputField": "prices",
+        "success?": "extract-errors-regex"
+      }
+    },
+    {
+      "extract-errors-regex": {
+        "method": "regex",
+        "field": "logData",
+        "pattern": "ERROR: (.+)$",
+        "flags": "gm",
+        "outputField": "errorMessages",
+        "success?": "extract-second-url"
+      }
+    },
+    {
+      "extract-second-url": {
+        "method": "extractSpecific",
+        "field": "urlText",
+        "extractType": "url",
+        "occurrence": 1,
+        "outputField": "blogUrl",
+        "success?": "log-results"
+      }
+    },
+    {
+      "log-results": {
+        "message": "All text extractions completed successfully!",
+        "allEmails": "$.allEmails",
+        "primaryEmail": "$.primaryEmail",
+        "websiteUrls": "$.websiteUrls",
+        "phoneNumbers": "$.phoneNumbers",
+        "names": "$.names",
+        "cities": "$.cities",
+        "productIds": "$.productIds",
+        "prices": "$.prices",
+        "errorMessages": "$.errorMessages",
+        "blogUrl": "$.blogUrl"
+      }
+    }
+  ]
+}

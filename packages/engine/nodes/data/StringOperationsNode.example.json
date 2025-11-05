@@ -1,0 +1,211 @@
+{
+  "id": "string-operations-demo",
+  "name": "String Operations Node - Complete Demo",
+  "version": "1.0.0",
+  "description": "Comprehensive demonstration of all string manipulation operations available in StringOperationsNode",
+  "initialState": {
+    "rawTitle": "  HELLO world  ",
+    "htmlContent": "<p>This is <strong>bold</strong> and <em>italic</em> text</p>",
+    "urlTitle": "My Great Blog Post!!!",
+    "firstName": "john",
+    "lastName": "DOE",
+    "email": "user@example.com",
+    "templateString": "Hello {name}!",
+    "csvData": "apple,banana,orange",
+    "phoneNumber": "1234567890",
+    "description": "Lorem ipsum dolor sit amet"
+  },
+  "workflow": [
+    {
+      "comment": "=== CASE TRANSFORMATIONS ==="
+    },
+    {
+      "trim-title": {
+        "operation": "trim",
+        "field": "rawTitle",
+        "outputField": "trimmedTitle"
+      }
+    },
+    {
+      "uppercase-title": {
+        "operation": "uppercase",
+        "field": "trimmedTitle",
+        "outputField": "uppercaseTitle"
+      }
+    },
+    {
+      "lowercase-title": {
+        "operation": "lowercase",
+        "field": "trimmedTitle",
+        "outputField": "lowercaseTitle"
+      }
+    },
+    {
+      "capitalize-first-name": {
+        "operation": "capitalize",
+        "field": "firstName",
+        "outputField": "capitalizedFirstName"
+      }
+    },
+    {
+      "titlecase-title": {
+        "operation": "titleCase",
+        "field": "trimmedTitle",
+        "outputField": "titleCaseTitle"
+      }
+    },
+    {
+      "comment": "=== TEXT REPLACEMENT ==="
+    },
+    {
+      "replace-template": {
+        "operation": "replace",
+        "field": "templateString",
+        "searchValue": "{name}",
+        "replaceValue": "Alice",
+        "outputField": "personalizedGreeting"
+      }
+    },
+    {
+      "replace-all-spaces": {
+        "operation": "replaceAll",
+        "field": "trimmedTitle",
+        "searchValue": " ",
+        "replaceValue": "_",
+        "outputField": "underscoreTitle"
+      }
+    },
+    {
+      "replace-regex-digits": {
+        "operation": "replaceRegex",
+        "field": "phoneNumber",
+        "searchValue": "(\\d{3})(\\d{3})(\\d{4})",
+        "replaceValue": "($1) $2-$3",
+        "outputField": "formattedPhone"
+      }
+    },
+    {
+      "comment": "=== TEXT EXTRACTION & SPLITTING ==="
+    },
+    {
+      "split-csv": {
+        "operation": "split",
+        "field": "csvData",
+        "separator": ",",
+        "outputField": "fruits"
+      }
+    },
+    {
+      "substring-extract": {
+        "operation": "substring",
+        "field": "email",
+        "start": 0,
+        "end": 4,
+        "outputField": "emailPrefix"
+      }
+    },
+    {
+      "slice-domain": {
+        "operation": "slice",
+        "field": "email",
+        "start": 5,
+        "outputField": "emailDomain"
+      }
+    },
+    {
+      "comment": "=== TEXT CONCATENATION ==="
+    },
+    {
+      "concat-full-name": {
+        "operation": "concat",
+        "field": "capitalizedFirstName",
+        "values": [" ", "$.lastName"],
+        "outputField": "fullName"
+      }
+    },
+    {
+      "comment": "=== TEXT PADDING ==="
+    },
+    {
+      "pad-left-number": {
+        "operation": "pad",
+        "field": "phoneNumber",
+        "length": 15,
+        "padChar": "0",
+        "side": "left",
+        "outputField": "paddedPhone"
+      }
+    },
+    {
+      "pad-right-title": {
+        "operation": "pad",
+        "field": "trimmedTitle",
+        "length": 20,
+        "padChar": ".",
+        "side": "right",
+        "outputField": "paddedTitle"
+      }
+    },
+    {
+      "pad-both-centered": {
+        "operation": "pad",
+        "field": "trimmedTitle",
+        "length": 25,
+        "padChar": " ",
+        "side": "both",
+        "outputField": "centeredTitle"
+      }
+    },
+    {
+      "comment": "=== HTML & FORMATTING ==="
+    },
+    {
+      "strip-html-tags": {
+        "operation": "stripHTML",
+        "field": "htmlContent",
+        "outputField": "plainText"
+      }
+    },
+    {
+      "slugify-url": {
+        "operation": "slugify",
+        "field": "urlTitle",
+        "outputField": "urlSlug"
+      }
+    },
+    {
+      "comment": "=== CHAINING OPERATIONS ==="
+    },
+    {
+      "chain-step-1": {
+        "operation": "stripHTML",
+        "field": "htmlContent",
+        "outputField": "step1"
+      }
+    },
+    {
+      "chain-step-2": {
+        "operation": "lowercase",
+        "field": "step1",
+        "outputField": "step2"
+      }
+    },
+    {
+      "chain-step-3": {
+        "operation": "replaceAll",
+        "field": "step2",
+        "searchValue": " ",
+        "replaceValue": "-",
+        "outputField": "finalChainedResult"
+      }
+    },
+    {
+      "comment": "=== FINAL LOG ==="
+    },
+    {
+      "log-results": {
+        "message": "String Operations Demo Complete!"
+      }
+    }
+  ]
+}

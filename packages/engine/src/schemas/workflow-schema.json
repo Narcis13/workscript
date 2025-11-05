@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Workflow Definition Schema",
+  "type": "object",
+  "required": ["id", "name", "version", "workflow"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "description": "Unique identifier for the workflow"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name for the workflow"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version of the workflow"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional description of the workflow"
+    },
+    "initialState": {
+      "type": "object",
+      "description": "Initial state for the workflow execution"
+    },
+    "workflow": {
+      "type": "array", 
+      "description": "Array of workflow steps (node references or configurations)",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/workflowStep"
+      }
+    }
+  },
+  "definitions": {
+    "workflowStep": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
+          "description": "Simple node reference without configuration (supports loop syntax with ... suffix and state setter syntax with $. prefix)"
+        },
+        {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
+              "$ref": "#/definitions/nodeConfiguration"
+            },
+            "^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$": {
+              "$ref": "#/definitions/stateSetterConfiguration"
+            }
+          },
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 1,
+          "description": "Node with configuration parameters and/or edge routes (supports state setter syntax with $. prefix)"
+        }
+      ]
+    },
+    "nodeConfiguration": {
+      "type": "object",
+      "description": "Node configuration with parameters and optional edge routes",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
+          "$ref": "#/definitions/parameterValue"
+        },
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?\\?$": {
+          "$ref": "#/definitions/edgeRoute"
+        }
+      },
+      "additionalProperties": false
+    },
+    "parameterValue": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "String parameter value"
+        },
+        {
+          "type": "number",
+          "description": "Numeric parameter value"
+        },
+        {
+          "type": "boolean", 
+          "description": "Boolean parameter value"
+        },
+        {
+          "type": "array",
+          "description": "Array parameter value",
+          "items": {
+            "$ref": "#/definitions/parameterValue"
+          }
+        },
+        {
+          "type": "object",
+          "description": "Object parameter value",
+          "additionalProperties": {
+            "$ref": "#/definitions/parameterValue"
+          }
+        }
+      ]
+    },
+    "edgeRoute": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
+          "description": "Direct reference to a node ID (supports state setter syntax with $. prefix)"
+        },
+        {
+          "type": "array",
+          "description": "Sequence of nodes or configurations to execute",
+          "items": {
+            "$ref": "#/definitions/edgeRouteItem"
+          },
+          "minItems": 1
+        },
+        {
+          "$ref": "#/definitions/nestedNodeConfiguration"
+        }
+      ]
+    },
+    "edgeRouteItem": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
+          "description": "Node ID reference in sequence (supports state setter syntax with $. prefix)"
+        },
+        {
+          "$ref": "#/definitions/nestedNodeConfiguration"
+        }
+      ]
+    },
+    "nestedNodeConfiguration": {
+      "type": "object",
+      "description": "Nested node configuration for inline node definition",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
+          "$ref": "#/definitions/nodeConfiguration"
+        },
+        "^\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$": {
+          "$ref": "#/definitions/stateSetterConfiguration"
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1
+    },
+    "stateSetterConfiguration": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Direct string value assignment for state setter (shorthand syntax)"
+        },
+        {
+          "type": "number",
+          "description": "Direct number value assignment for state setter (shorthand syntax)"
+        },
+        {
+          "type": "boolean",
+          "description": "Direct boolean value assignment for state setter (shorthand syntax)"
+        },
+        {
+          "type": "array",
+          "description": "Direct array value assignment for state setter (shorthand syntax)",
+          "items": {
+            "$ref": "#/definitions/parameterValue"
+          }
+        },
+        {
+          "type": "object",
+          "description": "Object value or configuration with explicit parameters and optional edge routes",
+          "properties": {},
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?$": {
+              "$ref": "#/definitions/parameterValue"
+            },
+            "^[a-zA-Z0-9_-]+(\\.\\.\\.)?\\?$": {
+              "$ref": "#/definitions/edgeRoute"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
