@@ -1,0 +1,21 @@
+{
+  "id": "test-workflow1",
+  "name": "Simple Test Workflow",
+  "version": "1.0.0",
+  "description": "Generate token and save to file!",
+  "workflow": [
+    {
+      "auth": {
+        "operation": "generate_token",
+        "data": "test-data",
+        "success?": {
+          "filesystem": {
+            "operation": "write",
+            "path": "/tmp/workflow-token.txt",
+            "content": "Token generated successfully!"
+          }
+        }
+      }
+    }
+  ]
+}

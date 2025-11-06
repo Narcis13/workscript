@@ -1,0 +1,23 @@
+{
+  "id": "test-workflow",
+  "name": "Simple Test Workflow",
+  "version": "1.0.0",
+  "description": "Generate token and save to file!",
+  "workflow": [
+    { "googleConnect":{"email":"smupitesti2001@gmail.com"}},
+    {"listEmails": 
+                {
+                  "getFullDetails": true,
+                  "mailbox": "spam",
+                  "maxResults": 10
+                }
+    },
+    {"sendEmail": 
+                {
+                  "to": "narcis75@gmail.com",
+                  "subject": "Email de test from workscript",
+                  "body": "$.lastGmailListAttempt"
+                }
+    }
+  ]
+}

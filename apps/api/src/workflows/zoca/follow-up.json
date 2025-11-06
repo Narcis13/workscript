@@ -1,0 +1,28 @@
+{
+    "id": "follow-up",
+    "name": "Follow Up Workflow",
+    "version": "1.0.0",
+    "description": "Follow up clienti pentru agentie imobiliara",
+    "workflow": [
+      "toate-contactele",
+      {"aplica-filtre": {
+        "setDate": "contacte",
+        "filtre": [
+          {
+            "camp": "assignedAgentName",
+            "valoare": "Stefan Meluta"
+          },
+          {
+            "camp": "needFollowUp",
+            "valoare": "1"
+          }
+        ]
+      }},
+      {
+        "pentru-fiecare-element...":{
+            "din":"filteredData",
+            "executa?":["log"]
+        }
+      }
+    ]
+  }

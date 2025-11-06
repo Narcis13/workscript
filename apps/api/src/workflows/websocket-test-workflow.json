@@ -1,0 +1,105 @@
+{
+  "id": "websocket-test-workflow",
+  "name": "WebSocket Test Workflow",
+  "version": "1.0.0",
+  "description": "A comprehensive test workflow to demonstrate WebSocket communication with various node types and error scenarios",
+  "initialState": {
+    "startTime": null,
+    "userInput": "Hello from WebSocket!",
+    "processingSteps": []
+  },
+  "workflow": [
+    {
+      "start-timer": {
+        "operation": "set",
+        "key": "startTime",
+        "value": "{{timestamp}}",
+        "success?": "math-calculation"
+      }
+    },
+    {
+      "math-calculation": {
+        "operation": "add",
+        "values": [10, 25, 5],
+        "success?": "logic-check"
+      }
+    },
+    {
+      "logic-check": {
+        "condition": "{{math_result}} > 30",
+        "success?": "data-transform",
+        "failure?": "error-handler"
+      }
+    },
+    {
+      "data-transform": {
+        "operation": "map",
+        "source": ["apple", "banana", "cherry"],
+        "transform": "uppercase",
+        "success?": "progress-update"
+      }
+    },
+    {
+      "progress-update": {
+        "message": "Halfway through processing...",
+        "data": {
+          "completed": 4,
+          "total": 8,
+          "currentStep": "progress-update"
+        },
+        "success?": "loop-demo"
+      }
+    },
+    {
+      "loop-demo": {
+        "type": "loop",
+        "items": [1, 2, 3, 4],
+        "maxIterations": 4,
+        "body": {
+          "multiply-item": {
+            "operation": "multiply",
+            "values": ["{{loop_item}}", 2],
+            "success?": "next"
+          }
+        },
+        "success?": "complex-calculation"
+      }
+    },
+    {
+      "complex-calculation": {
+        "operation": "power",
+        "base": 2,
+        "exponent": 5,
+        "success?": "final-summary"
+      }
+    },
+    {
+      "final-summary": {
+        "operation": "combine",
+        "data": {
+          "mathResult": "{{math_result}}",
+          "transformedData": "{{data_transform_result}}",
+          "loopResults": "{{loop_results}}",
+          "complexResult": "{{complex_calculation_result}}",
+          "processingTime": "{{processing_duration}}"
+        },
+        "success?": "complete"
+      }
+    },
+    {
+      "complete": {
+        "message": "Workflow completed successfully!",
+        "finalData": "{{final_summary_result}}",
+        "success?": null
+      }
+    },
+    {
+      "error-handler": {
+        "message": "Math result was too low, handling error gracefully",
+        "error": "MATH_RESULT_TOO_LOW",
+        "recovery": "Setting default values",
+        "success?": "complete"
+      }
+    }
+  ]
+}
