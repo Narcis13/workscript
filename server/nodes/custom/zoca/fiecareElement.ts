@@ -1,6 +1,6 @@
 
-import { WorkflowNode } from 'shared';
-import type { ExecutionContext, EdgeMap } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
+import type { ExecutionContext, EdgeMap } from '@workscript/engine';
 
 export class FiecareElementNode extends WorkflowNode {
   metadata = {

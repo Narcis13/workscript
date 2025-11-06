@@ -1,7 +1,7 @@
 // DataTable - Interactive data table component
 
 import React from 'react';
-import { WorkflowUIComponent, Column } from 'shared';
+import { WorkflowUIComponent, Column } from '@workscript/engine';
 
 interface DataTableProps extends WorkflowUIComponent {
   data: any[];

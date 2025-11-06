@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import beaver from '../assets/beaver.svg'
-import { ApiResponse, WorkflowDefinition } from 'shared'
+import { ApiResponse, WorkflowDefinition } from '@workscript/engine'
 import { Button } from './ui/button'
 import { WorkflowDemo } from './WorkflowDemo'
 import { useWorkflowService } from '../hooks/useWorkflowService'

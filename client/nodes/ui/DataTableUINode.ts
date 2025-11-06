@@ -1,13 +1,13 @@
 // Data Table UI Node - Interactive data tables
 
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 
   UIInteractionEvent,
   Column 
-} from 'shared';
+} from '@workscript/engine';
 
 export class DataTableUINode extends UINode {
   metadata: UINodeMetadata = {

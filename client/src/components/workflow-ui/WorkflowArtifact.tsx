@@ -1,13 +1,13 @@
 // WorkflowArtifact - Main renderer for AI-generated UI workflows
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ExecutionEngine, NodeRegistry, StateManager, UIWorkflowContext } from 'shared';
+import { ExecutionEngine, NodeRegistry, StateManager, UIWorkflowContext } from '@workscript/engine';
 import {
   UIWorkflowDefinition,
   UIRenderData,
   UIInteractionEvent,
   SecurityWarning
-} from 'shared';
+} from '@workscript/engine';
 
 interface WorkflowArtifactProps {
   workflow: UIWorkflowDefinition;

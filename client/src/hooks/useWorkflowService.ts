@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ClientWorkflowService } from '../services/ClientWorkflowService';
-import type { WorkflowDefinition, ValidationResult } from 'shared';
+import type { WorkflowDefinition, ValidationResult } from '@workscript/engine';
 
 export interface UseWorkflowServiceResult {
   /** The initialized workflow service instance */

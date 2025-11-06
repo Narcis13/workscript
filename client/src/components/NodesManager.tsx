@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ClientWorkflowService } from '../services/ClientWorkflowService';
-import type { NodeMetadata as SharedNodeMetadata } from 'shared';
+import type { NodeMetadata as SharedNodeMetadata } from '@workscript/engine';
 
 interface NodeMetadata extends SharedNodeMetadata {
   source?: 'universal' | 'client' | 'server';

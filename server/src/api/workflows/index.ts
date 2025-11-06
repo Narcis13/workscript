@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import type { WorkflowDefinition } from 'shared/dist'
+import type { WorkflowDefinition } from '@workscript/engine'
 import { WorkflowService } from '../../services/WorkflowService'
 import { WorkflowRepository } from '../../db/repositories/workflowRepository'
 import { writeFile, mkdir, readFile, readdir, stat } from 'fs/promises'

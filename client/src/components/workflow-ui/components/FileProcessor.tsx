@@ -1,7 +1,7 @@
 // FileProcessor - File upload and processing component
 
 import React, { useState } from 'react';
-import { WorkflowUIComponent } from 'shared';
+import { WorkflowUIComponent } from '@workscript/engine';
 
 interface FileProcessorProps extends WorkflowUIComponent {
   acceptedTypes: string[];

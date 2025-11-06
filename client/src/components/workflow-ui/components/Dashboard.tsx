@@ -1,7 +1,7 @@
 // Dashboard - Layout component for workflow dashboards
 
 import React from 'react';
-import { WorkflowUIComponent, DashboardSection } from 'shared';
+import { WorkflowUIComponent, DashboardSection } from '@workscript/engine';
 
 interface DashboardProps extends WorkflowUIComponent {
   layout: 'grid' | 'sidebar' | 'tabbed';

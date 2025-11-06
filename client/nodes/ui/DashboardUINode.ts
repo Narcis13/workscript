@@ -1,13 +1,13 @@
 // Dashboard UI Node - Interactive dashboard container
 
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 
   UIInteractionEvent,
   DashboardSection 
-} from 'shared';
+} from '@workscript/engine';
 
 export class DashboardUINode extends UINode {
   metadata: UINodeMetadata = {

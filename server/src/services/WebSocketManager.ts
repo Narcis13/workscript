@@ -9,7 +9,7 @@ import {
   isWorkflowMessage,
   type WorkflowDefinition,
   type WebSocketMessage
-} from 'shared';
+} from '@workscript/engine';
 
 
 export interface WebSocketClient {

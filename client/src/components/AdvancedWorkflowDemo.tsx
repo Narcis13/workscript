@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { WorkflowDefinition } from 'shared';
+import type { WorkflowDefinition } from '@workscript/engine';
 import { Button } from './ui/button';
 import { useWorkflowService } from '../hooks/useWorkflowService';
 

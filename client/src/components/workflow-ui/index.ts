@@ -29,4 +29,4 @@ export type {
   DashboardSection,
   ChartData,
   Column
-} from 'shared';
+} from '@workscript/engine';

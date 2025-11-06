@@ -1,12 +1,12 @@
 // File Processor UI Node - File upload and processing
 
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 import type { 
   UINodeMetadata, 
   ExecutionContext, 
   EdgeMap, 
   UIInteractionEvent 
-} from 'shared';
+} from '@workscript/engine';
 
 export class FileProcessorUINode extends UINode {
   metadata: UINodeMetadata = {

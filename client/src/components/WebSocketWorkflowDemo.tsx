@@ -9,7 +9,7 @@ import {
   type WorkflowResultMessage,
   type WorkflowErrorMessage,
   isWorkflowMessage
-} from 'shared';
+} from '@workscript/engine';
 
 // Test workflow definition
 const TEST_WORKFLOW: WorkflowDefinition = {

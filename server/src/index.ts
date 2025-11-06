@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { ApiResponse } from 'shared/dist'
+import type { ApiResponse } from '@workscript/engine'
 import { securityHeaders, logger, errorHandler } from './middleware'
 import { WorkflowService } from './services/WorkflowService'
 import { WebSocketManager } from './services/WebSocketManager'

@@ -1,5 +1,5 @@
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
-import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
+import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@workscript/engine';
 import { WebSocketManager } from './WebSocketManager';
 
 /**

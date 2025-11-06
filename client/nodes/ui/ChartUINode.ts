@@ -1,6 +1,6 @@
 // Chart UI Node - Data visualization components
 
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 import type { 
   UINodeMetadata, 
   ExecutionContext, 
@@ -8,7 +8,7 @@ import type {
   UIInteractionEvent,
   ChartData,
   ChartConfig 
-} from 'shared';
+} from '@workscript/engine';
 
 export class ChartUINode extends UINode {
   metadata: UINodeMetadata = {

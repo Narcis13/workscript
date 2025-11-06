@@ -13,7 +13,9 @@
     "paths": {
       "@server/*": ["./server/src/*"],
       "@client/*": ["./client/src/*"],
-      "@shared/*": ["./shared/src/*"]
+      "@shared/*": ["./shared/src/*"],
+      "@workscript/engine": ["./packages/engine/src"],
+      "@workscript/engine/*": ["./packages/engine/src/*"]
     },
 
     // Module resolution

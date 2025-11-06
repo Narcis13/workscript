@@ -1,6 +1,6 @@
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
-import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from 'shared';
-import { UNIVERSAL_NODES } from '../../../shared/dist/nodes/index.js';
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
+import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@workscript/engine';
+import { UNIVERSAL_NODES } from '@workscript/engine/nodes';
 import { CLIENT_NODES } from '../../nodes';
 import { useWebSocket, type WebSocketMessage, type WebSocketOptions } from '../hooks/useWebSocket';
 

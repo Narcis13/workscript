@@ -1,7 +1,7 @@
 // ActionButtonGroup - Interactive button group component
 
 import React from 'react';
-import { WorkflowUIComponent, ActionButton } from 'shared';
+import { WorkflowUIComponent, ActionButton } from '@workscript/engine';
 
 interface ActionButtonGroupProps extends WorkflowUIComponent {
   buttons: ActionButton[];

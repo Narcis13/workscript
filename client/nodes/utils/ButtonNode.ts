@@ -1,10 +1,10 @@
-import { WorkflowNode } from 'shared';
-import type { ExecutionContext, EdgeMap } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
+import type { ExecutionContext, EdgeMap } from '@workscript/engine';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Button } from '../../src/components/ui/button';
 import { ClientWorkflowService } from '../../src/services/ClientWorkflowService';
-import type { WorkflowDefinition } from 'shared';
+import type { WorkflowDefinition } from '@workscript/engine';
 
 export class ButtonNode extends WorkflowNode {
   metadata = {

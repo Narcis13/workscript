@@ -1,7 +1,7 @@
 // WorkflowChart - Chart visualization component
 
 import React from 'react';
-import { WorkflowUIComponent, ChartData } from 'shared';
+import { WorkflowUIComponent, ChartData } from '@workscript/engine';
 
 interface WorkflowChartProps extends WorkflowUIComponent {
   data: ChartData;

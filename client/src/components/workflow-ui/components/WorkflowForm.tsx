@@ -1,7 +1,7 @@
 // WorkflowForm - Dynamic form component for UI workflows
 
 import React, { useState } from 'react';
-import { WorkflowUIComponent, FormField, UIEventFactory } from 'shared';
+import { WorkflowUIComponent, FormField, UIEventFactory } from '@workscript/engine';
 
 interface WorkflowFormProps extends WorkflowUIComponent {
   fields: FormField[];

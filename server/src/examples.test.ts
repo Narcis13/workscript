@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { WorkflowParser, ExecutionEngine, StateManager, NodeRegistry } from 'shared';
-import { WorkflowNode } from 'shared';
-import type { ExecutionContext } from 'shared';
+import { WorkflowParser, ExecutionEngine, StateManager, NodeRegistry } from '@workscript/engine';
+import { WorkflowNode } from '@workscript/engine';
+import type { ExecutionContext } from '@workscript/engine';
 
 // Test nodes for integration testing
 class LoopNode extends WorkflowNode {

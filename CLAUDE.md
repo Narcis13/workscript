@@ -2,11 +2,47 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚀 Architecture Migration Notice (January 2025)
+
+**IMPORTANT: New Package Structure Implemented**
+
+The project has been migrated to a new `/packages` and `/apps` architecture as outlined in `workscript_prospect.md`:
+
+### New Structure:
+- **`/packages/engine`** - Core workflow engine (renamed from `/shared`, package name: `@workscript/engine`)
+- **`/apps/api`** - New plugin-based API server (for future features)
+- **`/server`** - Production CRM API (kept as-is during migration)
+- **`/client`** - React/Vite frontend (no changes, will migrate to `/apps/web` later)
+
+### Import Changes:
+All imports have been updated from `'shared'` to `'@workscript/engine'`:
+```typescript
+// Old imports (still work but deprecated)
+import { ExecutionEngine } from 'shared';
+
+// New imports (use these)
+import { ExecutionEngine } from '@workscript/engine';
+```
+
+### Workspace Configuration:
+Root `package.json` now includes both old and new structures for gradual migration:
+```json
+{
+  "workspaces": ["./server", "./client", "./shared", "./packages/*", "./apps/*"]
+}
+```
+
+### Server Roles:
+- **`/server`** - Existing production CRM with full database (keep for now)
+- **`/apps/api`** - New plugin-based architecture for future SaaS products
+
+---
+
 ## Project Overview
 
 This is an **Agentic Workflow Orchestration System** built as a TypeScript monorepo using the bhvr stack (Bun + Hono + Vite + React). The project implements a **production-ready, shared-core** node-based workflow system with JSON definitions, comprehensive validation, lifecycle hooks, real-time event streaming, database persistence, and UI workflow generation.
 
-**Key Achievement:** The **core engine is fully implemented in the shared package** and executes workflows across server (Hono API), client (browser), and CLI environments with **distributed node architectures**.
+**Key Achievement:** The **core engine is fully implemented in the @workscript/engine package** (formerly `/shared`, now `/packages/engine`) and executes workflows across server (Hono API), client (browser), and CLI environments with **distributed node architectures**.
 
 ## Essential Commands
 

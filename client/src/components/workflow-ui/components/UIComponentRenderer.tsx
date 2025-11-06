@@ -1,7 +1,7 @@
 // UIComponentRenderer - Dynamic component renderer for workflow UI components
 
 import React from 'react';
-import { UIRenderData, UIInteractionEvent } from 'shared';
+import { UIRenderData, UIInteractionEvent } from '@workscript/engine';
 
 interface UIComponentRendererProps {
   renderData: UIRenderData;

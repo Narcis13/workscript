@@ -34,7 +34,7 @@ import { ChartUINode } from './ui/ChartUINode';
 import { DataTableUINode } from './ui/DataTableUINode';
 import { FileProcessorUINode } from './ui/FileProcessorUINode';
 import { ActionButtonGroupUINode } from './ui/ActionButtonGroupUINode';
-import type { WorkflowNode } from 'shared';
+import type { WorkflowNode } from '@workscript/engine';
 
 /**
  * Array of all client node classes for automatic registration
