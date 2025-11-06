@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { WorkflowService } from '../../services/WorkflowService'
+import { WorkflowService } from '../services/WorkflowService'
 import type { ExecutionContext, EdgeMap } from '@workscript/engine'
 import { createId } from '@paralleldrive/cuid2'
 

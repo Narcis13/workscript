@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
-import { AutomationRepository } from '../../db/repositories/automationRepository'
-import { WorkflowRepository } from '../../db/repositories/workflowRepository'
-import { CronScheduler } from '../../services/CronScheduler'
-import type { NewAutomation } from '../../db/schema'
+import { AutomationRepository } from '../repositories/automationRepository'
+import { WorkflowRepository } from '../repositories/workflowRepository'
+import { CronScheduler } from '../../../shared-services/scheduler/CronScheduler'
+import type { NewAutomation } from '../../../db/schema/automations.schema'
 import { createId } from '@paralleldrive/cuid2'
 
 const automationRepository = new AutomationRepository()
