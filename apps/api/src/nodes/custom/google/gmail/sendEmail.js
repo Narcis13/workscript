@@ -1,4 +1,4 @@
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 import { google } from 'googleapis';
 export class SendEmailNode extends WorkflowNode {
     metadata = {

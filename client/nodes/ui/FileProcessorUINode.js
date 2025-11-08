@@ -1,5 +1,5 @@
 // File Processor UI Node - File upload and processing
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 export class FileProcessorUINode extends UINode {
     metadata = {
         id: 'ui-file-processor',

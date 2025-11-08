@@ -1,5 +1,5 @@
 // Chart UI Node - Data visualization components
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 export class ChartUINode extends UINode {
     metadata = {
         id: 'ui-chart',

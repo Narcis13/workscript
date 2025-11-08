@@ -1,5 +1,5 @@
 // Form UI Node - Dynamic form generation and handling
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 export class FormUINode extends UINode {
     metadata = {
         id: 'ui-form',

@@ -1,5 +1,5 @@
 // Data Table UI Node - Interactive data tables
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 export class DataTableUINode extends UINode {
     metadata = {
         id: 'ui-data-table',

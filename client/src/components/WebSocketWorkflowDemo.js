@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { ClientWorkflowService } from '../services/ClientWorkflowService';
-import { WebSocketMessageSerializer, isWorkflowMessage } from 'shared';
+import { WebSocketMessageSerializer, isWorkflowMessage } from '@workscript/engine';
 // Test workflow definition
 const TEST_WORKFLOW = {
     "id": "websocket-test-workflow",

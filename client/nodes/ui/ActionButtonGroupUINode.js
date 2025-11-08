@@ -1,5 +1,5 @@
 // Action Button Group UI Node - Interactive button groups
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 export class ActionButtonGroupUINode extends UINode {
     metadata = {
         id: 'ui-action-buttons',

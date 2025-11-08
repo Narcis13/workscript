@@ -1,4 +1,4 @@
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 import crypto from 'crypto';
 export class AuthNode extends WorkflowNode {
     metadata = {

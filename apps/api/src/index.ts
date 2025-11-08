@@ -11,6 +11,19 @@ import { logger as honoLogger } from 'hono/logger';
 import { join } from 'path';
 import { pluginLoader, pluginRegistry } from './core/plugins';
 
+// Global server reference for hot reload
+declare global {
+  var __server: ReturnType<typeof Bun.serve> | undefined;
+}
+
+// Stop existing server on hot reload
+if (global.__server) {
+  console.log('[Server] Stopping existing server for hot reload...');
+  global.__server.stop();
+  // Give OS time to release the port
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+}
+
 // Initialize Hono app
 const app = new Hono();
 
@@ -171,34 +184,108 @@ async function startServer() {
       );
     });
 
-    // Start server
+    // Start server with retry logic for port conflicts
     const port = parseInt(process.env.PORT || '3013', 10);
     console.log(`[Server] Starting server on port ${port}...`);
 
-    const server = Bun.serve({
-      port,
-      fetch: app.fetch,
-    });
+    // Helper function to kill processes using the port
+    const killPort = async (portNum: number): Promise<boolean> => {
+      try {
+        const currentPid = process.pid;
+        const proc = Bun.spawn(['lsof', '-ti', `:${portNum}`], {
+          stdout: 'pipe',
+        });
 
-    console.log(`✓ Server running at http://localhost:${port}`);
-    console.log(`✓ Plugin system initialized with ${pluginRegistry.getPluginCount()} plugin(s)`);
-    console.log(`✓ Health check available at http://localhost:${port}/health`);
-    console.log(`✓ Plugin list available at http://localhost:${port}/api/plugins`);
+        const output = await new Response(proc.stdout).text();
+        const pids = output.trim().split('\n').filter(Boolean).map(p => parseInt(p, 10));
+
+        // Filter out current process and invalid PIDs
+        const pidsToKill = pids.filter(pid => !isNaN(pid) && pid !== currentPid);
+
+        if (pidsToKill.length > 0) {
+          console.log(`[Server] Found ${pidsToKill.length} stale process(es) using port ${portNum}, killing...`);
+          for (const pid of pidsToKill) {
+            try {
+              process.kill(pid, 'SIGKILL');
+              console.log(`[Server] Killed stale process ${pid}`);
+            } catch (err) {
+              console.log(`[Server] Could not kill process ${pid} (may have already exited)`);
+            }
+          }
+          // Give OS time to release the port
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return true;
+        } else if (pids.length > 0) {
+          console.log(`[Server] Port ${portNum} is being used by current process, skipping cleanup`);
+        }
+        return false;
+      } catch (err) {
+        return false;
+      }
+    };
+
+    let server;
+    let retries = 3;
+    let delay = 500;
+
+    while (retries > 0) {
+      try {
+        server = Bun.serve({
+          port,
+          fetch: app.fetch,
+          // Removed reusePort: true to avoid race conditions in watch mode
+        });
+
+        // Store server reference globally for hot reload handling
+        global.__server = server;
+
+        console.log(`✓ Server running at http://localhost:${port}`);
+        console.log(`✓ Plugin system initialized with ${pluginRegistry.getPluginCount()} plugin(s)`);
+        console.log(`✓ Health check available at http://localhost:${port}/health`);
+        console.log(`✓ Plugin list available at http://localhost:${port}/api/plugins`);
+        break; // Successfully started
+      } catch (error: any) {
+        if (error.code === 'EADDRINUSE') {
+          retries--;
+          if (retries > 0) {
+            console.log(`[Server] Port ${port} is in use, attempting cleanup and retry (${retries} attempts remaining)...`);
+            await killPort(port); // Kill stale processes
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= 1.5; // Exponential backoff
+          } else {
+            console.error(`[Server] Failed to start server after multiple attempts.`);
+            console.error(`[Server] Try manually killing the process: lsof -ti :${port} | xargs kill -9`);
+            throw error;
+          }
+        } else {
+          throw error; // Re-throw non-port-conflict errors
+        }
+      }
+    }
+
+    if (!server) {
+      throw new Error('Failed to start server');
+    }
 
     // Graceful shutdown
-    process.on('SIGTERM', async () => {
-      console.log('[Server] SIGTERM received, shutting down gracefully...');
-      await pluginLoader.unloadAll();
-      server.stop();
-      process.exit(0);
-    });
+    const shutdown = async (signal: string) => {
+      console.log(`\n[Server] ${signal} received, shutting down gracefully...`);
+      try {
+        await pluginLoader.unloadAll();
+        server.stop();
+        global.__server = undefined; // Clear global reference
+        // Give the OS more time to release the port (important for watch mode)
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        console.log('[Server] Shutdown complete');
+        process.exit(0);
+      } catch (error) {
+        console.error('[Server] Error during shutdown:', error);
+        process.exit(1);
+      }
+    };
 
-    process.on('SIGINT', async () => {
-      console.log('\n[Server] SIGINT received, shutting down gracefully...');
-      await pluginLoader.unloadAll();
-      server.stop();
-      process.exit(0);
-    });
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (error) {
     console.error('[Server] Fatal error during startup:', error);
     process.exit(1);
@@ -208,4 +295,4 @@ async function startServer() {
 // Start the server
 startServer();
 
-export default app;
+// Note: Removed `export default app` as it was causing Bun to auto-serve in dev mode

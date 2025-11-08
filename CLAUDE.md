@@ -2,39 +2,45 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚀 Architecture Migration Notice (January 2025)
+## 🚀 Architecture Migration Complete (November 2025)
 
-**IMPORTANT: New Package Structure Implemented**
+**✅ MIGRATION COMPLETE: New Modular Plugin Architecture**
 
-The project has been migrated to a new `/packages` and `/apps` architecture as outlined in `workscript_prospect.md`:
+The project has been successfully migrated to a modern `/packages` and `/apps` architecture as outlined in `workscript_prospect.md`:
 
-### New Structure:
-- **`/packages/engine`** - Core workflow engine (renamed from `/shared`, package name: `@workscript/engine`)
-- **`/apps/api`** - New plugin-based API server (for future features)
-- **`/server`** - Production CRM API (kept as-is during migration)
-- **`/client`** - React/Vite frontend (no changes, will migrate to `/apps/web` later)
+### Current Structure:
+- **`/packages/engine`** - Core workflow engine (migrated from `/shared`, package: `@workscript/engine`)
+- **`/packages/ui`** - Shared UI components (shadcn/ui, package: `@workscript/ui`)
+- **`/packages/config`** - Shared configurations for ESLint, TypeScript, Tailwind
+- **`/apps/api`** - Plugin-based API server with Workscript plugin
+- **`/apps/frontend`** - Vite + React SPA (starting point for workflow UI)
+- **`/server`** - Legacy CRM API (kept for Real Estate CRM features)
+- **`/client`** - Legacy frontend (kept for workflow integration reference)
 
-### Import Changes:
-All imports have been updated from `'shared'` to `'@workscript/engine'`:
+### Import Updates (COMPLETED):
+All imports now use `@workscript/engine`:
 ```typescript
-// Old imports (still work but deprecated)
-import { ExecutionEngine } from 'shared';
-
-// New imports (use these)
+// ✅ Current imports (all files updated)
 import { ExecutionEngine } from '@workscript/engine';
+import { UNIVERSAL_NODES } from '@workscript/engine/nodes';
 ```
 
 ### Workspace Configuration:
-Root `package.json` now includes both old and new structures for gradual migration:
 ```json
 {
-  "workspaces": ["./server", "./client", "./shared", "./packages/*", "./apps/*"]
+  "workspaces": ["./server", "./client", "./packages/*", "./apps/*"]
 }
 ```
+**Note:** `/shared` removed - migration complete!
 
-### Server Roles:
-- **`/server`** - Existing production CRM with full database (keep for now)
-- **`/apps/api`** - New plugin-based architecture for future SaaS products
+### Architecture Roles:
+- **`/packages/engine`** - Core workflow orchestration (universal)
+- **`/packages/ui`** - Shared React components
+- **`/packages/config`** - Shared tooling configurations
+- **`/apps/api`** - Modern plugin-based API for SaaS products
+- **`/apps/frontend`** - Frontend starting point (Vite + React)
+- **`/server`** - Legacy CRM (keep for Real Estate features)
+- **`/client`** - Legacy frontend (keep as reference)
 
 ---
 
@@ -46,47 +52,64 @@ This is an **Agentic Workflow Orchestration System** built as a TypeScript monor
 
 ## Essential Commands
 
-### Development
-- `bun run dev` - Start all services (client, server, shared) with hot reload
-- `bun run dev:client` - Start only the frontend
-- `bun run dev:server` - Start only the backend
-- `bun install` - Install dependencies and auto-build shared/server packages
+### Development (New Architecture)
+- `bun run dev` - Start all services (engine, api, frontend) with hot reload and concurrently
+- `bun run dev:engine` - Start engine TypeScript watch mode
+- `bun run dev:api` - Start API server with hot reload
+- `bun run dev:frontend` - Start Vite dev server
+- `bun install` - Install dependencies and auto-build engine package
+
+### Development (Legacy - for reference)
+- `bun run dev:legacy` - Start legacy server + client
+- `bun run dev:client` - Start legacy client only
+- `bun run dev:server` - Start legacy server only
 
 ### Build & Test
-- `bun run build` - Build all packages in dependency order
-- `cd server && bun run test` - Run server tests with Vitest
-- `cd shared && bun run test` - Run shared engine tests
-- `cd client && bun run lint` - Run ESLint on frontend code
+- `bun run build` - Build all packages (engine → api → frontend)
+- `bun run build:engine` - Build engine package only
+- `bun run build:api` - Build API server only
+- `bun run build:frontend` - Build frontend only
+- `bun run test` - Run tests for engine and API
+- `bun run test:engine` - Run engine tests
+- `bun run test:api` - Run API tests
+- `bun run typecheck` - Type-check all packages
 
-### Testing Individual Components
-- Run specific test: `cd server && bun test WorkflowParser.test.ts`
-- Watch mode: `cd server && bun test --watch`
-- Test with coverage: `cd server && bun test --coverage`
+### Utilities
+- `bun run clean` - Remove all dist folders and nested node_modules
+- `bun run format` - Format code with Prettier
+- `bun run format:check` - Check code formatting
 
-### Database Operations
-- `cd server && bun run db:generate` - Generate migrations
-- `cd server && bun run db:push` - Push schema to database
-- `cd server && bun run db:migrate` - Run migrations
+### Database Operations (API)
+- `cd apps/api && bun run db:generate` - Generate migrations
+- `cd apps/api && bun run db:push` - Push schema to database
+- `cd apps/api && bun run db:studio` - Open Drizzle Studio
+
+### Database Operations (Legacy Server)
+- `cd server && bun run db:generate` - Generate migrations (CRM)
+- `cd server && bun run db:push` - Push CRM schema to database
+- `cd server && bun run db:migrate` - Run CRM migrations
 
 ## Architecture Overview
 
-The codebase follows a **shared-core monorepo architecture** with three main packages designed for **multi-environment execution**:
+The codebase follows a **modular plugin-based monorepo architecture** with packages and apps designed for **multi-environment execution**:
 
-### 1. Shared Package (`/shared`) - **CORE ENGINE PACKAGE** ✅
+### Packages (Shared Core Libraries)
+
+#### 1. Engine Package (`/packages/engine`) - `@workscript/engine` ✅
 
 **Status:** Production-ready with advanced features
 
 **Core Components:**
-- **ExecutionEngine** (`/shared/src/engine/`) - Orchestrates workflow execution with lifecycle hooks
-- **WorkflowParser** (`/shared/src/parser/`) - AST-like parsing with JSON Schema + semantic validation
-- **StateManager** (`/shared/src/state/`) - Advanced state management with snapshots, watchers, change detection
-- **StateResolver** (`/shared/src/state/`) - Elegant `$.key` syntax for state access
-- **NodeRegistry** (`/shared/src/registry/`) - Multi-package node discovery and registration
-- **HookManager** (`/shared/src/hooks/`) - Comprehensive lifecycle hook system
-- **EventEmitter** (`/shared/src/events/`) - Event-driven architecture foundation
+- **ExecutionEngine** (`/packages/engine/src/engine/`) - Orchestrates workflow execution with lifecycle hooks
+- **WorkflowParser** (`/packages/engine/src/parser/`) - AST-like parsing with JSON Schema + semantic validation
+- **StateManager** (`/packages/engine/src/state/`) - Advanced state management with snapshots, watchers, change detection
+- **StateResolver** (`/packages/engine/src/state/`) - Elegant `$.key` syntax for state access
+- **NodeRegistry** (`/packages/engine/src/registry/`) - Multi-package node discovery and registration
+- **HookManager** (`/packages/engine/src/hooks/`) - Comprehensive lifecycle hook system
+- **EventEmitter** (`/packages/engine/src/events/`) - Event-driven architecture foundation
 
 **Node Library:**
-- **Universal Nodes** (`/shared/nodes/`) - Zero dependencies, environment-agnostic
+- **Universal Nodes** (`/packages/engine/nodes/`) - Zero dependencies, environment-agnostic
   - `MathNode` - Mathematical operations
   - `LogicNode` - Boolean logic
   - `DataTransformNode` - Object/array transformations
@@ -993,3 +1016,106 @@ workscript/
 **Document Version:** 2.0.0
 **Last Updated:** 2025-01-18
 **Status:** Current Implementation - Production Ready
+
+#### 2. UI Package (`/packages/ui`) - `@workscript/ui` ✅
+
+**Status:** Active development
+
+**Purpose:** Shared React UI components for all frontend applications
+
+**Components:**
+- **Button** - Customizable button component with variants
+- **Utils** - `cn()` function for className merging
+
+**Usage:**
+```typescript
+import { Button, cn } from '@workscript/ui';
+```
+
+#### 3. Config Package (`/packages/config`) - `@workscript/config` ✅
+
+**Status:** Active
+
+**Purpose:** Centralized configuration files for consistent tooling across the monorepo
+
+**Exports:**
+- `@workscript/config/eslint` - ESLint shared configuration
+- `@workscript/config/typescript` - TypeScript base tsconfig
+- `@workscript/config/tailwind` - Tailwind CSS base configuration
+
+**Usage:**
+```json
+// tsconfig.json
+{
+  "extends": "@workscript/config/typescript"
+}
+```
+
+### Applications
+
+#### 1. API Server (`/apps/api`) - **PLUGIN-BASED API** ✅
+
+**Status:** Production-ready
+
+**Architecture:** Plugin-based SaaS platform architecture
+
+**Plugin System:**
+- **PluginLoader** - Automatic plugin discovery and registration
+- **SaaSPlugin Interface** - Standardized plugin structure
+- **Plugin Manifest** - AI-discoverable plugin metadata
+- **Health Checks** - Per-plugin health monitoring
+
+**Current Plugins:**
+- **Workscript Plugin** (`/apps/api/src/plugins/workscript/`)
+  - Workflow execution API
+  - Automation scheduling (cron)
+  - WebSocket workflow events
+  - Database schema (workflows, executions, automations)
+
+**Shared Services:**
+- **WebSocketManager** - Real-time event broadcasting
+- **CronScheduler** - Automated workflow execution
+
+**Server Nodes:**
+- FileSystemNode, DatabaseNode, AuthNode
+- Gmail integration (googleConnect, sendEmail, listEmails)
+- Zoca integration (toateContactele, fiecareElement, aplicaFiltre)
+
+#### 2. Frontend App (`/apps/frontend`) - **VITE SPA** ✅
+
+**Status:** Starting point for workflow UI
+
+**Stack:**
+- Vite 7 + React 19
+- Tailwind CSS v4
+- TypeScript
+
+**Purpose:** Modern SPA for workflow builder and execution UI
+
+### Legacy Applications (Kept for Reference)
+
+#### Server (`/server`) - **LEGACY CRM API**
+
+**Status:** Maintained for Real Estate CRM features
+
+**Contains:**
+- Complete Real Estate CRM schema (13+ tables, 821 lines)
+- Agency, Agent, Contact, Property management
+- AI Lead Scoring, Property Matching
+- WhatsApp conversations
+- Email templates
+
+**Keep for:** Production CRM functionality not yet migrated to EstateFlow plugin
+
+#### Client (`/client`) - **LEGACY FRONTEND**
+
+**Status:** Reference for workflow integration
+
+**Contains:**
+- Full workflow UI integration
+- ClientWorkflowService
+- UI workflow nodes (FormUI, DataTable, Chart, Dashboard)
+- WebSocket workflow demos
+
+**Keep for:** Reference implementation of workflow UI integration
+

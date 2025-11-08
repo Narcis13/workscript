@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // DataTable - Interactive data table component
 import React from 'react';
-import { WorkflowUIComponent, Column } from 'shared';
+import { WorkflowUIComponent, Column } from '@workscript/engine';
 export const DataTable = ({ data, columns, title, nodeId, onInteraction }) => {
     const handleRowClick = (row, index) => {
         onInteraction({

@@ -27,7 +27,6 @@
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.8.0",
     "server": "workspace:*",
-    "shared": "workspace:*",
     "@workscript/engine": "workspace:*",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10"

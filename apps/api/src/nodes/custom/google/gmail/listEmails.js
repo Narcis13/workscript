@@ -1,5 +1,5 @@
 // List emails from Gmail account
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 import { google } from 'googleapis';
 export class ListEmailsNode extends WorkflowNode {
     metadata = {

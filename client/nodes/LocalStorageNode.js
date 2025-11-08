@@ -1,4 +1,4 @@
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 export class LocalStorageNode extends WorkflowNode {
     metadata = {
         id: 'localStorage',

@@ -9,6 +9,7 @@
     "start": "bun src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "clean": "rm -rf dist",
+    "kill-port": "lsof -ti :3013 | xargs kill -9 || echo 'Port 3013 is free'",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

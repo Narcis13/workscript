@@ -3,8 +3,8 @@
  * Tests the complete flow from JSON workflow to AST to execution
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { WorkflowParser, ExecutionEngine, StateManager, NodeRegistry } from 'shared';
-import { WorkflowNode } from 'shared';
+import { WorkflowParser, ExecutionEngine, StateManager, NodeRegistry } from '@workscript/engine';
+import { WorkflowNode } from '@workscript/engine';
 // Test nodes for integration testing
 class IntegrationActionNode extends WorkflowNode {
     metadata = {

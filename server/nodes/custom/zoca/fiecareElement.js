@@ -1,4 +1,4 @@
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 export class FiecareElementNode extends WorkflowNode {
     metadata = {
         id: 'pentru-fiecare-element',

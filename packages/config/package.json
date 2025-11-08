@@ -1,0 +1,20 @@
+{
+  "name": "@workscript/config",
+  "version": "1.0.0",
+  "description": "Shared configuration files for Workscript monorepo",
+  "exports": {
+    "./eslint": "./eslint/index.js",
+    "./typescript": "./typescript/tsconfig.json",
+    "./tailwind": "./tailwind/index.js"
+  },
+  "files": [
+    "eslint",
+    "typescript",
+    "tailwind"
+  ],
+  "devDependencies": {
+    "eslint": "^9.36.0",
+    "typescript": "^5.8.3",
+    "tailwindcss": "^4.1.17"
+  }
+}

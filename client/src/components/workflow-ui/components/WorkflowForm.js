@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // WorkflowForm - Dynamic form component for UI workflows
 import React, { useState } from 'react';
-import { WorkflowUIComponent, FormField, UIEventFactory } from 'shared';
+import { WorkflowUIComponent, FormField, UIEventFactory } from '@workscript/engine';
 export const WorkflowForm = ({ fields, validation, title, initialData = {}, loading = false, errors = {}, submitLabel = 'Submit', cancelLabel = 'Cancel', showCancel = false, nodeId, workflowState, onInteraction }) => {
     const [formData, setFormData] = useState(initialData);
     const [localErrors, setLocalErrors] = useState(errors);

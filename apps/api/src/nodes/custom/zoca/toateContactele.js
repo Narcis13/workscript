@@ -1,5 +1,5 @@
 import { ContactRepository } from '../../../src/db/repositories/contactRepository';
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 export class ToateContacteleNode extends WorkflowNode {
     metadata = {
         id: 'toate-contactele',

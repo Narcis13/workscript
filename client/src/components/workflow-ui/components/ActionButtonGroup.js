@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // ActionButtonGroup - Interactive button group component
 import React from 'react';
-import { WorkflowUIComponent, ActionButton } from 'shared';
+import { WorkflowUIComponent, ActionButton } from '@workscript/engine';
 export const ActionButtonGroup = ({ buttons, layout = 'horizontal', title, nodeId, onInteraction }) => {
     const handleButtonClick = (button) => {
         onInteraction({

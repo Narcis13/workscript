@@ -9,6 +9,30 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@engine": path.resolve(__dirname, "../../packages/engine/src"),
+      // Map '@workscript/engine/nodes' to dist output
+      "@workscript/engine/nodes": path.resolve(__dirname, "../../packages/engine/dist/nodes/index.js"),
+      // Map '@workscript/engine' package to its dist output for proper module resolution
+      "@workscript/engine": path.resolve(__dirname, "../../packages/engine/dist/src/index.js"),
     },
   },
+  define: {
+    // Replace Node.js globals for browser compatibility
+    global: 'globalThis',
+  },
+  optimizeDeps: {
+    exclude: []
+  },
+  build: {
+    rollupOptions: {
+      external: (id) => {
+        // Only externalize Node.js built-ins, not npm packages
+        if (id.startsWith('node:') ||
+            ['crypto', 'fs', 'path', 'glob'].includes(id)) {
+          return true;
+        }
+        return false;
+      }
+    }
+  }
 })

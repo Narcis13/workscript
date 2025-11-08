@@ -1,4 +1,4 @@
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 import fs from 'fs/promises';
 import path from 'path';
 export class FileSystemNode extends WorkflowNode {

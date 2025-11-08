@@ -1,4 +1,4 @@
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
 import { WebSocketManager } from './WebSocketManager';
 /**
  * Singleton service for workflow engine components

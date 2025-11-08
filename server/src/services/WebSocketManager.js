@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { WorkflowService } from './WorkflowService';
-import { WebSocketMessageSerializer, isWorkflowMessage } from 'shared';
+import { WebSocketMessageSerializer, isWorkflowMessage } from '@workscript/engine';
 export class WebSocketManager {
     static instance = null;
     wss = null;

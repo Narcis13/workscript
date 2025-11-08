@@ -1,4 +1,4 @@
-import { WorkflowNode } from 'shared';
+import { WorkflowNode } from '@workscript/engine';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Button } from '../../src/components/ui/button';

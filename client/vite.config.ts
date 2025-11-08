@@ -9,12 +9,12 @@ export default defineConfig({
     alias: [
       { find: "@client", replacement: path.resolve(__dirname, "./src") },
       { find: "@server", replacement: path.resolve(__dirname, "../server/src") },
-      { find: "@shared", replacement: path.resolve(__dirname, "../shared/src") },
+      { find: "@engine", replacement: path.resolve(__dirname, "../packages/engine/src") },
       { find: "@", replacement: path.resolve(__dirname, "./src") },
-      // Map 'shared/nodes' to dist output (must come before 'shared' alias)
-      { find: /^shared\/nodes$/, replacement: path.resolve(__dirname, "../shared/dist/nodes/index.js") },
-      // Map 'shared' package to its dist output for proper module resolution
-      { find: /^shared$/, replacement: path.resolve(__dirname, "../shared/dist/src/index.js") }
+      // Map '@workscript/engine/nodes' to dist output
+      { find: /^@workscript\/engine\/nodes$/, replacement: path.resolve(__dirname, "../packages/engine/dist/nodes/index.js") },
+      // Map '@workscript/engine' package to its dist output for proper module resolution
+      { find: /^@workscript\/engine$/, replacement: path.resolve(__dirname, "../packages/engine/dist/src/index.js") }
     ]
   },
   define: {

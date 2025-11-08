@@ -1,5 +1,5 @@
-import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from 'shared';
-import { UNIVERSAL_NODES } from '../../../shared/dist/nodes/index.js';
+import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
+import { UNIVERSAL_NODES } from '@workscript/engine/nodes';
 import { CLIENT_NODES } from '../../nodes';
 import { useWebSocket } from '../hooks/useWebSocket';
 /**

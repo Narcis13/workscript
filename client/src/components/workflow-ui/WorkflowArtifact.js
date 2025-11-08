@@ -1,8 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // WorkflowArtifact - Main renderer for AI-generated UI workflows
 import React, { useState, useEffect, useRef } from 'react';
-import { ExecutionEngine, NodeRegistry, StateManager, UIWorkflowContext } from 'shared';
-import { UIWorkflowDefinition, UIRenderData, UIInteractionEvent, SecurityWarning } from 'shared';
+import { ExecutionEngine, NodeRegistry, StateManager, UIWorkflowContext } from '@workscript/engine';
+import { UIWorkflowDefinition, UIRenderData, UIInteractionEvent, SecurityWarning } from '@workscript/engine';
 export const WorkflowArtifact = ({ workflow, onComplete, onError, onInteraction, securityConfig, className = '', style = {} }) => {
     const [state, setState] = useState({
         uiComponents: [],

@@ -123,7 +123,7 @@ workflows.post('/store', async (c) => {
 
     // Define the file path using workflow ID
     const fileName = `${workflowDefinition.id}.json`
-    const workflowsDir = join(process.cwd(), 'workflows')
+    const workflowsDir = join(process.cwd(), 'apps', 'api', 'src', 'workflows')
     
     let filePath: string
     let relativePath: string
@@ -271,7 +271,7 @@ workflows.get('/allfromdb', async (c) => {
 // Get all workflows endpoint
 workflows.get('/all', async (c) => {
   try {
-    const workflowsDir = join(process.cwd(), 'workflows')
+    const workflowsDir = join(process.cwd(), 'apps', 'api', 'src', 'workflows')
     const allWorkflows = await getAllWorkflows(workflowsDir)
     
     return c.json({
@@ -295,7 +295,7 @@ async function findWorkflowById(workflowId: string): Promise<{
   filePath: string,
   subfolder: string | null
 } | null> {
-  const workflowsDir = join(process.cwd(), 'workflows')
+  const workflowsDir = join(process.cwd(), 'apps', 'api', 'src', 'workflows')
   
   try {
     // Search for the workflow file recursively
@@ -393,9 +393,9 @@ async function getAllWorkflows(dir: string): Promise<Array<{
         try {
           const fileContent = await readFile(fullPath, 'utf-8')
           const workflowDefinition: WorkflowDefinition = JSON.parse(fileContent)
-          
+
           // Determine subfolder relative to workflows directory
-          const workflowsDir = join(process.cwd(), 'workflows')
+          const workflowsDir = join(process.cwd(), 'apps', 'api', 'src', 'workflows')
           const relativePath = fullPath.replace(workflowsDir, '').replace(/^\//, '')
           const pathParts = relativePath.split('/')
           const subfolder = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null

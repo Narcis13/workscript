@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // FileProcessor - File upload and processing component
 import React, { useState } from 'react';
-import { WorkflowUIComponent } from 'shared';
+import { WorkflowUIComponent } from '@workscript/engine';
 export const FileProcessor = ({ acceptedTypes, maxSize = 5 * 1024 * 1024, // 5MB
 multiple = false, processOnUpload = false, nodeId, onInteraction }) => {
     const [dragActive, setDragActive] = useState(false);

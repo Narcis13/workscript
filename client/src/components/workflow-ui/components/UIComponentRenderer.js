@@ -1,7 +1,7 @@
 import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
 // UIComponentRenderer - Dynamic component renderer for workflow UI components
 import React from 'react';
-import { UIRenderData, UIInteractionEvent } from 'shared';
+import { UIRenderData, UIInteractionEvent } from '@workscript/engine';
 // Component mapping - this would be expanded with actual implementations
 const COMPONENT_MAP = {
     'WorkflowForm': React.lazy(() => import('./WorkflowForm')),

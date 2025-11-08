@@ -1,5 +1,5 @@
 // Dashboard UI Node - Interactive dashboard container
-import { UINode } from 'shared';
+import { UINode } from '@workscript/engine';
 export class DashboardUINode extends UINode {
     metadata = {
         id: 'ui-dashboard',
