@@ -1,10 +1,12 @@
 import { drizzle } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import * as automationsSchema from './schema/automations.schema';
+import * as authSchema from './schema/auth.schema';
 
 // Combine all schemas
 const schema = {
   ...automationsSchema,
+  ...authSchema,
 };
 
 // Database connection configuration
@@ -22,5 +24,6 @@ export const connection = mysql.createPool(connectionConfig);
 // Create the Drizzle database instance
 export const db = drizzle(connection, { schema, mode: 'default' });
 
-// Export schemas for use in plugins
+// Export schemas for use in plugins and services
 export * from './schema/automations.schema';
+export * from './schema/auth.schema';

@@ -18,9 +18,11 @@
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "@workscript/engine": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "croner": "^9.0.0",
     "drizzle-orm": "^0.37.0",
     "hono": "^4.7.9",
+    "ioredis": "^5.8.2",
     "mysql2": "^3.11.5",
     "ws": "^8.18.3"
   },
