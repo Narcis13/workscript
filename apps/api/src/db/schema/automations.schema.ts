@@ -24,7 +24,7 @@ export const automations = mysqlTable('automations', {
   // Basic Information
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
-
+  meta:text('meta'),
   // Trigger Configuration
   triggerType: mysqlEnum('trigger_type', ['immediate', 'cron', 'webhook']).notNull(),
   triggerConfig: json('trigger_config').notNull(), // Store trigger-specific configuration
