@@ -4,13 +4,15 @@ import { WorkflowRepository } from '../repositories/workflowRepository'
 import { CronScheduler } from '../../../shared-services/scheduler/CronScheduler'
 import type { NewAutomation } from '../../../db/schema/automations.schema'
 import { createId } from '@paralleldrive/cuid2'
+import { authenticate, requirePermission } from '../../../shared-services/auth/middleware'
+import { Permission, type AuthContext } from '../../../shared-services/auth/types'
 
 const automationRepository = new AutomationRepository()
 const workflowRepository = new WorkflowRepository()
-const automationsApp = new Hono()
+const automationsApp = new Hono<{ Variables: AuthContext }>()
 
 // GET /automations - List all automations (with optional filtering)
-automationsApp.get('/', async (c) => {
+automationsApp.get('/', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
   try {
     const { agencyId, enabled, triggerType } = c.req.query()
     
@@ -37,7 +39,7 @@ automationsApp.get('/', async (c) => {
 })
 
 // GET /automations/:id - Get single automation
-automationsApp.get('/:id', async (c) => {
+automationsApp.get('/:id', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
   try {
     const id = c.req.param('id')
     const automation = await automationRepository.findById(id)
@@ -54,7 +56,7 @@ automationsApp.get('/:id', async (c) => {
 })
 
 // POST /automations - Create new automation
-automationsApp.post('/', async (c) => {
+automationsApp.post('/', authenticate, requirePermission(Permission.AUTOMATION_CREATE), async (c) => {
   try {
     const body = await c.req.json()
 
@@ -101,7 +103,7 @@ automationsApp.post('/', async (c) => {
 })
 
 // PUT /automations/:id - Update automation
-automationsApp.put('/:id', async (c) => {
+automationsApp.put('/:id', authenticate, requirePermission(Permission.AUTOMATION_UPDATE), async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
@@ -149,7 +151,7 @@ automationsApp.put('/:id', async (c) => {
 })
 
 // DELETE /automations/:id - Delete automation
-automationsApp.delete('/:id', async (c) => {
+automationsApp.delete('/:id', authenticate, requirePermission(Permission.AUTOMATION_DELETE), async (c) => {
   try {
     const id = c.req.param('id')
 
@@ -171,7 +173,7 @@ automationsApp.delete('/:id', async (c) => {
 })
 
 // GET /automations/:id/executions - Get automation execution history
-automationsApp.get('/:id/executions', async (c) => {
+automationsApp.get('/:id/executions', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
   try {
     const id = c.req.param('id')
     const executions = await automationRepository.findExecutionsByAutomationId(id)
@@ -184,7 +186,7 @@ automationsApp.get('/:id/executions', async (c) => {
 })
 
 // PUT /automations/:id/toggle - Toggle automation enabled status
-automationsApp.put('/:id/toggle', async (c) => {
+automationsApp.put('/:id/toggle', authenticate, requirePermission(Permission.AUTOMATION_UPDATE), async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
@@ -213,7 +215,7 @@ automationsApp.put('/:id/toggle', async (c) => {
 })
 
 // POST /automations/:id/execute - Execute automation immediately
-automationsApp.post('/:id/execute', async (c) => {
+automationsApp.post('/:id/execute', authenticate, requirePermission(Permission.AUTOMATION_EXECUTE), async (c) => {
   try {
     const id = c.req.param('id')
     const automation = await automationRepository.findById(id)
@@ -315,7 +317,7 @@ automationsApp.post('/:id/execute', async (c) => {
 })
 
 // POST /automations/:id/reschedule - Manually reschedule a cron automation
-automationsApp.post('/:id/reschedule', async (c) => {
+automationsApp.post('/:id/reschedule', authenticate, requirePermission(Permission.AUTOMATION_UPDATE), async (c) => {
   try {
     const id = c.req.param('id')
     const automation = await automationRepository.findById(id)
@@ -468,7 +470,7 @@ automationsApp.post('/webhook/:webhookPath', async (c) => {
 })
 
 // POST /automations/cron/validate - Validate cron expression
-automationsApp.post('/cron/validate', async (c) => {
+automationsApp.post('/cron/validate', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
   try {
     const body = await c.req.json()
     const { cronExpression } = body
@@ -498,7 +500,7 @@ automationsApp.post('/cron/validate', async (c) => {
 })
 
 // GET /automations/scheduler/status - Get scheduler status
-automationsApp.get('/scheduler/status', async (c) => {
+automationsApp.get('/scheduler/status', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
   try {
     const cronScheduler = CronScheduler.getInstance()
     const status = cronScheduler.getStatus()

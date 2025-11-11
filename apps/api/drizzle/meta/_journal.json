@@ -15,6 +15,13 @@
       "when": 1762848987858,
       "tag": "0001_zippy_nuke",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1762880329401,
+      "tag": "0002_remarkable_bullseye",
+      "breakpoints": true
     }
   ]
 }

@@ -386,6 +386,174 @@ export class APIKeyManager {
   }
 
   /**
+   * Update an API key's metadata (name, permissions, rate limit)
+   *
+   * **Important:** The actual key (keyHash) CANNOT be updated for security.
+   * If a key is compromised, it must be revoked and a new one created.
+   *
+   * **Updateable fields:**
+   * - name: Rename the key
+   * - permissions: Change what the key can do
+   * - rateLimit: Adjust request limit
+   * - expiresAt: Extend or shorten expiry
+   *
+   * @param {string} keyId API key ID
+   * @param {string} userId User ID (for ownership verification)
+   * @param {Object} updates Fields to update
+   * @returns {Promise<ApiKeyData | null>} Updated key data, or null if not found/unauthorized
+   * @throws {AuthException} If validation fails
+   *
+   * @example
+   * const updated = await keyManager.updateKey(keyId, userId, {
+   *   name: 'Production API Key (Updated)',
+   *   permissions: [Permission.WORKFLOW_READ, Permission.WORKFLOW_EXECUTE],
+   *   rateLimit: 2000
+   * });
+   */
+  async updateKey(
+    keyId: string,
+    userId: string,
+    updates: {
+      name?: string;
+      permissions?: Permission[];
+      rateLimit?: number;
+      expiresAt?: Date | null;
+    }
+  ): Promise<ApiKeyData | null> {
+    try {
+      // 1. Verify ownership
+      const existingKey = await db.query.apiKeys.findFirst({
+        where: eq(apiKeys.id, keyId),
+      });
+
+      if (!existingKey) {
+        return null; // Key not found
+      }
+
+      if (existingKey.userId !== userId) {
+        throw new AuthException(
+          AuthErrorCode.FORBIDDEN,
+          'You do not have permission to update this API key',
+          403
+        );
+      }
+
+      // 2. Validate updates
+      if (Object.keys(updates).length === 0) {
+        throw new AuthException(
+          AuthErrorCode.INVALID_INPUT,
+          'No fields provided for update',
+          400
+        );
+      }
+
+      // 3. Validate permissions if provided
+      if (updates.permissions) {
+        if (!Array.isArray(updates.permissions) || updates.permissions.length === 0) {
+          throw new AuthException(
+            AuthErrorCode.INVALID_INPUT,
+            'Permissions must be a non-empty array',
+            400
+          );
+        }
+
+        // Verify all permissions are valid
+        const validPermissions = Object.values(Permission);
+        for (const perm of updates.permissions) {
+          if (!validPermissions.includes(perm)) {
+            throw new AuthException(
+              AuthErrorCode.INVALID_INPUT,
+              `Invalid permission: ${perm}`,
+              400
+            );
+          }
+        }
+      }
+
+      // 4. Validate rate limit if provided
+      if (updates.rateLimit !== undefined) {
+        if (typeof updates.rateLimit !== 'number' || updates.rateLimit < 0) {
+          throw new AuthException(
+            AuthErrorCode.INVALID_INPUT,
+            'Rate limit must be a non-negative number',
+            400
+          );
+        }
+      }
+
+      // 5. Validate name if provided
+      if (updates.name !== undefined) {
+        if (typeof updates.name !== 'string' || updates.name.trim().length === 0) {
+          throw new AuthException(
+            AuthErrorCode.INVALID_INPUT,
+            'Name must be a non-empty string',
+            400
+          );
+        }
+      }
+
+      // 6. Prepare update data
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+
+      if (updates.name !== undefined) {
+        updateData.name = updates.name.trim();
+      }
+
+      if (updates.permissions !== undefined) {
+        updateData.permissions = JSON.stringify(updates.permissions);
+      }
+
+      if (updates.rateLimit !== undefined) {
+        updateData.rateLimit = updates.rateLimit;
+      }
+
+      if (updates.expiresAt !== undefined) {
+        updateData.expiresAt = updates.expiresAt;
+      }
+
+      // 7. Update the key in database
+      await db
+        .update(apiKeys)
+        .set(updateData)
+        .where(eq(apiKeys.id, keyId));
+
+      // 8. Fetch and return updated key data
+      const updatedKey = await db.query.apiKeys.findFirst({
+        where: eq(apiKeys.id, keyId),
+      });
+
+      if (!updatedKey) {
+        return null; // Should never happen, but handle gracefully
+      }
+
+      return {
+        id: updatedKey.id,
+        userId: updatedKey.userId,
+        name: updatedKey.name,
+        permissions: JSON.parse(updatedKey.permissions as string),
+        rateLimit: updatedKey.rateLimit,
+        lastUsedAt: updatedKey.lastUsedAt || undefined,
+        expiresAt: updatedKey.expiresAt || undefined,
+        createdAt: updatedKey.createdAt,
+      };
+    } catch (error) {
+      // Re-throw AuthExceptions
+      if (error instanceof AuthException) {
+        throw error;
+      }
+
+      console.error('[APIKeyManager] Key update failed:', error);
+      throw new AuthException(
+        AuthErrorCode.INTERNAL_ERROR,
+        'Failed to update API key',
+        500
+      );
+    }
+  }
+
+  /**
    * Clean up expired keys
    *
    * Should be called periodically (e.g., daily via cron job)

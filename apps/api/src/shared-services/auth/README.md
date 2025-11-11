@@ -545,6 +545,16 @@ curl -X DELETE http://localhost:3013/api/keys/key_123 \
 
 ## Integration Guide
 
+> 📚 **For comprehensive integration examples** (React, Mobile, Server-to-Server, Testing, and more), see the **[Complete Integration Guide](../../../docs/INTEGRATION_GUIDE.md)**.
+>
+> This guide includes:
+> - Frontend integration with React (AuthService, Context, Protected Routes)
+> - Mobile integration (iOS/Android secure token storage)
+> - Server-to-Server authentication with API keys
+> - Testing strategies and examples
+> - Common patterns (token refresh, multi-tab sync)
+> - Migration guides from Firebase/Auth0
+
 ### Protecting Plugin Routes
 
 **In your plugin:**

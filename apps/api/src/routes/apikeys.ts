@@ -348,15 +348,71 @@ apiKeyRoutes.put(
       const keyId = c.req.param('id');
       const body = await c.req.json();
 
-      // TODO: Implement key updates
-      // For now, not implemented
+      // Extract updateable fields from request body
+      const updates: {
+        name?: string;
+        permissions?: Permission[];
+        rateLimit?: number;
+        expiresAt?: Date | null;
+      } = {};
 
+      if (body.name !== undefined) {
+        updates.name = body.name;
+      }
+
+      if (body.permissions !== undefined) {
+        updates.permissions = body.permissions;
+      }
+
+      if (body.rateLimit !== undefined) {
+        updates.rateLimit = body.rateLimit;
+      }
+
+      if (body.expiresAt !== undefined) {
+        updates.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+      }
+
+      // Validate that at least one field is being updated
+      if (Object.keys(updates).length === 0) {
+        return c.json(
+          {
+            success: false,
+            error: 'No fields provided for update',
+          },
+          400
+        );
+      }
+
+      // Update the API key
+      const updatedKey = await apiKeyManager.updateKey(keyId, user.userId, updates);
+
+      if (!updatedKey) {
+        return c.json(
+          {
+            success: false,
+            error: 'API key not found',
+          },
+          404
+        );
+      }
+
+      // Return updated key data (without revealing the actual key)
       return c.json(
         {
-          success: false,
-          error: 'Not yet implemented',
+          success: true,
+          message: 'API key updated successfully',
+          data: {
+            id: updatedKey.id,
+            userId: updatedKey.userId,
+            name: updatedKey.name,
+            permissions: updatedKey.permissions,
+            rateLimit: updatedKey.rateLimit,
+            lastUsedAt: updatedKey.lastUsedAt,
+            expiresAt: updatedKey.expiresAt,
+            createdAt: updatedKey.createdAt,
+          },
         },
-        501
+        200
       );
     } catch (error: any) {
       console.error('[API Keys Routes] Update error:', error);

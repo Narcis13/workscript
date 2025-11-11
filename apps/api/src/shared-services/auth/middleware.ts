@@ -37,14 +37,17 @@
  */
 
 import { Context, Next } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { JWTManager } from './JWTManager';
 import { APIKeyManager } from './APIKeyManager';
+import { SessionManager } from './SessionManager';
 import { PermissionManager } from './PermissionManager';
 import { AuthContext, SafeUser, Permission, AuthException, AuthErrorCode } from './types';
 
 // Initialize managers
 const jwtManager = JWTManager.getInstance();
 const apiKeyManager = APIKeyManager.getInstance();
+const sessionManager = SessionManager.getInstance();
 const permissionManager = PermissionManager.getInstance();
 
 // ============================================
@@ -136,15 +139,28 @@ export const authenticate = async (
       }
     }
 
-    // 3. Check for Session (optional - would need session ID)
-    // const sessionId = getCookie(c, 'sessionId');
-    // if (sessionId) {
-    //   const session = await sessionManager.getSession(sessionId);
-    //   if (session && !sessionManager.isExpired(session)) {
-    //     c.set('user', session);
-    //     return next();
-    //   }
-    // }
+    // 3. Check for Session (cookie-based authentication)
+    const sessionId = getCookie(c, 'sessionId');
+    if (sessionId) {
+      const sessionData = await sessionManager.getSession(sessionId);
+      if (sessionData) {
+        // Convert SessionData to SafeUser for consistency
+        const user: SafeUser = {
+          id: sessionData.userId,
+          email: sessionData.email,
+          role: sessionData.role,
+          permissions: permissionManager.getPermissionsForRole(sessionData.role),
+          tenantId: sessionData.tenantId,
+          emailVerified: true, // Assume verified if session exists
+          isActive: true,
+          createdAt: new Date(), // Session doesn't store these
+          updatedAt: new Date(),
+        };
+
+        c.set('user', user);
+        return next();
+      }
+    }
 
     // No valid credentials found
     return c.json(

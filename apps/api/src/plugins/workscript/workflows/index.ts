@@ -4,11 +4,13 @@ import { WorkflowService } from '../services/WorkflowService'
 import { WorkflowRepository } from '../repositories/workflowRepository'
 import { writeFile, mkdir, readFile, readdir, stat } from 'fs/promises'
 import { join } from 'path'
+import { authenticate, requirePermission } from '../../../shared-services/auth/middleware'
+import { Permission, type AuthContext } from '../../../shared-services/auth/types'
 
-const workflows = new Hono()
+const workflows = new Hono<{ Variables: AuthContext }>()
 
 // Create workflow endpoint - saves workflow to database
-workflows.post('/create', async (c) => {
+workflows.post('/create', authenticate, requirePermission(Permission.WORKFLOW_CREATE), async (c) => {
   try {
     const workflowDefinition = await c.req.json() as WorkflowDefinition
     
@@ -64,7 +66,7 @@ workflows.post('/create', async (c) => {
 })
 
 // Workflow validation endpoint
-workflows.post('/validate', async (c) => {
+workflows.post('/validate', authenticate, requirePermission(Permission.WORKFLOW_READ), async (c) => {
   try {
     const workflowDefinition = await c.req.json()
     const workflowService = await WorkflowService.getInstance()
@@ -81,7 +83,7 @@ workflows.post('/validate', async (c) => {
 })
 
 // Workflow execution endpoint
-workflows.post('/run', async (c) => {
+workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECUTE), async (c) => {
   try {
     const body = await c.req.json() as WorkflowDefinition & { initialState?: any }
     const { initialState, ...workflowDefinition } = body
@@ -101,7 +103,7 @@ workflows.post('/run', async (c) => {
 })
 
 // Workflow store endpoint
-workflows.post('/store', async (c) => {
+workflows.post('/store', authenticate, requirePermission(Permission.WORKFLOW_CREATE), async (c) => {
   try {
     const workflowDefinition = await c.req.json() as WorkflowDefinition
     const subfolder = c.req.query('subfolder')
@@ -168,7 +170,7 @@ workflows.post('/store', async (c) => {
 })
 
 // Run workflow by ID endpoint
-workflows.post('/run/:workflowId', async (c) => {
+workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_EXECUTE), async (c) => {
   try {
     const workflowId = c.req.param('workflowId')
     
@@ -227,7 +229,7 @@ workflows.post('/run/:workflowId', async (c) => {
 })
 
 // Get all available nodes endpoint
-workflows.get('/allnodes', async (c) => {
+workflows.get('/allnodes', authenticate, requirePermission(Permission.WORKFLOW_READ), async (c) => {
   try {
     const workflowService = await WorkflowService.getInstance()
     const availableNodes = workflowService.getAvailableNodes()
@@ -248,7 +250,7 @@ workflows.get('/allnodes', async (c) => {
 })
 
 // Get all workflows from database endpoint
-workflows.get('/allfromdb', async (c) => {
+workflows.get('/allfromdb', authenticate, requirePermission(Permission.WORKFLOW_READ), async (c) => {
   try {
     const workflowRepository = new WorkflowRepository()
     const allWorkflows = await workflowRepository.findAll()
@@ -269,7 +271,7 @@ workflows.get('/allfromdb', async (c) => {
 })
 
 // Get all workflows endpoint
-workflows.get('/all', async (c) => {
+workflows.get('/all', authenticate, requirePermission(Permission.WORKFLOW_READ), async (c) => {
   try {
     const workflowsDir = join(process.cwd(), 'apps', 'api', 'src', 'workflows')
     const allWorkflows = await getAllWorkflows(workflowsDir)
@@ -422,7 +424,7 @@ async function getAllWorkflows(dir: string): Promise<Array<{
 }
 
 // Get workflow by ID endpoint
-workflows.get('/:workflowId', async (c) => {
+workflows.get('/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_READ), async (c) => {
   try {
     const workflowId = c.req.param('workflowId')
 
@@ -457,7 +459,7 @@ workflows.get('/:workflowId', async (c) => {
 })
 
 // Update workflow by ID endpoint
-workflows.put('/:workflowId', async (c) => {
+workflows.put('/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_UPDATE), async (c) => {
   try {
     const workflowId = c.req.param('workflowId')
     const workflowData = await c.req.json()
@@ -523,7 +525,7 @@ workflows.put('/:workflowId', async (c) => {
 })
 
 // Delete workflow by ID endpoint
-workflows.delete('/:workflowId', async (c) => {
+workflows.delete('/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_DELETE), async (c) => {
   try {
     const workflowId = c.req.param('workflowId')
 

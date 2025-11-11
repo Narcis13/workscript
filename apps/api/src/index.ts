@@ -10,6 +10,9 @@ import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
 import { join } from 'path';
 import { pluginLoader, pluginRegistry } from './core/plugins';
+import authRoutes from './routes/auth';
+import apiKeyRoutes from './routes/apikeys';
+import passwordResetRoutes from './routes/password-reset';
 
 // Global server reference for hot reload
 declare global {
@@ -27,8 +30,40 @@ if (global.__server) {
 // Initialize Hono app
 const app = new Hono();
 
-// Middleware
-app.use('*', cors());
+// Middleware - CORS Configuration
+// Security: Restrict CORS to allowed origins only
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim());
+
+app.use(
+  '*',
+  cors({
+    origin: (origin) => {
+      // Allow requests with no origin (e.g., mobile apps, Postman)
+      if (!origin) return 'http://localhost:5173';
+
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return origin;
+      }
+
+      // In development, also allow localhost with any port
+      if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost:')) {
+        return origin;
+      }
+
+      // Reject all other origins
+      return null;
+    },
+    credentials: true, // Allow cookies and authorization headers
+    allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    exposeHeaders: ['X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+    maxAge: 3600, // Cache preflight requests for 1 hour
+  })
+);
+
 app.use('*', honoLogger());
 
 // Health check endpoint
@@ -48,11 +83,19 @@ app.get('/', (c) => {
     description: 'Modular workflow orchestration API with plugin system',
     endpoints: {
       health: '/health',
+      auth: '/auth',
+      apiKeys: '/api/keys',
+      passwordReset: '/password-reset',
       plugins: '/api/plugins',
       pluginsHealth: '/api/health/plugins',
     },
   });
 });
+
+// Authentication routes
+app.route('/auth', authRoutes);
+app.route('/api/keys', apiKeyRoutes);
+app.route('/password-reset', passwordResetRoutes);
 
 /**
  * Initialize and start the server

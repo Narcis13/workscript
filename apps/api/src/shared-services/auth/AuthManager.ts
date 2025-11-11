@@ -41,12 +41,14 @@
  */
 
 import bcryptjs from 'bcryptjs';
+import { createHash } from 'crypto';
 import { db } from '../../db';
 import {
   users,
   apiKeys,
   refreshTokens,
   loginAttempts,
+  passwordResets,
   User,
   NewUser,
   Permission,
@@ -64,7 +66,8 @@ import { JWTManager } from './JWTManager';
 import { SessionManager } from './SessionManager';
 import { APIKeyManager } from './APIKeyManager';
 import { PermissionManager } from './PermissionManager';
-import { eq, and, gt } from 'drizzle-orm';
+import { emailService } from '../email/EmailService';
+import { eq, and, gt, lt } from 'drizzle-orm';
 
 /**
  * Authentication Manager Class
@@ -226,6 +229,34 @@ export class AuthManager {
 
       // 7. Store refresh token
       await this.storeRefreshToken(user.id, refreshToken);
+
+      // 8. Send email verification
+      try {
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = this.hashToken(verificationToken);
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Update user with verification token
+        await db.update(users)
+          .set({
+            emailVerificationToken: tokenHash,
+            emailVerificationTokenExpiry: expiresAt
+          })
+          .where(eq(users.id, userId));
+
+        // Send verification email
+        await emailService.sendVerificationEmail({
+          email: user.email,
+          firstName: firstName || undefined,
+          token: verificationToken,
+          expiryHours: 24
+        });
+
+        console.log(`[AuthManager] Verification email sent to: ${user.email}`);
+      } catch (emailError) {
+        console.error('[AuthManager] Failed to send verification email:', emailError);
+        // Don't fail registration if email sending fails
+      }
 
       // Return safe user (without password hash)
       return {
@@ -710,37 +741,278 @@ export class AuthManager {
   /**
    * Request password reset
    *
+   * Generates a secure password reset token and sends it via email.
+   * Security features:
+   * - Does not reveal if email exists (prevents user enumeration)
+   * - Token is hashed before storage (never store plain tokens)
+   * - Token expires in 30 minutes
+   * - Can only be used once
+   *
    * @param {string} email User email
-   * @returns {Promise<string>} Reset token (send via email)
+   * @param {string} ipAddress IP address of request (for audit trail)
+   * @returns {Promise<void>} Void (always succeeds for security)
    */
-  async requestPasswordReset(email: string): Promise<string> {
+  async requestPasswordReset(email: string, ipAddress?: string): Promise<void> {
     try {
       const user = await db.query.users.findFirst({
         where: eq(users.email, email.toLowerCase()),
       });
 
       if (!user) {
-        // Don't reveal if email exists
-        return crypto.randomUUID();
+        // Security: Don't reveal if email exists (prevents user enumeration)
+        // Still log the attempt but return as if successful
+        console.log(`[AuthManager] Password reset requested for non-existent email: ${email}`);
+        return;
       }
 
-      // Generate reset token
+      // Generate cryptographically secure reset token
       const token = crypto.randomBytes(32).toString('hex');
+      const tokenHash = this.hashToken(token);
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
-      // TODO: Store in database
-      // await db.insert(passwordResets).values({
-      //   id: crypto.randomUUID(),
-      //   userId: user.id,
-      //   token: hashToken(token),
-      //   expiresAt,
-      //   createdAt: new Date()
-      // });
+      // Store hashed token in database
+      await db.insert(passwordResets).values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        token: tokenHash,
+        expiresAt,
+        ipAddress: ipAddress || 'unknown',
+        createdAt: new Date()
+      });
 
-      return token; // Send via email to user
+      // Send reset email with token
+      await emailService.sendPasswordReset({
+        email: user.email,
+        firstName: user.firstName || undefined,
+        token,
+        expiryMinutes: 30
+      });
+
+      console.log(`[AuthManager] Password reset email sent to: ${user.email}`);
     } catch (error) {
       console.error('[AuthManager] Password reset request failed:', error);
-      return '';
+      // Don't throw error to prevent revealing if email exists
+    }
+  }
+
+  /**
+   * Validate password reset token
+   *
+   * Checks if a password reset token is valid (exists, not expired, not used).
+   *
+   * @param {string} token Reset token from email link
+   * @returns {Promise<string | null>} User ID if valid, null if invalid
+   */
+  async validatePasswordResetToken(token: string): Promise<string | null> {
+    try {
+      const tokenHash = this.hashToken(token);
+      const now = new Date();
+
+      // Find token in database
+      const reset = await db.query.passwordResets.findFirst({
+        where: and(
+          eq(passwordResets.token, tokenHash),
+          gt(passwordResets.expiresAt, now),
+          eq(passwordResets.usedAt, null as any) // Not yet used
+        )
+      });
+
+      if (!reset) {
+        console.log('[AuthManager] Invalid or expired password reset token');
+        return null;
+      }
+
+      return reset.userId;
+    } catch (error) {
+      console.error('[AuthManager] Token validation failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Complete password reset
+   *
+   * Resets user's password using a valid reset token.
+   * Security features:
+   * - Validates password strength
+   * - Marks token as used (prevents reuse)
+   * - Revokes all existing refresh tokens (logout all devices)
+   * - Returns new tokens for immediate login
+   *
+   * @param {string} token Reset token from email
+   * @param {string} newPassword New password
+   * @returns {Promise<TokenPair>} New access and refresh tokens
+   */
+  async completePasswordReset(token: string, newPassword: string): Promise<TokenPair> {
+    try {
+      // Validate password strength
+      this.validatePassword(newPassword);
+
+      // Validate token and get user ID
+      const userId = await this.validatePasswordResetToken(token);
+      if (!userId) {
+        throw new AuthException(
+          AuthErrorCode.INVALID_CREDENTIALS,
+          'Invalid or expired reset token',
+          400
+        );
+      }
+
+      // Get user
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId)
+      });
+
+      if (!user) {
+        throw new AuthException(
+          AuthErrorCode.USER_NOT_FOUND,
+          'User not found',
+          404
+        );
+      }
+
+      // Hash new password
+      const passwordHash = await bcryptjs.hash(newPassword, 10);
+
+      // Update password
+      await db.update(users)
+        .set({
+          passwordHash,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, userId));
+
+      // Mark reset token as used
+      const tokenHash = this.hashToken(token);
+      await db.update(passwordResets)
+        .set({
+          usedAt: new Date()
+        })
+        .where(eq(passwordResets.token, tokenHash));
+
+      // Revoke all existing refresh tokens (logout all devices for security)
+      await db.delete(refreshTokens)
+        .where(eq(refreshTokens.userId, userId));
+
+      console.log(`[AuthManager] Password reset completed for user: ${user.email}`);
+
+      // Generate new tokens for immediate login
+      const permissions = this.permissionManager.getPermissionsForRole(user.role as Role);
+      return await this.jwtManager.generateTokens({
+        userId: user.id,
+        email: user.email,
+        role: user.role as Role,
+        permissions
+      });
+    } catch (error) {
+      console.error('[AuthManager] Password reset completion failed:', error);
+      if (error instanceof AuthException) {
+        throw error;
+      }
+      throw new AuthException(
+        AuthErrorCode.INVALID_CREDENTIALS,
+        'Password reset failed',
+        500
+      );
+    }
+  }
+
+  /**
+   * Verify user email with token
+   *
+   * Marks user's email as verified using the token from verification email.
+   *
+   * @param {string} token Verification token from email link
+   * @returns {Promise<boolean>} True if verified successfully
+   */
+  async verifyEmail(token: string): Promise<boolean> {
+    try {
+      const tokenHash = this.hashToken(token);
+      const now = new Date();
+
+      // Find user with matching token
+      const user = await db.query.users.findFirst({
+        where: and(
+          eq(users.emailVerificationToken, tokenHash),
+          gt(users.emailVerificationTokenExpiry, now)
+        )
+      });
+
+      if (!user) {
+        console.log('[AuthManager] Invalid or expired email verification token');
+        return false;
+      }
+
+      // Mark email as verified
+      await db.update(users)
+        .set({
+          emailVerified: true,
+          emailVerificationToken: null,
+          emailVerificationTokenExpiry: null,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, user.id));
+
+      console.log(`[AuthManager] Email verified for user: ${user.email}`);
+      return true;
+    } catch (error) {
+      console.error('[AuthManager] Email verification failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Resend email verification
+   *
+   * Generates a new verification token and resends the verification email.
+   *
+   * @param {string} email User email
+   * @returns {Promise<void>}
+   */
+  async resendVerificationEmail(email: string): Promise<void> {
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, email.toLowerCase())
+      });
+
+      if (!user) {
+        // Don't reveal if email exists
+        console.log(`[AuthManager] Resend verification requested for non-existent email: ${email}`);
+        return;
+      }
+
+      if (user.emailVerified) {
+        // Email already verified, silently succeed
+        console.log(`[AuthManager] Email already verified: ${email}`);
+        return;
+      }
+
+      // Generate new verification token
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = this.hashToken(verificationToken);
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      // Update user with new token
+      await db.update(users)
+        .set({
+          emailVerificationToken: tokenHash,
+          emailVerificationTokenExpiry: expiresAt,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, user.id));
+
+      // Send verification email
+      await emailService.sendVerificationEmail({
+        email: user.email,
+        firstName: user.firstName || undefined,
+        token: verificationToken,
+        expiryHours: 24
+      });
+
+      console.log(`[AuthManager] Verification email resent to: ${user.email}`);
+    } catch (error) {
+      console.error('[AuthManager] Failed to resend verification email:', error);
+      // Don't throw to prevent revealing if email exists
     }
   }
 
@@ -857,6 +1129,18 @@ export class AuthManager {
     } catch (error) {
       console.error('[AuthManager] Failed to track login attempt:', error);
     }
+  }
+
+  /**
+   * Hash token using SHA-256
+   *
+   * Used for password reset tokens and email verification tokens.
+   * Never store tokens in plain text!
+   *
+   * @private
+   */
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   /**

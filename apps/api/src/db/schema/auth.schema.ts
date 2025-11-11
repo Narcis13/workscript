@@ -69,8 +69,8 @@ export const users = mysqlTable('users', {
 
   // Authentication credentials
   email: varchar('email', { length: 255 })
-    .notNull()
-    .unique(),
+    .notNull(),
+    // Unique constraint is defined at table level (line 138)
 
   passwordHash: varchar('password_hash', { length: 255 }),
     // Nullable for OAuth-only users in future implementation
@@ -203,11 +203,11 @@ export const apiKeys = mysqlTable('api_keys', {
 
   // SHA-256 hash of the actual key (key itself is never stored)
   keyHash: varchar('key_hash', { length: 64 })
-    .notNull()
-    .unique(),
+    .notNull(),
     // Format: sha256Hash of (prefix + randomBytes)
     // Length: 64 chars (256-bit hash in hex)
     // Example: "a7b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7"
+    // Unique constraint is defined at table level (line 257)
 
   // Permissions associated with this key
   permissions: json('permissions')
@@ -310,11 +310,11 @@ export const refreshTokens = mysqlTable('refresh_tokens', {
 
   // The actual token value
   token: varchar('token', { length: 512 })
-    .notNull()
-    .unique(),
+    .notNull(),
     // JWT string format: header.payload.signature
     // Length: typically 300-400 chars
     // Stored as-is (we verify signature, not hash like API keys)
+    // Unique constraint is defined at table level (line 338)
 
   // When does this token expire?
   expiresAt: timestamp('expires_at')
@@ -454,11 +454,11 @@ export const passwordResets = mysqlTable('password_resets', {
 
   // The reset token (should be hashed like API keys)
   token: varchar('token', { length: 256 })
-    .notNull()
-    .unique(),
+    .notNull(),
     // Format: random hex string (128 chars = 512 bits)
     // Should be SHA-256 hash of original random token
     // Length: 64 chars for hash
+    // Unique constraint is defined at table level (line 487)
 
   // When token expires (for security)
   expiresAt: timestamp('expires_at')

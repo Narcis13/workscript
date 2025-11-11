@@ -16,12 +16,15 @@
 
 import { Hono } from 'hono';
 import { Context } from 'hono';
+import { setCookie, deleteCookie } from 'hono/cookie';
 import { AuthManager } from '../shared-services/auth/AuthManager';
+import { SessionManager } from '../shared-services/auth/SessionManager';
 import { authenticate } from '../shared-services/auth/middleware';
 import { AuthContext, RegisterRequest, LoginRequest } from '../shared-services/auth/types';
 
-// Initialize auth manager
+// Initialize managers
 const authManager = AuthManager.getInstance();
+const sessionManager = SessionManager.getInstance();
 
 // Create auth router
 const authRoutes = new Hono<{ Variables: AuthContext }>();
@@ -89,6 +92,32 @@ authRoutes.post('/register', async (c: Context<{ Variables: AuthContext }>) => {
     const result = await authManager.register({
       email: body.email,
       password: body.password,
+    });
+
+    // Create session for the new user
+    const ipAddress = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const userAgent = c.req.header('user-agent') || 'unknown';
+
+    const sessionId = await sessionManager.createSession(
+      {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tenantId: result.user.tenantId,
+        lastActivity: new Date(),
+        ipAddress,
+        userAgent,
+      },
+      parseInt(process.env.SESSION_EXPIRY || '86400', 10) // 24 hours default
+    );
+
+    // Set session cookie
+    setCookie(c, 'sessionId', sessionId, {
+      httpOnly: true, // Prevent XSS attacks
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      sameSite: 'Strict', // CSRF protection
+      maxAge: parseInt(process.env.SESSION_EXPIRY || '86400', 10), // Same as session expiry
+      path: '/', // Available for all routes
     });
 
     return c.json(
@@ -169,6 +198,7 @@ authRoutes.post('/login', async (c: Context<{ Variables: AuthContext }>) => {
 
     // Get client IP for security tracking
     const ipAddress = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const userAgent = c.req.header('user-agent') || 'unknown';
 
     // Login user
     const result = await authManager.login(
@@ -178,6 +208,29 @@ authRoutes.post('/login', async (c: Context<{ Variables: AuthContext }>) => {
       },
       ipAddress
     );
+
+    // Create session for the logged-in user
+    const sessionId = await sessionManager.createSession(
+      {
+        userId: result.user.id,
+        email: result.user.email,
+        role: result.user.role,
+        tenantId: result.user.tenantId,
+        lastActivity: new Date(),
+        ipAddress,
+        userAgent,
+      },
+      parseInt(process.env.SESSION_EXPIRY || '86400', 10) // 24 hours default
+    );
+
+    // Set session cookie
+    setCookie(c, 'sessionId', sessionId, {
+      httpOnly: true, // Prevent XSS attacks
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      sameSite: 'Strict', // CSRF protection
+      maxAge: parseInt(process.env.SESSION_EXPIRY || '86400', 10), // Same as session expiry
+      path: '/', // Available for all routes
+    });
 
     return c.json(
       {
@@ -343,9 +396,24 @@ authRoutes.post('/logout', authenticate, async (c: Context<{ Variables: AuthCont
   try {
     const body = await c.req.json();
 
+    // Logout from JWT (revoke refresh token)
     if (body.refreshToken) {
       await authManager.logout(body.refreshToken);
     }
+
+    // Get session ID from cookie
+    const { getCookie } = await import('hono/cookie');
+    const sessionId = getCookie(c, 'sessionId');
+
+    // Delete session if exists
+    if (sessionId) {
+      await sessionManager.deleteSession(sessionId);
+    }
+
+    // Clear session cookie
+    deleteCookie(c, 'sessionId', {
+      path: '/',
+    });
 
     return c.json(
       {
@@ -542,6 +610,133 @@ authRoutes.post(
         },
         error.statusCode || 500
       );
+    }
+  }
+);
+
+/**
+ * GET /auth/verify-email/:token
+ *
+ * Verify user email with token from email link.
+ *
+ * @param token - Verification token from email
+ * @returns {200} Success message
+ *
+ * @example
+ * GET /auth/verify-email/abc123xyz456...
+ *
+ * Response (success):
+ * {
+ *   "success": true,
+ *   "message": "Email verified successfully"
+ * }
+ *
+ * Response (failure):
+ * {
+ *   "success": false,
+ *   "error": "Invalid or expired verification token"
+ * }
+ */
+authRoutes.get('/verify-email/:token', async (c) => {
+  try {
+    const { token } = c.req.param();
+
+    if (!token) {
+      return c.json(
+        {
+          success: false,
+          error: 'Verification token is required'
+        },
+        400
+      );
+    }
+
+    const verified = await authManager.verifyEmail(token);
+
+    if (!verified) {
+      return c.json(
+        {
+          success: false,
+          error: 'Invalid or expired verification token'
+        },
+        400
+      );
+    }
+
+    return c.json({
+      success: true,
+      message: 'Email verified successfully'
+    });
+  } catch (error: any) {
+    console.error('[Auth] Email verification failed:', error);
+    return c.json(
+      {
+        success: false,
+        error: error.message || 'Email verification failed'
+      },
+      500
+    );
+  }
+});
+
+/**
+ * POST /auth/resend-verification
+ *
+ * Resend email verification email.
+ *
+ * **Security:**
+ * - Rate limited to prevent abuse
+ * - Does not reveal if email exists
+ * - Always returns success
+ *
+ * @body {string} email - User email address
+ * @returns {200} Success message (always)
+ *
+ * @example
+ * POST /auth/resend-verification
+ * {
+ *   "email": "user@example.com"
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "message": "If your email exists and is unverified, you will receive a verification email"
+ * }
+ */
+authRoutes.post(
+  '/resend-verification',
+  rateLimiter({ maxRequests: 3, windowSeconds: 900 }), // 3 requests per 15 minutes
+  async (c) => {
+    try {
+      const body = await c.req.json();
+      const { email } = body;
+
+      if (!email || typeof email !== 'string') {
+        return c.json(
+          {
+            success: false,
+            error: 'Email is required'
+          },
+          400
+        );
+      }
+
+      await authManager.resendVerificationEmail(email);
+
+      // Always return success (don't reveal if email exists)
+      return c.json({
+        success: true,
+        message: 'If your email exists and is unverified, you will receive a verification email'
+      });
+    } catch (error: any) {
+      console.error('[Auth] Resend verification failed:', error);
+
+      // Still return success to prevent user enumeration
+      return c.json({
+        success: true,
+        message: 'If your email exists and is unverified, you will receive a verification email'
+      });
     }
   }
 );
