@@ -41,33 +41,32 @@
  */
 
 import bcryptjs from 'bcryptjs';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { db } from '../../db';
 import {
   users,
-  apiKeys,
   refreshTokens,
   loginAttempts,
   passwordResets,
-  User,
-  NewUser,
-  Permission,
+  type User,
+  type NewUser,
+} from '../../db';
+import {
   Role,
-  SafeUser,
-  RegisterRequest,
-  LoginRequest,
-  UpdateUserRequest,
-  AuthResult,
-  TokenPair,
+  type SafeUser,
+  type RegisterRequest,
+  type LoginRequest,
+  type UpdateUserRequest,
+  type AuthResult,
+  type TokenPair,
+  type Permission,
   AuthException,
   AuthErrorCode,
-} from '../../db';
+} from './types';
 import { JWTManager } from './JWTManager';
-import { SessionManager } from './SessionManager';
-import { APIKeyManager } from './APIKeyManager';
 import { PermissionManager } from './PermissionManager';
 import { emailService } from '../email/EmailService';
-import { eq, and, gt, lt } from 'drizzle-orm';
+import { eq, and, gt } from 'drizzle-orm';
 
 /**
  * Authentication Manager Class
@@ -101,8 +100,6 @@ export class AuthManager {
 
   // Manager instances
   private readonly jwtManager = JWTManager.getInstance();
-  private readonly sessionManager = SessionManager.getInstance();
-  private readonly apiKeyManager = APIKeyManager.getInstance();
   private readonly permissionManager = PermissionManager.getInstance();
 
   // Configuration from environment
@@ -223,8 +220,10 @@ export class AuthManager {
       const { accessToken, refreshToken } = await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
-        role: user.role,
-        permissions: user.permissions || [],
+        role: user.role as Role,
+        permissions: (typeof user.permissions === 'string'
+          ? JSON.parse(user.permissions)
+          : user.permissions || []) as Permission[],
       });
 
       // 7. Store refresh token
@@ -232,7 +231,7 @@ export class AuthManager {
 
       // 8. Send email verification
       try {
-        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationToken = randomBytes(32).toString('hex');
         const tokenHash = this.hashToken(verificationToken);
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -247,7 +246,7 @@ export class AuthManager {
         // Send verification email
         await emailService.sendVerificationEmail({
           email: user.email,
-          firstName: firstName || undefined,
+          firstName: user.firstName || undefined,
           token: verificationToken,
           expiryHours: 24
         });
@@ -396,8 +395,10 @@ export class AuthManager {
       const { accessToken, refreshToken } = await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
-        role: user.role,
-        permissions: user.permissions || [],
+        role: user.role as Role,
+        permissions: (typeof user.permissions === 'string'
+          ? JSON.parse(user.permissions)
+          : user.permissions || []) as Permission[],
       });
 
       // Store refresh token
@@ -496,8 +497,10 @@ export class AuthManager {
       const newTokens = await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
-        role: user.role,
-        permissions: user.permissions || [],
+        role: user.role as Role,
+        permissions: (typeof user.permissions === 'string'
+          ? JSON.parse(user.permissions)
+          : user.permissions || []) as Permission[],
       });
 
       // Store new refresh token
@@ -604,7 +607,7 @@ export class AuthManager {
         const existing = await db.query.users.findFirst({
           where: and(
             eq(users.email, updates.email.toLowerCase()),
-            eq(users.id, userId, false)
+            eq(users.id, userId)
           ),
         });
         if (existing) {
@@ -766,7 +769,7 @@ export class AuthManager {
       }
 
       // Generate cryptographically secure reset token
-      const token = crypto.randomBytes(32).toString('hex');
+      const token = randomBytes(32).toString('hex');
       const tokenHash = this.hashToken(token);
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
@@ -897,7 +900,7 @@ export class AuthManager {
       console.log(`[AuthManager] Password reset completed for user: ${user.email}`);
 
       // Generate new tokens for immediate login
-      const permissions = this.permissionManager.getPermissionsForRole(user.role as Role);
+      const permissions = this.permissionManager.getRolePermissions(user.role as Role);
       return await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
@@ -988,7 +991,7 @@ export class AuthManager {
       }
 
       // Generate new verification token
-      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationToken = randomBytes(32).toString('hex');
       const tokenHash = this.hashToken(verificationToken);
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -1029,6 +1032,9 @@ export class AuthManager {
     const { passwordHash, ...safe } = user;
     return {
       ...safe,
+      tenantId: safe.tenantId || undefined,
+      lastLoginAt: safe.lastLoginAt || undefined,
+      role: safe.role as Role,
       permissions: typeof safe.permissions === 'string'
         ? JSON.parse(safe.permissions)
         : safe.permissions || [],

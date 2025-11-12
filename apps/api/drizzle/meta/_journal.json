@@ -22,6 +22,13 @@
       "when": 1762880329401,
       "tag": "0002_remarkable_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1762946059001,
+      "tag": "0003_smooth_tattoo",
+      "breakpoints": true
     }
   ]
 }

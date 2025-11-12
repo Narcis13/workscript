@@ -62,6 +62,16 @@
  */
 
 // ============================================
+// Internal Imports (for convenience functions)
+// ============================================
+
+import { JWTManager } from './JWTManager';
+import { SessionManager } from './SessionManager';
+import { APIKeyManager } from './APIKeyManager';
+import { PermissionManager } from './PermissionManager';
+import { AuthManager } from './AuthManager';
+
+// ============================================
 // Type Exports
 // ============================================
 

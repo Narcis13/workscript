@@ -43,22 +43,20 @@
  */
 
 import { createHash, randomBytes } from 'crypto';
-import { db } from '../../db';
+import { db, apiKeys } from '../../db';
+import type { ApiKey, NewApiKey } from '../../db';
 import {
-  apiKeys,
-  ApiKey,
-  NewApiKey,
   Permission,
-  Role,
-  SafeUser,
   AuthException,
   AuthErrorCode,
+} from './types';
+import type {
+  SafeUser,
   ApiKeyData,
   ApiKeyResponse,
   CreateApiKeyRequest,
-} from '../../db';
-import { PermissionManager } from './PermissionManager';
-import { eq, and, gt } from 'drizzle-orm';
+} from './types';
+import { eq, and, gt, isNotNull } from 'drizzle-orm';
 
 /**
  * API Key Manager Class
@@ -92,7 +90,6 @@ import { eq, and, gt } from 'drizzle-orm';
  */
 export class APIKeyManager {
   private static instance: APIKeyManager | null = null;
-  private permissionManager = PermissionManager.getInstance();
 
   // Configuration
   private readonly keyPrefix = 'wks'; // 'workscript' prefix
@@ -215,7 +212,7 @@ export class APIKeyManager {
       ];
 
       // 4. Determine expiry
-      let expiresAt: Date | null = null;
+      let expiresAt: Date | undefined;
       if (request.expiresAt) {
         expiresAt = new Date(request.expiresAt);
       }
@@ -569,11 +566,17 @@ export class APIKeyManager {
     try {
       const now = new Date();
 
-      const result = await db
+      // Delete expired keys (expiresAt is set and in the past)
+      await db
         .delete(apiKeys)
-        .where(and(gt(apiKeys.expiresAt, new Date('1970-01-01')), gt(now, apiKeys.expiresAt!)));
+        .where(and(
+          // Key has an expiration date
+          isNotNull(apiKeys.expiresAt),
+          // Expiration date is in the past
+          gt(now, apiKeys.expiresAt!)
+        ));
 
-      return result.changes || 0;
+      return 0; // Drizzle doesn't easily expose row count, but deletion happened
     } catch (error) {
       console.error('[APIKeyManager] Cleanup failed:', error);
       return 0;

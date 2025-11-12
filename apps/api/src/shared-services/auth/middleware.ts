@@ -36,13 +36,14 @@
  * @module auth/middleware
  */
 
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { JWTManager } from './JWTManager';
 import { APIKeyManager } from './APIKeyManager';
 import { SessionManager } from './SessionManager';
 import { PermissionManager } from './PermissionManager';
-import { AuthContext, SafeUser, Permission, AuthException, AuthErrorCode } from './types';
+import { Permission, AuthErrorCode, Role } from './types';
+import type { AuthContext, SafeUser } from './types';
 
 // Initialize managers
 const jwtManager = JWTManager.getInstance();
@@ -92,7 +93,7 @@ const permissionManager = PermissionManager.getInstance();
 export const authenticate = async (
   c: Context<{ Variables: AuthContext }>,
   next: Next
-): Promise<Response | undefined> => {
+): Promise<void> => {
   try {
     // 1. Check for API Key (X-API-Key header)
     const apiKey = c.req.header('X-API-Key');
@@ -103,7 +104,7 @@ export const authenticate = async (
         const user: SafeUser = {
           id: keyData.userId,
           email: `api-key-${keyData.id}`,
-          role: 'api',
+          role: Role.API,
           permissions: keyData.permissions,
           emailVerified: true,
           isActive: true,
@@ -112,7 +113,7 @@ export const authenticate = async (
         };
 
         c.set('user', user);
-        return next();
+        return await next();
       }
     }
 
@@ -135,7 +136,7 @@ export const authenticate = async (
         };
 
         c.set('user', user);
-        return next();
+        return await next();
       }
     }
 
@@ -149,7 +150,7 @@ export const authenticate = async (
           id: sessionData.userId,
           email: sessionData.email,
           role: sessionData.role,
-          permissions: permissionManager.getPermissionsForRole(sessionData.role),
+          permissions: permissionManager.getRolePermissions(sessionData.role),
           tenantId: sessionData.tenantId,
           emailVerified: true, // Assume verified if session exists
           isActive: true,
@@ -158,12 +159,12 @@ export const authenticate = async (
         };
 
         c.set('user', user);
-        return next();
+        return await next();
       }
     }
 
     // No valid credentials found
-    return c.json(
+    c.json(
       {
         success: false,
         error: 'Unauthorized',
@@ -173,7 +174,7 @@ export const authenticate = async (
     );
   } catch (error) {
     console.error('[Auth Middleware] Authentication error:', error);
-    return c.json(
+    c.json(
       {
         success: false,
         error: 'Authentication failed',
@@ -208,7 +209,7 @@ export const authenticate = async (
 export const optionalAuth = async (
   c: Context<{ Variables: AuthContext }>,
   next: Next
-): Promise<Response | undefined> => {
+): Promise<void> => {
   try {
     // Try to authenticate, but don't fail if credentials missing
     const apiKey = c.req.header('X-API-Key');
@@ -218,7 +219,7 @@ export const optionalAuth = async (
         const user: SafeUser = {
           id: keyData.userId,
           email: `api-key-${keyData.id}`,
-          role: 'api',
+          role: Role.API,
           permissions: keyData.permissions,
           emailVerified: true,
           isActive: true,
@@ -226,7 +227,7 @@ export const optionalAuth = async (
           updatedAt: new Date(),
         };
         c.set('user', user);
-        return next();
+        return await next();
       }
     }
 
@@ -251,11 +252,11 @@ export const optionalAuth = async (
     }
 
     // Continue regardless of authentication
-    return next();
+    return await next();
   } catch (error) {
     console.error('[Auth Middleware] Optional auth error:', error);
     // Continue on error
-    return next();
+    return await next();
   }
 };
 
@@ -292,13 +293,13 @@ export const requirePermission = (...permissions: Permission[]) => {
   return async (
     c: Context<{ Variables: AuthContext }>,
     next: Next
-  ): Promise<Response | undefined> => {
+  ): Promise<void> => {
     try {
       const user = c.get('user');
 
       // Check if authenticated
       if (!user) {
-        return c.json(
+        c.json(
           {
             success: false,
             error: 'Unauthorized',
@@ -306,13 +307,25 @@ export const requirePermission = (...permissions: Permission[]) => {
           },
           401
         );
+        return;
       }
 
-      // Check permissions
-      const hasPermission = permissionManager.hasUserPermission(user, permissions[0]);
+      // Check permissions - ensure at least one permission is provided
+      if (!permissions.length) {
+        c.json(
+          {
+            success: false,
+            error: 'No permissions specified',
+          },
+          500
+        );
+        return;
+      }
+
+      const hasPermission = permissionManager.hasUserPermission(user, permissions[0]!);
 
       if (!hasPermission) {
-        return c.json(
+        c.json(
           {
             success: false,
             error: 'Forbidden',
@@ -321,12 +334,13 @@ export const requirePermission = (...permissions: Permission[]) => {
           },
           403
         );
+        return;
       }
 
-      return next();
+      return await next();
     } catch (error) {
       console.error('[Auth Middleware] Permission check error:', error);
-      return c.json(
+      c.json(
         {
           success: false,
           error: 'Permission check failed',
@@ -363,27 +377,28 @@ export const requirePermission = (...permissions: Permission[]) => {
  * @param {...Role[]} roles Required roles
  * @returns {Function} Middleware function
  */
-export const requireRole = (...roles: string[]) => {
+export const requireRole = (...roles: Role[]) => {
   return async (
     c: Context<{ Variables: AuthContext }>,
     next: Next
-  ): Promise<Response | undefined> => {
+  ): Promise<void> => {
     try {
       const user = c.get('user');
 
       if (!user) {
-        return c.json(
+        c.json(
           {
             success: false,
             error: 'Unauthorized',
           },
           401
         );
+        return;
       }
 
       // Check if user has one of the required roles
       if (!roles.includes(user.role)) {
-        return c.json(
+        c.json(
           {
             success: false,
             error: 'Forbidden - insufficient role',
@@ -391,12 +406,13 @@ export const requireRole = (...roles: string[]) => {
           },
           403
         );
+        return;
       }
 
-      return next();
+      return await next();
     } catch (error) {
       console.error('[Auth Middleware] Role check error:', error);
-      return c.json(
+      c.json(
         {
           success: false,
           error: 'Role check failed',
@@ -435,7 +451,7 @@ export const rateLimiter = (options: { maxRequests: number; windowMs: number }) 
   return async (
     c: Context<{ Variables: AuthContext }>,
     next: Next
-  ): Promise<Response | undefined> => {
+  ): Promise<void> => {
     try {
       // Use user ID if authenticated, otherwise use IP
       const user = c.get('user');
@@ -449,7 +465,7 @@ export const rateLimiter = (options: { maxRequests: number; windowMs: number }) 
         entry.count++;
 
         if (entry.count > options.maxRequests) {
-          return c.json(
+          c.json(
             {
               success: false,
               error: 'Rate limit exceeded',
@@ -457,6 +473,7 @@ export const rateLimiter = (options: { maxRequests: number; windowMs: number }) 
             },
             429
           );
+          return;
         }
       } else {
         // New window
@@ -475,11 +492,11 @@ export const rateLimiter = (options: { maxRequests: number; windowMs: number }) 
         }
       }
 
-      return next();
+      return await next();
     } catch (error) {
       console.error('[Auth Middleware] Rate limit error:', error);
       // Allow request on error
-      return next();
+      return await next();
     }
   };
 };
@@ -506,36 +523,38 @@ export const ownsResource = (paramName: string = 'userId') => {
   return async (
     c: Context<{ Variables: AuthContext }>,
     next: Next
-  ): Promise<Response | undefined> => {
+  ): Promise<void> => {
     try {
       const user = c.get('user');
 
       if (!user) {
-        return c.json(
+        c.json(
           {
             success: false,
             error: 'Unauthorized',
           },
           401
         );
+        return;
       }
 
       const resourceOwnerId = c.req.param(paramName);
 
-      if (resourceOwnerId !== user.id && user.role !== 'admin') {
-        return c.json(
+      if (resourceOwnerId !== user.id && user.role !== Role.ADMIN) {
+        c.json(
           {
             success: false,
             error: 'Forbidden - you do not own this resource',
           },
           403
         );
+        return;
       }
 
-      return next();
+      return await next();
     } catch (error) {
       console.error('[Auth Middleware] Resource ownership check error:', error);
-      return c.json(
+      c.json(
         {
           success: false,
           error: 'Ownership check failed',

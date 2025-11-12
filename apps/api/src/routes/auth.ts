@@ -15,12 +15,12 @@
  */
 
 import { Hono } from 'hono';
-import { Context } from 'hono';
+import type { Context } from 'hono';
 import { setCookie, deleteCookie } from 'hono/cookie';
 import { AuthManager } from '../shared-services/auth/AuthManager';
 import { SessionManager } from '../shared-services/auth/SessionManager';
-import { authenticate } from '../shared-services/auth/middleware';
-import { AuthContext, RegisterRequest, LoginRequest } from '../shared-services/auth/types';
+import { authenticate, rateLimiter } from '../shared-services/auth/middleware';
+import type { AuthContext } from '../shared-services/auth/types';
 
 // Initialize managers
 const authManager = AuthManager.getInstance();
@@ -706,7 +706,7 @@ authRoutes.get('/verify-email/:token', async (c) => {
  */
 authRoutes.post(
   '/resend-verification',
-  rateLimiter({ maxRequests: 3, windowSeconds: 900 }), // 3 requests per 15 minutes
+  rateLimiter({ maxRequests: 3, windowMs: 900000 }), // 3 requests per 15 minutes (900 seconds)
   async (c) => {
     try {
       const body = await c.req.json();

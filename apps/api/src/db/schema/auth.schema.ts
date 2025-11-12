@@ -102,6 +102,22 @@ export const users = mysqlTable('users', {
     // If false, user should verify email via link before full access
     // Used for initial email verification flow
 
+  // User profile
+  firstName: varchar('first_name', { length: 255 }),
+    // User's first name (optional)
+    // Stored separately for personalization and audit trails
+
+  // Email verification
+  emailVerificationToken: varchar('email_verification_token', { length: 64 }),
+    // Token sent via email for verification
+    // Should be 32+ bytes (64 hex chars)
+    // Null = email already verified
+
+  emailVerificationTokenExpiry: timestamp('email_verification_token_expiry'),
+    // When verification token expires
+    // Typically 24 hours after creation
+    // Expired tokens can't be used
+
   // Account status (soft delete pattern)
   isActive: boolean('is_active')
     .default(true)
@@ -471,6 +487,12 @@ export const passwordResets = mysqlTable('password_resets', {
     // If not null, token was already used for password reset
     // Don't allow reuse of same token
     // Marks token as "consumed"
+
+  // Security audit trail
+  ipAddress: varchar('ip_address', { length: 45 }),
+    // IP address that requested password reset
+    // IPv4: max 15 chars, IPv6: max 45 chars
+    // Used for: security audits, fraud detection
 
   // Audit trail
   createdAt: timestamp('created_at')

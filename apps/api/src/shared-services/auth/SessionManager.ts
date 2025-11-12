@@ -29,9 +29,11 @@
  * @module auth/SessionManager
  */
 
-import { SessionData, NewSession } from '../../db';
+import type { NewSession } from '../../db';
+import { sessions } from '../../db';
 import { db } from '../../db';
-import { sessions, eq } from '../../db';
+import { eq } from 'drizzle-orm';
+import type { SessionData } from './types';
 import { AuthException, AuthErrorCode } from './types';
 
 /**
