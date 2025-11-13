@@ -120,6 +120,7 @@ From `requirements.md`, identify and extract:
 
 ## 7. Completion Checklist
 
+**CRITICAL!!! Check the checkboxes in the implementation_plan.md file for the task you accomplish! This is mandayory and VERY IMPORTANT!**
 Before marking the task complete, verify:
 
 - [ ] All task objectives from implementation plan are met
@@ -142,6 +143,6 @@ After implementation, provide:
 
 ---
 
-**Now proceed to implement the task: "{{task}}" for feature "{{feature}}"**
-
+****Now proceed to implement the task: "{{task}}" for feature "{{feature}}"**
+**CRITICAL!!! Check the checkboxes in the implementation_plan.md file for the task you accomplish! This is mandayory and VERY IMPORTANT!**
 Start by reading the specification files and understanding the full context before writing any code.
