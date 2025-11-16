@@ -98,7 +98,7 @@ export function ResetPasswordForm() {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       // Mock success
-      console.log('Password reset requested for:', data.email);
+      // Note: In production, do not log user emails or any PII
       setIsSuccess(true);
       reset();
     } catch (err) {

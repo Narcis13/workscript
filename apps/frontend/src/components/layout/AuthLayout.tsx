@@ -22,13 +22,21 @@ interface AuthLayoutProps {
 export function AuthLayout({ children, title, description }: AuthLayoutProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4">
+      {/* Skip to content link for screen readers */}
+      <a
+        href="#auth-form"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-4 focus:left-4 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-md focus:shadow-lg"
+      >
+        Skip to form
+      </a>
+
       <div className="w-full max-w-md space-y-6">
         {/* Branding/Logo Area */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2" role="banner">
           <div className="flex justify-center mb-4">
             {/* Logo placeholder - can be replaced with actual logo image */}
             <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <span className="text-white text-2xl font-bold">W</span>
+              <span className="text-white text-2xl font-bold" aria-label="Workscript logo">W</span>
             </div>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
@@ -40,7 +48,7 @@ export function AuthLayout({ children, title, description }: AuthLayoutProps) {
         </div>
 
         {/* Auth Form Card */}
-        <Card className="w-full">
+        <Card id="auth-form" className="w-full" role="main">
           {(title || description) && (
             <CardHeader>
               {title && <CardTitle className="text-2xl">{title}</CardTitle>}

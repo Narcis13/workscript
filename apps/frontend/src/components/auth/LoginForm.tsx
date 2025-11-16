@@ -108,32 +108,12 @@ export function LoginForm() {
 
       // Redirect to originally requested page or dashboard
       // The location state contains the "from" path if user was redirected to login
+      // TODO: Add success toast notification after successful login
       const from = (location.state as any)?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } catch (err: any) {
-      // Handle different error types
-      let errorMessage = 'Invalid email or password. Please try again.';
-
-      if (err.response) {
-        const status = err.response.status;
-        const apiError = err.response.data?.error || err.response.data?.message;
-
-        if (status === 429) {
-          // Account locked error
-          errorMessage = 'Account locked due to too many failed login attempts. Please wait 15 minutes and try again.';
-        } else if (status === 401) {
-          // Invalid credentials
-          errorMessage = 'Invalid email or password. Please try again.';
-        } else if (apiError) {
-          // Use API error message if available
-          errorMessage = apiError;
-        }
-      } else if (err.message) {
-        // Network or other errors
-        errorMessage = `Login failed: ${err.message}`;
-      }
-
-      setError(errorMessage);
+      // Error message is already user-friendly from AuthService
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,11 +124,15 @@ export function LoginForm() {
   // ============================================
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-4"
+      aria-label="Login form"
+    >
       {/* Error Alert */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+        <Alert variant="destructive" role="alert" aria-live="polite">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -163,10 +147,16 @@ export function LoginForm() {
           autoComplete="email"
           {...register('email')}
           aria-invalid={errors.email ? 'true' : 'false'}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           disabled={isSubmitting}
         />
         {errors.email && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="email-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.email.message}
           </p>
         )}
@@ -179,6 +169,7 @@ export function LoginForm() {
           <Link
             to="/reset-password"
             className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+            aria-label="Forgot password? Reset your password"
           >
             Forgot password?
           </Link>
@@ -190,10 +181,16 @@ export function LoginForm() {
           autoComplete="current-password"
           {...register('password')}
           aria-invalid={errors.password ? 'true' : 'false'}
+          aria-describedby={errors.password ? 'password-error' : undefined}
           disabled={isSubmitting}
         />
         {errors.password && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="password-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.password.message}
           </p>
         )}
@@ -204,10 +201,11 @@ export function LoginForm() {
         type="submit"
         className="w-full"
         disabled={isSubmitting}
+        aria-busy={isSubmitting}
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             Signing in...
           </>
         ) : (
@@ -223,6 +221,7 @@ export function LoginForm() {
         <Link
           to="/register"
           className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+          aria-label="Don't have an account? Register for a new account"
         >
           Register
         </Link>

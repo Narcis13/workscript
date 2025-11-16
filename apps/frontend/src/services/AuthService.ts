@@ -13,8 +13,9 @@
  * @module services/AuthService
  */
 
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosInstance, AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { config } from '../lib/config';
+import { getErrorMessage } from '../lib/errorHandling';
 import type {
   User,
   LoginRequest,
@@ -186,6 +187,9 @@ class AuthService {
   /**
    * Called when token refresh fails - clear tokens and logout user
    * @private
+   *
+   * TODO: Add event emitter to notify components of logout (for toast notifications)
+   * TODO: Consider adding configurable redirect behavior
    */
   private onRefreshFailure(): void {
     this.clearTokens();
@@ -306,6 +310,7 @@ class AuthService {
 
       // Store new tokens (backend implements token rotation)
       // Note: expiresIn is not returned by refresh endpoint, use default 15 min (900 seconds)
+      // TODO: Request backend to return expiresIn in refresh response for accurate token management
       this.setTokens({
         accessToken,
         refreshToken: newRefreshToken,
@@ -345,11 +350,9 @@ class AuthService {
 
       return user;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message = error.response?.data?.error || 'Registration failed';
-        throw new Error(message);
-      }
-      throw error;
+      // Use centralized error handling
+      const message = getErrorMessage(error, 'register');
+      throw new Error(message);
     }
   }
 
@@ -374,11 +377,9 @@ class AuthService {
 
       return user;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message = error.response?.data?.error || 'Login failed';
-        throw new Error(message);
-      }
-      throw error;
+      // Use centralized error handling
+      const message = getErrorMessage(error, 'login');
+      throw new Error(message);
     }
   }
 
@@ -417,11 +418,9 @@ class AuthService {
       const response = await this.axiosInstance.get<GetCurrentUserResponse>('/auth/me');
       return response.data.data;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message = error.response?.data?.error || 'Failed to get current user';
-        throw new Error(message);
-      }
-      throw error;
+      // Use centralized error handling
+      const message = getErrorMessage(error, 'fetchUser');
+      throw new Error(message);
     }
   }
 
@@ -441,11 +440,9 @@ class AuthService {
 
       return response.data.message;
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message = error.response?.data?.error || 'Password change failed';
-        throw new Error(message);
-      }
-      throw error;
+      // Use centralized error handling
+      const message = getErrorMessage(error, 'changePassword');
+      throw new Error(message);
     }
   }
 }

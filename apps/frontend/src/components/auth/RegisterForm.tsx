@@ -138,28 +138,12 @@ export function RegisterForm() {
       await registerUser(data.email, data.password);
 
       // Registration successful - redirect to dashboard
+      // TODO: Add welcome toast notification for new users
+      // TODO: Consider adding an onboarding flow for first-time users
       navigate('/dashboard', { replace: true });
     } catch (err: any) {
-      // Handle different error types
-      let errorMessage = 'Registration failed. Please try again.';
-
-      if (err.response) {
-        const status = err.response.status;
-        const apiError = err.response.data?.error || err.response.data?.message;
-
-        if (status === 409 || status === 400) {
-          // Email already exists or validation error
-          errorMessage = apiError || 'This email is already registered. Please login instead.';
-        } else if (apiError) {
-          // Use API error message if available
-          errorMessage = apiError;
-        }
-      } else if (err.message) {
-        // Network or other errors
-        errorMessage = `Registration failed: ${err.message}`;
-      }
-
-      setError(errorMessage);
+      // Error message is already user-friendly from AuthService
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -194,14 +178,21 @@ export function RegisterForm() {
       <div className="space-y-2 mt-2">
         {/* Strength bar */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div
+            className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"
+            role="progressbar"
+            aria-valuenow={score}
+            aria-valuemin={0}
+            aria-valuemax={10}
+            aria-label={`Password strength: ${strengthLabel}`}
+          >
             <div
               className={`h-full ${strengthColor} transition-all duration-300`}
               style={{ width: `${(score / 10) * 100}%` }}
             />
           </div>
           <div className="flex items-center gap-1 text-sm">
-            <StrengthIcon className={`h-4 w-4 ${iconColor}`} />
+            <StrengthIcon className={`h-4 w-4 ${iconColor}`} aria-hidden="true" />
             <span className={`font-medium ${iconColor}`}>
               {strengthLabel}
             </span>
@@ -210,10 +201,10 @@ export function RegisterForm() {
 
         {/* Feedback messages */}
         {feedback.length > 0 && (
-          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1" role="list">
             {feedback.map((item, index) => (
               <li key={index} className="flex items-start gap-1">
-                <span className="text-slate-400 dark:text-slate-500">•</span>
+                <span className="text-slate-400 dark:text-slate-500" aria-hidden="true">•</span>
                 <span>{item}</span>
               </li>
             ))}
@@ -228,11 +219,15 @@ export function RegisterForm() {
   // ============================================
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-4"
+      aria-label="Registration form"
+    >
       {/* Error Alert */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+        <Alert variant="destructive" role="alert" aria-live="polite">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -247,10 +242,16 @@ export function RegisterForm() {
           autoComplete="email"
           {...register('email')}
           aria-invalid={errors.email ? 'true' : 'false'}
+          aria-describedby={errors.email ? 'email-error' : undefined}
           disabled={isSubmitting}
         />
         {errors.email && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="email-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.email.message}
           </p>
         )}
@@ -266,16 +267,30 @@ export function RegisterForm() {
           autoComplete="new-password"
           {...register('password')}
           aria-invalid={errors.password ? 'true' : 'false'}
+          aria-describedby={
+            errors.password
+              ? 'password-error password-strength'
+              : passwordStrength
+              ? 'password-strength'
+              : undefined
+          }
           disabled={isSubmitting}
         />
         {errors.password && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="password-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.password.message}
           </p>
         )}
 
         {/* Password Strength Indicator */}
-        {renderPasswordStrength()}
+        <div id="password-strength" aria-live="polite" aria-atomic="true">
+          {renderPasswordStrength()}
+        </div>
       </div>
 
       {/* Confirm Password Field */}
@@ -288,10 +303,16 @@ export function RegisterForm() {
           autoComplete="new-password"
           {...register('confirmPassword')}
           aria-invalid={errors.confirmPassword ? 'true' : 'false'}
+          aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined}
           disabled={isSubmitting}
         />
         {errors.confirmPassword && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="confirmPassword-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.confirmPassword.message}
           </p>
         )}
@@ -302,10 +323,11 @@ export function RegisterForm() {
         type="submit"
         className="w-full"
         disabled={isSubmitting}
+        aria-busy={isSubmitting}
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             Creating account...
           </>
         ) : (
@@ -321,6 +343,7 @@ export function RegisterForm() {
         <Link
           to="/login"
           className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+          aria-label="Already have an account? Login to your account"
         >
           Login
         </Link>

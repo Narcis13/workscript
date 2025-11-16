@@ -70,6 +70,9 @@ interface ProtectedRouteProps {
 /**
  * Simple loading component displayed while checking authentication
  * Can be replaced with a more sophisticated loading indicator if needed
+ *
+ * TODO: Replace with a more polished loading screen (skeleton, animation)
+ * TODO: Add progress indicator for slow network connections
  */
 const LoadingScreen: React.FC = () => {
   return (

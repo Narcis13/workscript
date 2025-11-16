@@ -20,7 +20,7 @@
  * - Requirement 19: Loading States
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '@/services/AuthService';
@@ -102,27 +102,15 @@ export function ChangePasswordForm() {
       );
 
       // Password change successful
+      // TODO: Consider automatically logging out other sessions after password change
+      // TODO: Add option to send email notification about password change
       setSuccess(message || 'Password changed successfully!');
 
       // Reset form after successful password change
       reset();
     } catch (err: any) {
-      // Handle different error types
-      let errorMessage = 'Failed to change password. Please try again.';
-
-      if (err.message) {
-        // Use error message from authService
-        errorMessage = err.message;
-      }
-
-      // Check for specific error cases
-      if (errorMessage.toLowerCase().includes('current password')) {
-        errorMessage = 'Current password is incorrect. Please try again.';
-      } else if (errorMessage.toLowerCase().includes('same')) {
-        errorMessage = 'New password must be different from your current password.';
-      }
-
-      setError(errorMessage);
+      // Error message is already user-friendly from AuthService
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -133,11 +121,19 @@ export function ChangePasswordForm() {
   // ============================================
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-md">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="space-y-4 max-w-md"
+      aria-label="Change password form"
+    >
       {/* Success Alert */}
       {success && (
-        <Alert className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+        <Alert
+          className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
+          role="status"
+          aria-live="polite"
+        >
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" aria-hidden="true" />
           <AlertDescription className="text-green-800 dark:text-green-200">
             {success}
           </AlertDescription>
@@ -146,8 +142,8 @@ export function ChangePasswordForm() {
 
       {/* Error Alert */}
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
+        <Alert variant="destructive" role="alert" aria-live="polite">
+          <AlertCircle className="h-4 w-4" aria-hidden="true" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -162,10 +158,16 @@ export function ChangePasswordForm() {
           autoComplete="current-password"
           {...register('currentPassword')}
           aria-invalid={errors.currentPassword ? 'true' : 'false'}
+          aria-describedby={errors.currentPassword ? 'currentPassword-error' : undefined}
           disabled={isSubmitting}
         />
         {errors.currentPassword && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="currentPassword-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.currentPassword.message}
           </p>
         )}
@@ -181,14 +183,27 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           {...register('newPassword')}
           aria-invalid={errors.newPassword ? 'true' : 'false'}
+          aria-describedby={
+            errors.newPassword
+              ? 'newPassword-error newPassword-requirements'
+              : 'newPassword-requirements'
+          }
           disabled={isSubmitting}
         />
         {errors.newPassword && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="newPassword-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.newPassword.message}
           </p>
         )}
-        <p className="text-xs text-slate-600 dark:text-slate-400">
+        <p
+          id="newPassword-requirements"
+          className="text-xs text-slate-600 dark:text-slate-400"
+        >
           Password must be at least 8 characters with uppercase, lowercase, and number.
         </p>
       </div>
@@ -203,10 +218,16 @@ export function ChangePasswordForm() {
           autoComplete="new-password"
           {...register('confirmNewPassword')}
           aria-invalid={errors.confirmNewPassword ? 'true' : 'false'}
+          aria-describedby={errors.confirmNewPassword ? 'confirmNewPassword-error' : undefined}
           disabled={isSubmitting}
         />
         {errors.confirmNewPassword && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <p
+            id="confirmNewPassword-error"
+            className="text-sm text-red-600 dark:text-red-400"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.confirmNewPassword.message}
           </p>
         )}
@@ -216,10 +237,11 @@ export function ChangePasswordForm() {
       <Button
         type="submit"
         disabled={isSubmitting}
+        aria-busy={isSubmitting}
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
             Changing password...
           </>
         ) : (
