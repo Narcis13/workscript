@@ -14,6 +14,9 @@ export default defineConfig({
       "@workscript/engine/nodes": path.resolve(__dirname, "../../packages/engine/dist/nodes/index.js"),
       // Map '@workscript/engine' package to its dist output for proper module resolution
       "@workscript/engine": path.resolve(__dirname, "../../packages/engine/dist/src/index.js"),
+      // Force single React instance to fix "Invalid hook call" error in monorepo
+      "react": path.resolve(__dirname, "./node_modules/react"),
+      "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
     },
   },
   define: {
@@ -21,6 +24,7 @@ export default defineConfig({
     global: 'globalThis',
   },
   optimizeDeps: {
+    include: ['react', 'react-dom'],
     exclude: []
   },
   build: {
