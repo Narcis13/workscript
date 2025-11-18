@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/guards/ProtectedRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Toaster } from '@/components/ui/sonner';
 
 // Auth Pages
 import LoginPage from '@/pages/auth/LoginPage';
@@ -69,6 +70,7 @@ function App() {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
+        <Toaster />
       </AuthProvider>
     </ErrorBoundary>
   );
