@@ -557,7 +557,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.5 Workflow Creation Page
 
-- [ ] **Task 3.5.1: Create WorkflowCreatePage component**
+- [x] **Task 3.5.1: Create WorkflowCreatePage component**
   - Create file: `apps/frontend/src/pages/WorkflowCreatePage.tsx`
   - Use `useCreateWorkflow` mutation
   - Use `useValidateWorkflow` mutation
@@ -572,14 +572,14 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 5, 17_
 
-- [ ] **Task 3.5.2: Implement Test Run dialog**
+- [x] **Task 3.5.2: Implement Test Run dialog**
   - Add dialog for test run with initial state input
   - Use Monaco editor for initial state JSON
   - Execute workflow with `useExecuteWorkflow` mutation
   - Display execution results
   - _Requirements: Req 5, 7_
 
-- [ ] **Task 3.5.3: Test WorkflowCreatePage functionality**
+- [x] **Task 3.5.3: Test WorkflowCreatePage functionality**
   - Test form validation (name required)
   - Test Monaco editor validation with invalid JSON
   - Test Validate button shows errors
@@ -591,7 +591,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.6 Workflow Edit Page
 
-- [ ] **Task 3.6.1: Create WorkflowEditPage component**
+- [x] **Task 3.6.1: Create WorkflowEditPage component**
   - Create file: `apps/frontend/src/pages/WorkflowEditPage.tsx`
   - Use `useParams` to get workflow ID
   - Use `useWorkflow` hook to fetch existing workflow
@@ -605,13 +605,13 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 6, 17_
 
-- [ ] **Task 3.6.2: Implement Monaco diff editor for View Diff**
+- [x] **Task 3.6.2: Implement Monaco diff editor for View Diff**
   - Add dialog with Monaco diff editor
   - Show original workflow (left) vs. current workflow (right)
   - Highlight changes in green/red
   - _Requirements: Req 6, 20_
 
-- [ ] **Task 3.6.3: Test WorkflowEditPage functionality**
+- [x] **Task 3.6.3: Test WorkflowEditPage functionality**
   - Test workflow data loads and populates form
   - Test Save updates workflow
   - Test View Diff shows changes correctly
@@ -621,7 +621,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.7 Workflow Detail Page
 
-- [ ] **Task 3.7.1: Create WorkflowDetailView component**
+- [x] **Task 3.7.1: Create WorkflowDetailView component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowDetailView.tsx`
   - Props: `workflow`
   - Display metadata: name, description, version, created/updated dates, isActive status
@@ -629,7 +629,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 8_
 
-- [ ] **Task 3.7.2: Create WorkflowExecutionPanel component**
+- [x] **Task 3.7.2: Create WorkflowExecutionPanel component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowExecutionPanel.tsx`
   - Props: `workflowDefinition`
   - Render Monaco editor for initial state JSON (optional)
@@ -641,7 +641,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 7, 17_
 
-- [ ] **Task 3.7.3: Create ExecutionList component**
+- [x] **Task 3.7.3: Create ExecutionList component**
   - Create file: `apps/frontend/src/components/executions/ExecutionList.tsx`
   - Props: `executions`, `loading`, `compact` (optional)
   - Display table with columns: execution ID (truncated), start time, status badge, duration, "View Details"
