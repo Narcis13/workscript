@@ -396,7 +396,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 2.5 Node Detail Page
 
-- [ ] **Task 2.5.1: Create NodeDetailPage component**
+- [x] **Task 2.5.1: Create NodeDetailPage component**
   - Create file: `apps/frontend/src/pages/NodeDetailPage.tsx`
   - Use `useParams` to get nodeId from route
   - Use `useNodeMetadata` hook to fetch node details
@@ -407,7 +407,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 2, 3_
 
-- [ ] **Task 2.5.2: Test NodeDetailPage functionality**
+- [x] **Task 2.5.2: Test NodeDetailPage functionality**
   - Test node details load correctly
   - Test 404 handling for invalid nodeId
   - Test code snippet copy to clipboard
@@ -422,51 +422,51 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.1 Workflow API Service Layer
 
-- [ ] **Task 3.1.1: Create workflows API service**
+- [x] **Task 3.1.1: Create workflows API service**
   - Create file: `apps/frontend/src/services/api/workflows.api.ts`
   - Implement functions: `fetchWorkflows()`, `fetchWorkflow(id)`, `createWorkflow(data)`, `updateWorkflow(id, data)`, `deleteWorkflow(id)`, `executeWorkflow(definition, initialState)`, `validateWorkflow(definition)`
   - Use Axios client
   - Document all functions
   - _Requirements: Req 4, 5, 6, 7, 8_
 
-- [ ] **Task 3.1.2: Create useWorkflows React Query hook**
+- [x] **Task 3.1.2: Create useWorkflows React Query hook**
   - Create file: `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement hook: `useWorkflows()` - returns workflows list query
   - Enable automatic refetching on window focus
   - _Requirements: Req 4_
 
-- [ ] **Task 3.1.3: Create useWorkflow hook**
+- [x] **Task 3.1.3: Create useWorkflow hook**
   - In `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement hook: `useWorkflow(id)` - returns single workflow query
   - _Requirements: Req 8_
 
-- [ ] **Task 3.1.4: Create useCreateWorkflow mutation hook**
+- [x] **Task 3.1.4: Create useCreateWorkflow mutation hook**
   - In `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement mutation with optimistic updates
   - Invalidate workflows list query on success
   - Show toast notification on success/error
   - _Requirements: Req 5_
 
-- [ ] **Task 3.1.5: Create useUpdateWorkflow mutation hook**
+- [x] **Task 3.1.5: Create useUpdateWorkflow mutation hook**
   - In `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement mutation with optimistic updates
   - Invalidate workflow detail query on success
   - _Requirements: Req 6_
 
-- [ ] **Task 3.1.6: Create useDeleteWorkflow mutation hook**
+- [x] **Task 3.1.6: Create useDeleteWorkflow mutation hook**
   - In `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement mutation with optimistic updates
   - Invalidate workflows list query on success
   - Show confirmation toast on success
   - _Requirements: Req 4_
 
-- [ ] **Task 3.1.7: Create useExecuteWorkflow mutation hook**
+- [x] **Task 3.1.7: Create useExecuteWorkflow mutation hook**
   - In `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement mutation for immediate workflow execution
   - Handle execution results with state updates
   - _Requirements: Req 7_
 
-- [ ] **Task 3.1.8: Create useValidateWorkflow mutation hook**
+- [x] **Task 3.1.8: Create useValidateWorkflow mutation hook**
   - In `apps/frontend/src/hooks/api/useWorkflows.ts`
   - Implement mutation for workflow validation
   - Return validation errors with line/column info
@@ -474,7 +474,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.2 Workflow List Components
 
-- [ ] **Task 3.2.1: Create WorkflowCard component**
+- [x] **Task 3.2.1: Create WorkflowCard component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowCard.tsx`
   - Props: `workflow`, `onView`, `onEdit`, `onDelete`, `onRun`
   - Display: name, description, version, isActive badge, created/updated dates
@@ -484,7 +484,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 4, 17_
 
-- [ ] **Task 3.2.2: Create WorkflowList component**
+- [x] **Task 3.2.2: Create WorkflowList component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowList.tsx`
   - Props: `workflows`, `loading`, `onView`, `onEdit`, `onDelete`, `onRun`
   - Render grid of WorkflowCard components
@@ -495,7 +495,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.3 Workflows Page
 
-- [ ] **Task 3.3.1: Create WorkflowsPage component**
+- [x] **Task 3.3.1: Create WorkflowsPage component**
   - Create file: `apps/frontend/src/pages/WorkflowsPage.tsx`
   - Use `useWorkflows` hook
   - Use `useDeleteWorkflow` hook for deletion
@@ -508,7 +508,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 4_
 
-- [ ] **Task 3.3.2: Test WorkflowsPage functionality**
+- [x] **Task 3.3.2: Test WorkflowsPage functionality**
   - Test workflows load and display correctly
   - Test search filtering
   - Test Create button navigation
@@ -519,7 +519,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 3.4 Workflow Form and Editor Components
 
-- [ ] **Task 3.4.1: Create WorkflowForm component**
+- [x] **Task 3.4.1: Create WorkflowForm component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowForm.tsx`
   - Props: `initialData`, `onSubmit`, `loading`
   - Fields: name (required), description (optional), version (default "1.0.0")
@@ -528,7 +528,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 5, 6_
 
-- [ ] **Task 3.4.2: Create WorkflowEditor component**
+- [x] **Task 3.4.2: Create WorkflowEditor component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowEditor.tsx`
   - Props: `value`, `onChange`, `onValidate`, `readOnly`
   - Render Monaco editor with JSON schema validation
@@ -537,7 +537,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 5, 6, 20_
 
-- [ ] **Task 3.4.3: Create WorkflowValidator component**
+- [x] **Task 3.4.3: Create WorkflowValidator component**
   - Create file: `apps/frontend/src/components/workflows/WorkflowValidator.tsx`
   - Props: `workflowDefinition`, `onValidate`
   - Use `useValidateWorkflow` mutation
@@ -547,7 +547,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 5, 6_
 
-- [ ] **Task 3.4.4: Create WorkflowPreview component (optional)**
+- [x] **Task 3.4.4: Create WorkflowPreview component (optional)**
   - Create file: `apps/frontend/src/components/workflows/WorkflowPreview.tsx`
   - Props: `workflow` (ParsedWorkflow)
   - Display simple visual representation of nodes and edges
