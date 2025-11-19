@@ -244,26 +244,26 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 1.8 Routing Configuration
 
-- [ ] **Task 1.8.1: Set up React Router**
+- [x] **Task 1.8.1: Set up React Router**
   - Create file: `apps/frontend/src/routes.tsx`
   - Define route structure using `createBrowserRouter`
   - Set up nested routes with AppLayout as parent
   - _Requirements: All navigation requirements_
 
-- [ ] **Task 1.8.2: Define main routes**
+- [x] **Task 1.8.2: Define main routes**
   - Add routes: `/` (Dashboard), `/nodes` (Nodes list), `/nodes/:nodeId` (Node detail), `/workflows` (Workflows list), `/workflows/new` (Create workflow), `/workflows/:id` (Workflow detail), `/workflows/:id/edit` (Edit workflow)
   - All routes use lazy loading for code splitting
   - _Requirements: Req 1, 2, 3, 4, 5, 6, 7, 8_
 
-- [ ] **Task 1.8.3: Define automation routes**
+- [x] **Task 1.8.3: Define automation routes**
   - Add routes: `/automations` (Automations list), `/automations/new` (Create automation), `/automations/:id` (Automation detail), `/automations/:id/edit` (Edit automation)
   - _Requirements: Req 9, 10, 11, 12_
 
-- [ ] **Task 1.8.4: Define monitoring and execution routes**
+- [x] **Task 1.8.4: Define monitoring and execution routes**
   - Add routes: `/executions` (Executions list), `/executions/:id` (Execution detail), `/monitoring` (Real-time monitoring)
   - _Requirements: Req 13, 14_
 
-- [ ] **Task 1.8.5: Add 404 Not Found route**
+- [x] **Task 1.8.5: Add 404 Not Found route**
   - Create 404 page component
   - Add catch-all route at the end
   - Display friendly message and link to dashboard
@@ -271,22 +271,22 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 1.9 Authentication Context and Guards
 
-- [ ] **Task 1.9.1: Create auth context**
+- [x] **Task 1.9.1: Create auth context**
   - Create file: `apps/frontend/src/contexts/AuthContext.tsx`
   - Manage auth state: user, token, permissions
   - Provide login, logout, and token refresh functions
   - Document context with JSDoc
   - _Requirements: Req 16 (Authentication)_
 
-- [ ] **Task 1.9.2: Implement protected route wrapper**
-  - Create file: `apps/frontend/src/components/ProtectedRoute.tsx`
+- [x] **Task 1.9.2: Implement protected route wrapper**
+  - Create file: `apps/frontend/src/components/guards/ProtectedRoute.tsx`
   - Check if user is authenticated, redirect to login if not
   - Optionally check for required permissions
   - Display 403 page if permissions insufficient
   - _Requirements: Req 16, 17 (Auth and permissions)_
 
-- [ ] **Task 1.9.3: Add auth provider to app root**
-  - Wrap app in `AuthProvider` in `main.tsx`
+- [x] **Task 1.9.3: Add auth provider to app root**
+  - Wrap app in `AuthProvider` in `App.tsx`
   - Load user data on app initialization
   - _Requirements: Req 16_
 
@@ -296,27 +296,27 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 2.1 Node API Service Layer
 
-- [ ] **Task 2.1.1: Create nodes API service**
+- [x] **Task 2.1.1: Create nodes API service**
   - Create file: `apps/frontend/src/services/api/nodes.api.ts`
   - Implement functions: `fetchAllNodes(source?)`, `fetchNodeMetadata(nodeId)`, `executeNode(nodeId, config, initialState)`
   - Use Axios client from Task 1.4.1
   - Document with JSDoc and TypeScript
   - _Requirements: Req 1, 2, 3_
 
-- [ ] **Task 2.1.2: Create useNodes React Query hook**
+- [x] **Task 2.1.2: Create useNodes React Query hook**
   - Create file: `apps/frontend/src/hooks/api/useNodes.ts`
   - Implement hook: `useNodes(source?)` - returns nodes list query
   - Enable/disable based on source parameter
   - Add loading, error, and refetch states
   - _Requirements: Req 1_
 
-- [ ] **Task 2.1.3: Create useNodeMetadata React Query hook**
+- [x] **Task 2.1.3: Create useNodeMetadata React Query hook**
   - In `apps/frontend/src/hooks/api/useNodes.ts`
   - Implement hook: `useNodeMetadata(nodeId)` - returns node detail query
   - Handle node not found errors
   - _Requirements: Req 2_
 
-- [ ] **Task 2.1.4: Create useExecuteNode mutation hook**
+- [x] **Task 2.1.4: Create useExecuteNode mutation hook**
   - In `apps/frontend/src/hooks/api/useNodes.ts`
   - Implement hook: `useExecuteNode()` - returns mutation for node execution
   - Handle success and error states with toast notifications
@@ -324,7 +324,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 2.2 Node List Components
 
-- [ ] **Task 2.2.1: Create NodeCard component**
+- [x] **Task 2.2.1: Create NodeCard component**
   - Create file: `apps/frontend/src/components/nodes/NodeCard.tsx`
   - Props: `node` (NodeMetadata)
   - Display: id, name, version, description (truncated), source badge, "View Details" button
@@ -333,7 +333,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 1_
 
-- [ ] **Task 2.2.2: Create NodeFilterBar component**
+- [x] **Task 2.2.2: Create NodeFilterBar component**
   - Create file: `apps/frontend/src/components/nodes/NodeFilterBar.tsx`
   - Props: `onSourceChange`, `onSearchChange`
   - Include: source dropdown (All/Universal/Server), search input
@@ -341,7 +341,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 1_
 
-- [ ] **Task 2.2.3: Create NodeList component**
+- [x] **Task 2.2.3: Create NodeList component**
   - Create file: `apps/frontend/src/components/nodes/NodeList.tsx`
   - Props: `nodes`, `loading`, `error`
   - Render grid of NodeCard components
@@ -353,7 +353,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 2.3 Nodes Page
 
-- [ ] **Task 2.3.1: Create NodesPage component**
+- [x] **Task 2.3.1: Create NodesPage component**
   - Create file: `apps/frontend/src/pages/NodesPage.tsx`
   - Use `useNodes` hook to fetch nodes
   - Implement local state for search and source filter
@@ -364,7 +364,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 1_
 
-- [ ] **Task 2.3.2: Test NodesPage functionality**
+- [x] **Task 2.3.2: Test NodesPage functionality**
   - Test search filtering works correctly
   - Test source filtering (All/Universal/Server)
   - Test loading states display correctly
@@ -374,7 +374,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 2.4 Node Detail Components
 
-- [ ] **Task 2.4.1: Create NodeDetailPanel component**
+- [x] **Task 2.4.1: Create NodeDetailPanel component**
   - Create file: `apps/frontend/src/components/nodes/NodeDetailPanel.tsx`
   - Props: `node` (NodeMetadata)
   - Display sections: Overview (name, version, description), Inputs, Outputs, AI Hints (purpose, when to use, expected edges, example usage with syntax highlighting)
@@ -383,7 +383,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 2_
 
-- [ ] **Task 2.4.2: Create NodeTestRunner component**
+- [x] **Task 2.4.2: Create NodeTestRunner component**
   - Create file: `apps/frontend/src/components/nodes/NodeTestRunner.tsx`
   - Props: `nodeId`, `exampleConfig`
   - Render Monaco editor for config input
