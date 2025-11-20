@@ -810,7 +810,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 11_
 
-- [ ] **Task 4.4.2: Create CronValidator component**
+- [x] **Task 4.4.2: Create CronValidator component**
   - Create file: `apps/frontend/src/components/automations/CronValidator.tsx`
   - Props: `cronExpression`, `timezone`
   - Use `useValidateCron` mutation with debounce (300ms)
@@ -821,12 +821,12 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 11_
 
-- [ ] **Task 4.4.3: Implement cron presets**
+- [x] **Task 4.4.3: Implement cron presets**
   - Add preset configurations: "Every minute" (*/1 * * * *), "Every 5 minutes" (*/5 * * * *), "Every hour" (0 * * * *), "Every day at midnight" (0 0 * * *), "Every day at 9 AM" (0 9 * * *), "Every Monday at 9 AM" (0 9 * * 1), "First day of month" (0 0 1 * *), "Every weekday at 9 AM" (0 9 * * 1-5)
   - Apply preset to CronBuilder on selection
   - _Requirements: Req 11_
 
-- [ ] **Task 4.4.4: Test CronBuilder functionality**
+- [x] **Task 4.4.4: Test CronBuilder functionality**
   - Test dropdown selections generate correct cron expression
   - Test raw input manually edited disables dropdowns
   - Test presets populate correctly
@@ -837,7 +837,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.5 Automation Form Components
 
-- [ ] **Task 4.5.1: Create AutomationForm component (Step 1: Basic Info)**
+- [x] **Task 4.5.1: Create AutomationForm component (Step 1: Basic Info)**
   - Create file: `apps/frontend/src/components/automations/AutomationForm.tsx`
   - Multi-step form with step indicators
   - Step 1 fields: name (required), description (optional)
@@ -846,7 +846,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 10_
 
-- [ ] **Task 4.5.2: Add Step 2: Workflow Selection**
+- [x] **Task 4.5.2: Add Step 2: Workflow Selection**
   - In AutomationForm component
   - Render workflow selector dropdown
   - Fetch workflows using `useWorkflows` hook
@@ -856,7 +856,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Add "Back" and "Next" buttons
   - _Requirements: Req 10_
 
-- [ ] **Task 4.5.3: Add Step 3: Trigger Configuration**
+- [x] **Task 4.5.3: Add Step 3: Trigger Configuration**
   - In AutomationForm component
   - Render radio buttons for trigger type: Cron, Webhook, Immediate
   - Conditionally render CronBuilder for cron trigger
@@ -866,7 +866,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Add "Back" and "Next" buttons
   - _Requirements: Req 10, 11_
 
-- [ ] **Task 4.5.4: Add Step 4: Review & Submit**
+- [x] **Task 4.5.4: Add Step 4: Review & Submit**
   - In AutomationForm component
   - Display read-only summary of all entered data
   - Include: name, description, workflow name, trigger type, trigger config details
@@ -874,7 +874,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Add "Back", "Save", and "Cancel" buttons
   - _Requirements: Req 10_
 
-- [ ] **Task 4.5.5: Test AutomationForm functionality**
+- [x] **Task 4.5.5: Test AutomationForm functionality**
   - Test step navigation (forward/backward)
   - Test data persists across steps
   - Test validation prevents proceeding with invalid data
@@ -886,19 +886,19 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.6 Automation Creation Page
 
-- [ ] **Task 4.6.1: Create AutomationCreatePage component**
-  - Create file: `apps/frontend/src/pages/AutomationCreatePage.tsx`
-  - Use `useCreateAutomation` mutation
-  - Manage multi-step form state
-  - Render PageHeader with "Create Automation" title
-  - Render AutomationForm
-  - Handle Save: validate all steps, submit to API, redirect on success
-  - Handle Cancel: show confirmation if data entered
-  - Check `AUTOMATION_CREATE` permission
-  - Document component
+- [x] **Task 4.6.1: Create AutomationCreatePage component**
+  - Create file: `apps/frontend/src/pages/automations/AutomationCreatePage.tsx`
+  - Use `useCreateAutomation` mutation ✓
+  - Manage multi-step form state ✓ (delegated to AutomationForm)
+  - Render PageHeader with "Create Automation" title ✓
+  - Render AutomationForm ✓
+  - Handle Save: validate all steps, submit to API, redirect on success ✓
+  - Handle Cancel: show confirmation if data entered ✓
+  - Check `AUTOMATION_CREATE` permission ✓
+  - Document component ✓ (comprehensive JSDoc)
   - _Requirements: Req 10, 17_
 
-- [ ] **Task 4.6.2: Test AutomationCreatePage functionality**
+- [x] **Task 4.6.2: Test AutomationCreatePage functionality**
   - Test form submission creates automation
   - Test redirect to detail page on success
   - Test error handling on API failure
@@ -908,18 +908,18 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.7 Automation Edit Page
 
-- [ ] **Task 4.7.1: Create AutomationEditPage component**
-  - Create file: `apps/frontend/src/pages/AutomationEditPage.tsx`
-  - Use `useParams` to get automation ID
-  - Use `useAutomation` hook to fetch existing automation
-  - Use `useUpdateAutomation` mutation
-  - Pre-populate AutomationForm with existing data
-  - Render same form as create page
-  - Check `AUTOMATION_UPDATE` permission
-  - Document component
+- [x] **Task 4.7.1: Create AutomationEditPage component**
+  - Create file: `apps/frontend/src/pages/automations/AutomationEditPage.tsx` ✓
+  - Use `useParams` to get automation ID ✓
+  - Use `useAutomation` hook to fetch existing automation ✓
+  - Use `useUpdateAutomation` mutation ✓
+  - Pre-populate AutomationForm with existing data ✓
+  - Render same form as create page ✓
+  - Check `AUTOMATION_UPDATE` permission ✓
+  - Document component with comprehensive JSDoc ✓
   - _Requirements: Req 10, 12, 17_
 
-- [ ] **Task 4.7.2: Test AutomationEditPage functionality**
+- [x] **Task 4.7.2: Test AutomationEditPage functionality**
   - Test automation data loads and populates form
   - Test Save updates automation
   - Test permission check makes form read-only
@@ -927,7 +927,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.8 Automation Detail Page
 
-- [ ] **Task 4.8.1: Create AutomationStats component**
+- [x] **Task 4.8.1: Create AutomationStats component**
   - Create file: `apps/frontend/src/components/automations/AutomationStats.tsx`
   - Props: `automation`
   - Display statistics: total runs, success count, failure count, success rate (percentage), average duration
@@ -935,45 +935,45 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 12_
 
-- [ ] **Task 4.8.2: Create AutomationExecutionHistory component**
-  - Create file: `apps/frontend/src/components/automations/AutomationExecutionHistory.tsx`
-  - Props: `automationId`
-  - Fetch execution history from API
-  - Display table with columns: execution ID, triggered by (cron/webhook/manual), start time, status, duration, "View Details"
-  - Add pagination for > 20 executions
-  - Auto-refresh every 30 seconds
-  - Document component
+- [x] **Task 4.8.2: Create AutomationExecutionHistory component**
+  - Create file: `apps/frontend/src/components/automations/AutomationExecutionHistory.tsx` ✓
+  - Props: `automationId` ✓
+  - Fetch execution history from API ✓
+  - Display table with columns: execution ID, triggered by (cron/webhook/manual), start time, status, duration, "View Details" ✓
+  - Add pagination for > 20 executions ✓
+  - Auto-refresh every 30 seconds ✓ (configured via React Query refetchInterval)
+  - Document component ✓ (comprehensive JSDoc)
   - _Requirements: Req 12_
 
-- [ ] **Task 4.8.3: Create AutomationDetailPage component**
-  - Create file: `apps/frontend/src/pages/AutomationDetailPage.tsx`
-  - Use `useParams` to get automation ID
-  - Use `useAutomation` hook
-  - Render Breadcrumbs (Automations > {Automation Name})
-  - Render PageHeader with action buttons: Edit, Delete, Execute Now, Reschedule (for cron)
-  - Display metadata section: description, workflow link, trigger config, enabled status, next run time
-  - Render AutomationStats
-  - Render AutomationExecutionHistory
-  - Display trigger-specific details: cron expression + next 5 runs (for cron), webhook URL with copy button + example curl (for webhook)
-  - Show warning banner if recent failures exist
-  - Check `AUTOMATION_READ` permission
-  - Document component
-  - _Requirements: Req 12, 17_
+- [x] **Task 4.8.3: Create AutomationDetailPage component** ✓
+  - Create file: `apps/frontend/src/pages/automations/AutomationDetailPage.tsx` ✓
+  - Use `useParams` to get automation ID ✓
+  - Use `useAutomation` and `useAutomationWithStats` hooks ✓
+  - Render Breadcrumbs (Automations > {Automation Name}) ✓
+  - Render PageHeader with action buttons: Edit, Delete, Execute Now, Reschedule (for cron) ✓
+  - Display metadata section: description, workflow link, trigger config, enabled status, next run time ✓
+  - Render AutomationStats ✓
+  - Render AutomationExecutionHistory ✓
+  - Display trigger-specific details: cron expression + next 5 runs (for cron), webhook URL with copy button + example curl (for webhook) ✓
+  - Show warning banner if recent failures exist ✓
+  - Check `AUTOMATION_READ` permission ✓
+  - Document component (comprehensive JSDoc) ✓
+  - _Requirements: Req 12, 17_ ✓
 
-- [ ] **Task 4.8.4: Implement Execute Now action**
-  - Use `useExecuteAutomation` mutation
-  - Show confirmation dialog
-  - Display success toast on execution
-  - Refresh execution history
+- [x] **Task 4.8.4: Implement Execute Now action** ✓
+  - Use `useExecuteAutomation` mutation ✓
+  - Show confirmation dialog ✓
+  - Display success toast on execution ✓
+  - Refresh execution history ✓
   - _Requirements: Req 12_
 
-- [ ] **Task 4.8.5: Implement Reschedule action**
+- [x] **Task 4.8.5: Implement Reschedule action** ✓
   - Show dialog with CronBuilder pre-populated with current schedule
   - Use `useRescheduleAutomation` mutation
   - Update next run time on success
   - _Requirements: Req 12_
 
-- [ ] **Task 4.8.6: Test AutomationDetailPage functionality**
+- [x] **Task 4.8.6: Test AutomationDetailPage functionality**
   - Test automation details load correctly
   - Test Edit button navigates to edit page
   - Test Delete shows confirmation and deletes
