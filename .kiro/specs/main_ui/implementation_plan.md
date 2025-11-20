@@ -649,7 +649,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 8, 14_
 
-- [ ] **Task 3.7.4: Create WorkflowDetailPage component**
+- [x] **Task 3.7.4: Create WorkflowDetailPage component**
   - Create file: `apps/frontend/src/pages/WorkflowDetailPage.tsx`
   - Use `useParams` to get workflow ID
   - Use `useWorkflow` hook
@@ -665,14 +665,14 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 8, 17_
 
-- [ ] **Task 3.7.5: Implement workflow duplication**
+- [x] **Task 3.7.5: Implement workflow duplication**
   - Add duplicate action handler
   - Create new workflow with "Copy of {name}" prefix
   - Use `useCreateWorkflow` mutation
   - Show success toast and redirect to new workflow
   - _Requirements: Req 8_
 
-- [ ] **Task 3.7.6: Test WorkflowDetailPage functionality**
+- [x] **Task 3.7.6: Test WorkflowDetailPage functionality**
   - Test workflow details load correctly
   - Test Edit button navigates to edit page
   - Test Delete shows confirmation and deletes workflow
@@ -688,56 +688,56 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.1 Automation API Service Layer
 
-- [ ] **Task 4.1.1: Create automations API service**
+- [x] **Task 4.1.1: Create automations API service**
   - Create file: `apps/frontend/src/services/api/automations.api.ts`
   - Implement functions: `fetchAutomations(filters?)`, `fetchAutomation(id)`, `createAutomation(data)`, `updateAutomation(id, data)`, `deleteAutomation(id)`, `toggleAutomation(id, enabled)`, `executeAutomation(id)`, `rescheduleAutomation(id, cronConfig)`, `validateCronExpression(expression)`
   - Document all functions
   - _Requirements: Req 9, 10, 11, 12_
 
-- [ ] **Task 4.1.2: Create useAutomations React Query hook**
+- [x] **Task 4.1.2: Create useAutomations React Query hook**
   - Create file: `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement hook: `useAutomations(filters?)` - returns automations list query
   - Support filtering by: triggerType, enabled status
   - _Requirements: Req 9_
 
-- [ ] **Task 4.1.3: Create useAutomation hook**
+- [x] **Task 4.1.3: Create useAutomation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement hook: `useAutomation(id)` - returns single automation query
   - _Requirements: Req 12_
 
-- [ ] **Task 4.1.4: Create useCreateAutomation mutation hook**
+- [x] **Task 4.1.4: Create useCreateAutomation mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation with success/error handling
   - Invalidate automations list on success
   - _Requirements: Req 10_
 
-- [ ] **Task 4.1.5: Create useUpdateAutomation mutation hook**
+- [x] **Task 4.1.5: Create useUpdateAutomation mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation with optimistic updates
   - _Requirements: Req 10, 12_
 
-- [ ] **Task 4.1.6: Create useDeleteAutomation mutation hook**
+- [x] **Task 4.1.6: Create useDeleteAutomation mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation with confirmation
   - _Requirements: Req 9_
 
-- [ ] **Task 4.1.7: Create useToggleAutomation mutation hook**
+- [x] **Task 4.1.7: Create useToggleAutomation mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation with optimistic updates
   - Show toast notification on toggle
   - _Requirements: Req 9, 12_
 
-- [ ] **Task 4.1.8: Create useExecuteAutomation mutation hook**
+- [x] **Task 4.1.8: Create useExecuteAutomation mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation for manual execution
   - _Requirements: Req 12_
 
-- [ ] **Task 4.1.9: Create useRescheduleAutomation mutation hook**
+- [x] **Task 4.1.9: Create useRescheduleAutomation mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation for cron rescheduling
   - _Requirements: Req 12_
 
-- [ ] **Task 4.1.10: Create useValidateCron mutation hook**
+- [x] **Task 4.1.10: Create useValidateCron mutation hook**
   - In `apps/frontend/src/hooks/api/useAutomations.ts`
   - Implement mutation to validate cron expressions
   - Return validation result and next run times
@@ -745,7 +745,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.2 Automation List Components
 
-- [ ] **Task 4.2.1: Create AutomationCard component**
+- [x] **Task 4.2.1: Create AutomationCard component**
   - Create file: `apps/frontend/src/components/automations/AutomationCard.tsx`
   - Props: `automation`, `onView`, `onEdit`, `onDelete`, `onToggle`, `onExecute`
   - Display: name, description, workflow name (link), trigger type badge, next run time, run statistics, enabled toggle
@@ -754,7 +754,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 9, 17_
 
-- [ ] **Task 4.2.2: Create AutomationList component**
+- [x] **Task 4.2.2: Create AutomationList component**
   - Create file: `apps/frontend/src/components/automations/AutomationList.tsx`
   - Props: `automations`, `loading`, action handlers
   - Render grid of AutomationCard components
@@ -763,7 +763,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 9_
 
-- [ ] **Task 4.2.3: Create AutomationToggle component**
+- [x] **Task 4.2.3: Create AutomationToggle component**
   - Create file: `apps/frontend/src/components/automations/AutomationToggle.tsx`
   - Props: `automationId`, `enabled`, `onChange`
   - Use shadcn/ui Switch component
@@ -773,7 +773,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.3 Automations Page
 
-- [ ] **Task 4.3.1: Create AutomationsPage component**
+- [x] **Task 4.3.1: Create AutomationsPage component**
   - Create file: `apps/frontend/src/pages/AutomationsPage.tsx`
   - Use `useAutomations` hook with filter state
   - Implement local state for search, triggerType filter, status filter
@@ -786,7 +786,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 9_
 
-- [ ] **Task 4.3.2: Test AutomationsPage functionality**
+- [x] **Task 4.3.2: Test AutomationsPage functionality**
   - Test automations load and display
   - Test search filtering
   - Test trigger type filter
@@ -799,7 +799,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 4.4 Cron Expression Builder
 
-- [ ] **Task 4.4.1: Create CronBuilder component**
+- [x] **Task 4.4.1: Create CronBuilder component**
   - Create file: `apps/frontend/src/components/automations/CronBuilder.tsx`
   - Props: `value` (cron expression), `onChange`, `timezone`
   - Render dropdowns: Minute (0-59, presets), Hour (0-23, presets), Day of Month (1-31, *), Month (1-12, names), Day of Week (0-6, names)
