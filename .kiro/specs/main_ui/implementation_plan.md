@@ -991,31 +991,31 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 5.1 WebSocket Client Service
 
-- [ ] **Task 5.1.1: Create WebSocketClient class**
-  - Create file: `apps/frontend/src/services/websocket/WebSocketClient.ts`
-  - Implement singleton pattern
-  - Connect to `/ws` endpoint
-  - Implement auto-reconnect with exponential backoff (1s, 2s, 4s, 8s, 16s max)
-  - Subscribe to `workflow-events` channel on connection
-  - Parse incoming WebSocket messages
-  - Emit events to registered listeners
-  - Document class with JSDoc
+- [x] **Task 5.1.1: Create WebSocketClient class** ✓
+  - Create file: `apps/frontend/src/services/websocket/WebSocketClient.ts` ✓
+  - Implement singleton pattern ✓
+  - Connect to `/ws` endpoint ✓
+  - Implement auto-reconnect with exponential backoff (1s, 2s, 4s, 8s, 16s max) ✓
+  - Subscribe to `workflow-events` channel on connection ✓
+  - Parse incoming WebSocket messages ✓
+  - Emit events to registered listeners ✓
+  - Document class with JSDoc ✓
   - _Requirements: Req 13_
 
-- [ ] **Task 5.1.2: Implement connection lifecycle methods**
+- [x] **Task 5.1.2: Implement connection lifecycle methods**
   - In WebSocketClient class
   - Methods: `connect()`, `disconnect()`, `subscribe(channel)`, `unsubscribe(channel)`, `send(message)`
   - Track connection state: connecting, connected, disconnected, reconnecting
   - Handle connection errors
   - _Requirements: Req 13_
 
-- [ ] **Task 5.1.3: Implement event listeners**
+- [x] **Task 5.1.3: Implement event listeners**
   - In WebSocketClient class
   - Methods: `on(eventType, handler)`, `off(eventType, handler)`, `emit(eventType, data)`
   - Support event types: `workflow:started`, `workflow:completed`, `workflow:error`, `node:started`, `node:completed`, `node:error`
   - _Requirements: Req 13_
 
-- [ ] **Task 5.1.4: Test WebSocket connection**
+- [x] **Task 5.1.4: Test WebSocket connection**
   - Test connection establishes on initialization
   - Test auto-reconnect after disconnection
   - Test subscription to workflow-events channel
@@ -1024,26 +1024,26 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 5.2 WebSocket State Management
 
-- [ ] **Task 5.2.1: Create WebSocket Zustand store**
-  - Create file: `apps/frontend/src/stores/useWebSocketStore.ts`
-  - Store state: connectionStatus, activeExecutions (map of executionId -> execution data), eventLog (array of events)
-  - Actions: `setConnectionStatus`, `addExecution`, `updateExecution`, `removeExecution`, `addEvent`, `clearEvents`
-  - Document store
-  - _Requirements: Req 13_
+- [x] **Task 5.2.1: Create WebSocket Zustand store** ✓
+  - Create file: `apps/frontend/src/stores/useWebSocketStore.ts` ✓
+  - Store state: connectionStatus, activeExecutions (map of executionId -> execution data), eventLog (array of events) ✓
+  - Actions: `setConnectionStatus`, `addExecution`, `updateExecution`, `removeExecution`, `addEvent`, `clearEvents` ✓
+  - Document store ✓
+  - _Requirements: Req 13_ ✓
 
-- [ ] **Task 5.2.2: Create useWebSocket hook**
-  - Create file: `apps/frontend/src/hooks/api/useWebSocket.ts`
-  - Initialize WebSocketClient on mount
-  - Subscribe to store updates
-  - Register event listeners to update store
-  - Return connection status and control methods
-  - Clean up on unmount
-  - Document hook
+- [x] **Task 5.2.2: Create useWebSocket hook** ✓
+  - Create file: `apps/frontend/src/hooks/api/useWebSocket.ts` ✓
+  - Initialize WebSocketClient on mount ✓
+  - Subscribe to store updates ✓
+  - Register event listeners to update store ✓
+  - Return connection status and control methods ✓
+  - Clean up on unmount ✓
+  - Document hook ✓
   - _Requirements: Req 13_
 
 ### 5.3 Real-time Monitoring Components
 
-- [ ] **Task 5.3.1: Create WebSocketStatus component**
+- [x] **Task 5.3.1: Create WebSocketStatus component**
   - Create file: `apps/frontend/src/components/monitoring/WebSocketStatus.tsx`
   - Display connection indicator: Connected (green dot), Disconnected (red dot), Reconnecting (yellow dot with spinner)
   - Show tooltip with connection details
@@ -1051,7 +1051,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 13_
 
-- [ ] **Task 5.3.2: Create ExecutionCard component for monitoring**
+- [x] **Task 5.3.2: Create ExecutionCard component for monitoring** ✓
   - Create file: `apps/frontend/src/components/executions/ExecutionCard.tsx`
   - Props: `execution` (from WebSocket updates)
   - Display: workflow ID, workflow name, current node, progress bar, elapsed time, status
@@ -1060,7 +1060,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 13_
 
-- [ ] **Task 5.3.3: Create EventLog component**
+- [x] **Task 5.3.3: Create EventLog component**
   - Create file: `apps/frontend/src/components/monitoring/EventLog.tsx`
   - Props: `events`, `filters`
   - Display scrollable list of events with timestamps
@@ -1070,21 +1070,21 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 13_
 
-- [ ] **Task 5.3.4: Create RealtimeMonitor component**
-  - Create file: `apps/frontend/src/components/monitoring/RealtimeMonitor.tsx`
-  - Use useWebSocketStore to get activeExecutions
-  - Render list of ExecutionCard components
-  - Show empty state when no active executions
-  - Document component
+- [x] **Task 5.3.4: Create RealtimeMonitor component** ✓
+  - Create file: `apps/frontend/src/components/monitoring/RealtimeMonitor.tsx` ✓
+  - Use useWebSocketStore to get activeExecutions ✓
+  - Render list of ExecutionCard components ✓
+  - Show empty state when no active executions ✓
+  - Document component ✓
   - _Requirements: Req 13_
 
-- [ ] **Task 5.3.5: Create NodeExecutionFlow component**
-  - Create file: `apps/frontend/src/components/monitoring/NodeExecutionFlow.tsx`
-  - Props: `execution`
-  - Display visual flow of node execution progress
-  - Show completed nodes (green checkmark), current node (blue spinner), pending nodes (gray), failed nodes (red X)
-  - Document component
-  - _Requirements: Req 13_
+- [x] **Task 5.3.5: Create NodeExecutionFlow component** ✓
+  - Create file: `apps/frontend/src/components/monitoring/NodeExecutionFlow.tsx` ✓
+  - Props: `execution` ✓
+  - Display visual flow of node execution progress ✓
+  - Show completed nodes (green checkmark), current node (blue spinner), pending nodes (gray), failed nodes (red X) ✓
+  - Document component ✓
+  - _Requirements: Req 13_ ✓
 
 ### 5.4 Monitoring Page
 
