@@ -22,17 +22,11 @@
 import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useNodes } from '@/hooks/api/useNodes';
+import { usePagination } from '@/hooks/usePagination';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { NodeFilterBar } from '@/components/nodes/NodeFilterBar';
 import { NodeList } from '@/components/nodes/NodeList';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
+import { MobilePagination } from '@/components/shared/MobilePagination';
 
 /**
  * NodesPage Component
@@ -50,11 +44,9 @@ import {
  * @returns {JSX.Element} The rendered NodesPage component
  */
 export default function NodesPage() {
-  // Local state for filters and pagination
+  // Local state for filters
   const [searchQuery, setSearchQuery] = useState('');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
 
   // Fetch nodes from API using React Query
   const { data: nodes, isLoading, error, refetch } = useNodes();
@@ -87,12 +79,20 @@ export default function NodesPage() {
   }, [nodes, searchQuery, sourceFilter]);
 
   /**
-   * Calculate pagination values
+   * Pagination hook - manages current page and pagination calculations
    */
-  const totalPages = Math.ceil(filteredNodes.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const paginatedNodes = filteredNodes.slice(startIndex, endIndex);
+  const pagination = usePagination({
+    totalItems: filteredNodes.length,
+    initialPageSize: 20,
+  });
+
+  /**
+   * Get paginated nodes for current page
+   */
+  const paginatedNodes = useMemo(
+    () => filteredNodes.slice(pagination.startIndex, pagination.endIndex),
+    [filteredNodes, pagination.startIndex, pagination.endIndex]
+  );
 
   /**
    * Handle search input change
@@ -100,7 +100,7 @@ export default function NodesPage() {
    */
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page on search
+    pagination.resetPage(); // Reset to first page on search
   };
 
   /**
@@ -109,17 +109,7 @@ export default function NodesPage() {
    */
   const handleSourceChange = (source: string) => {
     setSourceFilter(source);
-    setCurrentPage(1); // Reset to first page on filter change
-  };
-
-  /**
-   * Handle page change
-   * Scrolls to top of page for better UX
-   */
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top of page when changing pages
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    pagination.resetPage(); // Reset to first page on filter change
   };
 
   return (
@@ -157,68 +147,19 @@ export default function NodesPage() {
           onRetry={refetch}
         />
 
-        {/* Pagination */}
-        {!isLoading && !error && filteredNodes.length > ITEMS_PER_PAGE && (
-          <div className="flex justify-center mt-8">
-            <Pagination>
-              <PaginationContent>
-                {/* Previous Button */}
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-
-                {/* Page Numbers */}
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                  // Show first page, last page, current page, and pages around current
-                  const showPage =
-                    page === 1 ||
-                    page === totalPages ||
-                    Math.abs(page - currentPage) <= 1;
-
-                  if (!showPage) {
-                    // Show ellipsis for skipped pages
-                    if (page === 2 && currentPage > 3) {
-                      return (
-                        <PaginationItem key={page}>
-                          <span className="px-4 text-muted-foreground">...</span>
-                        </PaginationItem>
-                      );
-                    }
-                    if (page === totalPages - 1 && currentPage < totalPages - 2) {
-                      return (
-                        <PaginationItem key={page}>
-                          <span className="px-4 text-muted-foreground">...</span>
-                        </PaginationItem>
-                      );
-                    }
-                    return null;
-                  }
-
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => handlePageChange(page)}
-                        isActive={currentPage === page}
-                        className="cursor-pointer"
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
-
-                {/* Next Button */}
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
-                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+        {/* Pagination - Mobile Optimized */}
+        {!isLoading && !error && filteredNodes.length > pagination.pageSize && (
+          <div className="mt-8">
+            <MobilePagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              hasPreviousPage={pagination.hasPreviousPage}
+              hasNextPage={pagination.hasNextPage}
+              onPreviousPage={pagination.previousPage}
+              onNextPage={pagination.nextPage}
+              onGoToPage={pagination.goToPage}
+              className="p-4 bg-card border rounded-lg"
+            />
           </div>
         )}
       </div>

@@ -32,6 +32,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { SearchInput } from '@/components/shared/SearchInput';
 import { WorkflowList } from '@/components/workflows/WorkflowList';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { MobilePagination } from '@/components/shared/MobilePagination';
+import { usePagination } from '@/hooks/usePagination';
 import { Button } from '@/components/ui/button';
 import {
   useWorkflows,
@@ -101,15 +103,6 @@ export const WorkflowsPage: React.FC = () => {
    */
   const [initialStateJson, setInitialStateJson] = useState('{}');
 
-  /**
-   * Pagination state - current page (1-indexed)
-   */
-  const [currentPage, setCurrentPage] = useState(1);
-
-  /**
-   * Number of items per page
-   */
-  const PAGE_SIZE = 20;
 
   // ============================================
   // API HOOKS
@@ -152,23 +145,19 @@ export const WorkflowsPage: React.FC = () => {
   }, [workflows, searchTerm]);
 
   /**
+   * Pagination hook - manages current page and pagination calculations
+   */
+  const pagination = usePagination({
+    totalItems: filteredWorkflows.length,
+    initialPageSize: 20,
+  });
+
+  /**
    * Paginate filtered workflows
    */
   const paginatedWorkflows = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    const endIndex = startIndex + PAGE_SIZE;
-    return filteredWorkflows.slice(startIndex, endIndex);
-  }, [filteredWorkflows, currentPage, PAGE_SIZE]);
-
-  /**
-   * Calculate total number of pages
-   */
-  const totalPages = Math.ceil(filteredWorkflows.length / PAGE_SIZE);
-
-  /**
-   * Check if pagination should be shown
-   */
-  const showPagination = filteredWorkflows.length > PAGE_SIZE;
+    return filteredWorkflows.slice(pagination.startIndex, pagination.endIndex);
+  }, [filteredWorkflows, pagination.startIndex, pagination.endIndex]);
 
   /**
    * Find workflow to be deleted (for confirmation message)
@@ -196,7 +185,7 @@ export const WorkflowsPage: React.FC = () => {
    */
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1); // Reset to first page on search
+    pagination.resetPage(); // Reset to first page on search
   };
 
   /**
@@ -231,8 +220,8 @@ export const WorkflowsPage: React.FC = () => {
       onSuccess: () => {
         setDeleteWorkflowId(null);
         // If current page becomes empty after deletion, go to previous page
-        if (paginatedWorkflows.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
+        if (paginatedWorkflows.length === 1 && pagination.hasPreviousPage) {
+          pagination.previousPage();
         }
       },
     });
@@ -299,14 +288,6 @@ export const WorkflowsPage: React.FC = () => {
     navigate('/workflows/new');
   };
 
-  /**
-   * Handle pagination - go to specific page
-   */
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll to top when changing pages
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   // ============================================
   // PERMISSIONS
@@ -380,33 +361,18 @@ export const WorkflowsPage: React.FC = () => {
         }
       />
 
-      {/* Pagination Controls */}
-      {showPagination && (
-        <div className="flex items-center justify-center gap-2 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-
-          <div className="flex items-center gap-1">
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
+      {/* Pagination Controls - Mobile Optimized */}
+      {pagination.totalPages > 1 && (
+        <MobilePagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          hasPreviousPage={pagination.hasPreviousPage}
+          hasNextPage={pagination.hasNextPage}
+          onPreviousPage={pagination.previousPage}
+          onNextPage={pagination.nextPage}
+          onGoToPage={pagination.goToPage}
+          className="p-4 bg-card border rounded-lg"
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

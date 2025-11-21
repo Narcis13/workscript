@@ -540,8 +540,18 @@ export function useDeleteAutomation() {
 /**
  * Toggle an automation's enabled status
  *
- * Enables or disables an automation with optimistic updates for instant UI feedback.
+ * Enables or disables an automation with comprehensive optimistic updates for instant UI feedback.
+ * Updates both the automation detail and all automation lists to ensure consistent UI state.
  * When disabled, scheduled executions will not run, and webhooks will return 404.
+ *
+ * **Optimistic Updates Strategy:**
+ * 1. Cancels any pending refetches to prevent race conditions
+ * 2. Snapshots the current automation from the detail cache
+ * 3. Snapshots all automation lists that might contain this automation
+ * 4. Optimistically updates the detail cache with new enabled status
+ * 5. Optimistically updates all list caches to reflect the toggle
+ * 6. On success: confirms updates with server response and invalidates related queries
+ * 7. On error: rolls back all caches to pre-mutation state with error toast
  *
  * @returns React Query mutation result
  *
@@ -563,6 +573,20 @@ export function useDeleteAutomation() {
  *   );
  * }
  * ```
+ *
+ * @example With loading state feedback
+ * ```typescript
+ * const toggleMutation = useToggleAutomation();
+ *
+ * <Switch
+ *   checked={automation.enabled}
+ *   onCheckedChange={(checked) =>
+ *     toggleMutation.mutateAsync({ id: automation.id, enabled: checked })
+ *   }
+ *   disabled={toggleMutation.isPending}
+ * />
+ * {toggleMutation.isPending && <Loader2 className="animate-spin" />}
+ * ```
  */
 export function useToggleAutomation() {
   const queryClient = useQueryClient();
@@ -571,15 +595,36 @@ export function useToggleAutomation() {
     mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
       toggleAutomation(id, enabled),
     onMutate: async ({ id, enabled }) => {
-      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      // ========================================
+      // CANCEL PENDING REFETCHES
+      // ========================================
+      // Cancel any outgoing refetches to avoid race conditions and overwriting optimistic updates
       await queryClient.cancelQueries({ queryKey: automationKeys.detail(id) });
+      await queryClient.cancelQueries({ queryKey: automationKeys.lists() });
 
-      // Snapshot the previous value
+      // ========================================
+      // SNAPSHOT CURRENT STATE
+      // ========================================
+      // Snapshot the detail automation for rollback
       const previousAutomation = queryClient.getQueryData<Automation>(
         automationKeys.detail(id)
       );
 
-      // Optimistically update the cache
+      // Snapshot all list caches (all possible filter combinations)
+      // This ensures we can rollback list views if the mutation fails
+      const previousLists = new Map<string[], Array<Automation>>();
+      queryClient.getQueriesData({ queryKey: automationKeys.lists() }).forEach(
+        ([key, data]) => {
+          if (Array.isArray(data)) {
+            previousLists.set(key as string[], data);
+          }
+        }
+      );
+
+      // ========================================
+      // OPTIMISTIC UPDATE: DETAIL VIEW
+      // ========================================
+      // Optimistically update the detail cache
       if (previousAutomation) {
         queryClient.setQueryData<Automation>(automationKeys.detail(id), {
           ...previousAutomation,
@@ -587,23 +632,63 @@ export function useToggleAutomation() {
         });
       }
 
-      // Return context with previous value for rollback on error
-      return { previousAutomation };
+      // ========================================
+      // OPTIMISTIC UPDATE: LIST VIEWS
+      // ========================================
+      // Update all automation list caches to reflect the toggle
+      // This ensures the UI updates immediately in list views without waiting for server
+      previousLists.forEach((automations, key) => {
+        const updatedAutomations = automations.map((automation) =>
+          automation.id === id ? { ...automation, enabled } : automation
+        );
+        queryClient.setQueryData(key, updatedAutomations);
+      });
+
+      // ========================================
+      // RETURN CONTEXT FOR ERROR HANDLING
+      // ========================================
+      // Return context with previous state for rollback on error
+      return {
+        previousAutomation,
+        previousLists,
+      };
     },
     onSuccess: (updatedAutomation) => {
-      // Update cache with server response
+      // ========================================
+      // UPDATE WITH SERVER RESPONSE
+      // ========================================
+      // Update detail cache with the confirmed server response
       queryClient.setQueryData(
         automationKeys.detail(updatedAutomation.id),
         updatedAutomation
       );
 
-      // Invalidate lists to update counts
-      queryClient.invalidateQueries({ queryKey: automationKeys.lists() });
+      // ========================================
+      // SYNC LIST CACHES WITH SERVER
+      // ========================================
+      // Update all list caches with the server-confirmed data
+      queryClient.getQueriesData({ queryKey: automationKeys.lists() }).forEach(
+        ([key, data]) => {
+          if (Array.isArray(data)) {
+            const updatedAutomations = (data as Automation[]).map(
+              (automation) =>
+                automation.id === updatedAutomation.id ? updatedAutomation : automation
+            );
+            queryClient.setQueryData(key, updatedAutomations);
+          }
+        }
+      );
 
-      // Invalidate summary stats
+      // ========================================
+      // INVALIDATE RELATED QUERIES
+      // ========================================
+      // Invalidate summary stats since enabled/disabled counts changed
       queryClient.invalidateQueries({ queryKey: automationKeys.summary() });
 
-      // Show success toast
+      // ========================================
+      // USER FEEDBACK
+      // ========================================
+      // Show success toast with appropriate message
       toast.success(
         updatedAutomation.enabled ? 'Automation enabled' : 'Automation disabled',
         {
@@ -614,7 +699,10 @@ export function useToggleAutomation() {
       );
     },
     onError: (error: Error, { id }, context) => {
-      // Rollback optimistic update on error
+      // ========================================
+      // ROLLBACK OPTIMISTIC UPDATES
+      // ========================================
+      // Rollback detail cache to previous state
       if (context?.previousAutomation) {
         queryClient.setQueryData(
           automationKeys.detail(id),
@@ -622,6 +710,15 @@ export function useToggleAutomation() {
         );
       }
 
+      // Rollback all list caches to previous state
+      // This is critical for maintaining consistency if the toggle fails
+      context?.previousLists?.forEach((automations, key) => {
+        queryClient.setQueryData(key, automations);
+      });
+
+      // ========================================
+      // ERROR FEEDBACK
+      // ========================================
       toast.error('Failed to toggle automation', {
         description: error.message || 'An unexpected error occurred. Please try again.',
       });

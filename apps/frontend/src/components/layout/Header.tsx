@@ -10,8 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Circle } from 'lucide-react';
+import { WebSocketStatus } from '@/components/monitoring/WebSocketStatus';
 
 /**
  * Page title mapping for dynamic header titles
@@ -25,10 +24,6 @@ const pageTitles: Record<string, string> = {
   '/monitoring': 'Real-time Monitoring',
 };
 
-/**
- * WebSocket connection status type
- */
-type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
 /**
  * Header - Top navigation bar component for Workscript Main UI
@@ -53,10 +48,11 @@ type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
  * - Falls back to "Workscript" if route is not recognized
  *
  * WebSocket Status Indicator:
- * - **Connected** (green): Active WebSocket connection with real-time updates
- * - **Disconnected** (red): No WebSocket connection, auto-reconnect attempts
- * - **Reconnecting** (yellow): Attempting to re-establish connection
- * - Displays as a colored badge with status text
+ * - **Connected** (green dot): Active WebSocket connection with real-time updates
+ * - **Disconnected** (red dot): No WebSocket connection, auto-reconnect attempts
+ * - **Reconnecting** (yellow dot with spinner): Attempting to re-establish connection
+ * - Displays as a status component with detailed tooltip on hover
+ * - Always visible in the top-right corner on authenticated pages
  *
  * User Menu Features:
  * - Displays user avatar with initials (first letter of email or name)
@@ -84,14 +80,14 @@ type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
  * Implementation Details:
  * - Route detection uses `useLocation` hook from react-router-dom
  * - Authentication state from `useAuth` custom hook
- * - WebSocket status from Zustand store (to be implemented in Phase 5)
+ * - WebSocket status from `useWebSocketStore` Zustand store via WebSocketStatus component
  * - User initials extracted from email for avatar display
  * - Logout triggers auth context logout function
  *
  * Related Components:
  * - {@link AppLayout} - Parent layout that includes Header
  * - {@link Sidebar} - Navigation sidebar (separate from header)
- * - {@link WebSocketStatus} - Dedicated WebSocket status component (Phase 5)
+ * - {@link WebSocketStatus} - Dedicated WebSocket status component (displays real-time connection state)
  *
  * @component
  *
@@ -107,22 +103,18 @@ type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
  * <Header pageTitle="Custom Workflow Editor" />
  *
  * Requirements:
- * - Req 13: WebSocket status indicator in header
+ * - Req 13: WebSocket status indicator in header (integrated via WebSocketStatus component)
  * - Req 16: User menu with authentication info and logout
  * - Req 18: Responsive design for mobile, tablet, desktop
  * - Accessibility: WCAG 2.1 AA keyboard navigation and focus indicators
  *
- * Phase: 1.6.3 - Foundation & Setup
- * Dependencies: useAuth hook, shadcn/ui components (DropdownMenu, Avatar, Badge)
- * Next Steps: Integrate WebSocket store in Phase 5 for real connection status
+ * Phase: 1.6.3 - Foundation & Setup (integrated with Phase 5.5.3)
+ * Dependencies: useAuth hook, shadcn/ui components (DropdownMenu, Avatar), WebSocketStatus component
+ * Status: Phase 5.5.3 complete - WebSocketStatus integrated and displayed in header
  */
 export function Header() {
   const location = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
-
-  // TODO: Replace with actual WebSocket store in Phase 5
-  // For now, using mock status for development
-  const wsStatus: ConnectionStatus = 'connected';
 
   /**
    * Get the page title based on current route
@@ -181,36 +173,6 @@ export function Header() {
     }
   };
 
-  /**
-   * Get WebSocket status badge styling
-   * @param status - Current connection status
-   * @returns Badge variant and color classes
-   */
-  const getWSStatusBadge = (status: ConnectionStatus) => {
-    switch (status) {
-      case 'connected':
-        return {
-          variant: 'default' as const,
-          color: 'bg-green-500 dark:bg-green-600',
-          text: 'Connected',
-        };
-      case 'disconnected':
-        return {
-          variant: 'destructive' as const,
-          color: 'bg-red-500 dark:bg-red-600',
-          text: 'Disconnected',
-        };
-      case 'reconnecting':
-        return {
-          variant: 'secondary' as const,
-          color: 'bg-yellow-500 dark:bg-yellow-600',
-          text: 'Reconnecting',
-        };
-    }
-  };
-
-  const statusBadge = getWSStatusBadge(wsStatus);
-
   return (
     <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between w-full">
@@ -224,32 +186,7 @@ export function Header() {
         {/* WebSocket Status & User Menu - Right */}
         <div className="flex items-center gap-3 sm:gap-4">
           {/* WebSocket Status Indicator */}
-          {isAuthenticated && (
-            <Badge
-              variant={statusBadge.variant}
-              className="hidden sm:flex items-center gap-1.5"
-              aria-label={`WebSocket status: ${statusBadge.text}`}
-            >
-              <Circle
-                className={`h-2 w-2 fill-current ${statusBadge.color}`}
-                aria-hidden="true"
-              />
-              <span className="text-xs font-medium">{statusBadge.text}</span>
-            </Badge>
-          )}
-
-          {/* Mobile WebSocket Status - Icon Only */}
-          {isAuthenticated && (
-            <div
-              className="sm:hidden"
-              aria-label={`WebSocket status: ${statusBadge.text}`}
-            >
-              <Circle
-                className={`h-3 w-3 fill-current ${statusBadge.color}`}
-                aria-hidden="true"
-              />
-            </div>
-          )}
+          {isAuthenticated && <WebSocketStatus />}
 
           {/* User Menu Dropdown */}
           {isAuthenticated && user ? (

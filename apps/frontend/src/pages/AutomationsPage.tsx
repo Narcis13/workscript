@@ -27,6 +27,8 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, AlertCircle } from 'lucide-react';
+import { usePagination } from '@/hooks/usePagination';
+import { MobilePagination } from '@/components/shared/MobilePagination';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -97,10 +99,8 @@ export function AutomationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [triggerTypeFilter, setTriggerTypeFilter] = useState<TriggerTypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  const pageSize = 20;
 
   // ============================================
   // API HOOKS
@@ -207,18 +207,19 @@ export function AutomationsPage() {
   }, [filteredAutomations, sortField, sortDirection]);
 
   /**
+   * Pagination hook - manages current page and pagination calculations
+   */
+  const pagination = usePagination({
+    totalItems: sortedAutomations.length,
+    initialPageSize: 20,
+  });
+
+  /**
    * Get paginated automations
    */
   const paginatedAutomations = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return sortedAutomations.slice(startIndex, endIndex);
-  }, [sortedAutomations, currentPage, pageSize]);
-
-  /**
-   * Calculate total pages
-   */
-  const totalPages = Math.ceil(sortedAutomations.length / pageSize);
+    return sortedAutomations.slice(pagination.startIndex, pagination.endIndex);
+  }, [sortedAutomations, pagination.startIndex, pagination.endIndex]);
 
   // ============================================
   // EVENT HANDLERS
@@ -229,7 +230,7 @@ export function AutomationsPage() {
    */
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page
+    pagination.resetPage(); // Reset to first page
   };
 
   /**
@@ -237,7 +238,7 @@ export function AutomationsPage() {
    */
   const handleTriggerTypeChange = (value: string) => {
     setTriggerTypeFilter(value as TriggerTypeFilter);
-    setCurrentPage(1); // Reset to first page
+    pagination.resetPage(); // Reset to first page
   };
 
   /**
@@ -245,7 +246,7 @@ export function AutomationsPage() {
    */
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value as StatusFilter);
-    setCurrentPage(1); // Reset to first page
+    pagination.resetPage(); // Reset to first page
   };
 
   /**
@@ -364,16 +365,6 @@ export function AutomationsPage() {
     navigate(`/workflows/${workflowId}`);
   };
 
-  /**
-   * Handle pagination
-   */
-  const handlePreviousPage = () => {
-    setCurrentPage((prev) => Math.max(1, prev - 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage((prev) => Math.min(totalPages, prev + 1));
-  };
 
   // ============================================
   // RENDERING
@@ -513,7 +504,7 @@ export function AutomationsPage() {
         <div className="text-sm text-muted-foreground">
           Showing {paginatedAutomations.length === 0 && allAutomations.length > 0
             ? '0'
-            : Math.min((currentPage - 1) * pageSize + 1, sortedAutomations.length)}-{Math.min(currentPage * pageSize, sortedAutomations.length)} of {sortedAutomations.length} automations
+            : Math.min(pagination.startIndex + 1, sortedAutomations.length)}-{Math.min(pagination.endIndex, sortedAutomations.length)} of {sortedAutomations.length} automations
         </div>
       </div>
 
@@ -553,31 +544,18 @@ export function AutomationsPage() {
             }}
           />
 
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-4 p-4 bg-card border rounded-lg">
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
+          {/* Pagination Controls - Mobile Optimized */}
+          {pagination.totalPages > 1 && (
+            <MobilePagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              hasPreviousPage={pagination.hasPreviousPage}
+              hasNextPage={pagination.hasNextPage}
+              onPreviousPage={pagination.previousPage}
+              onNextPage={pagination.nextPage}
+              onGoToPage={pagination.goToPage}
+              className="p-4 bg-card border rounded-lg"
+            />
           )}
         </>
       )}

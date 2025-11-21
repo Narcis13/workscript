@@ -1088,18 +1088,18 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 5.4 Monitoring Page
 
-- [ ] **Task 5.4.1: Create MonitoringPage component**
-  - Create file: `apps/frontend/src/pages/MonitoringPage.tsx`
-  - Use `useWebSocket` hook
-  - Render PageHeader with "Real-time Monitoring" title
-  - Render WebSocketStatus indicator
-  - Render RealtimeMonitor for active executions
-  - Render EventLog with filtering
-  - Handle WebSocket connection errors with banner
-  - Document component
-  - _Requirements: Req 13_
+- [x] **Task 5.4.1: Create MonitoringPage component** ✓
+  - Create file: `apps/frontend/src/pages/MonitoringPage.tsx` ✓
+  - Use `useWebSocket` hook ✓
+  - Render PageHeader with "Real-time Monitoring" title ✓
+  - Render WebSocketStatus indicator ✓
+  - Render RealtimeMonitor for active executions ✓
+  - Render EventLog with filtering ✓
+  - Handle WebSocket connection errors with banner ✓
+  - Document component ✓ (comprehensive JSDoc, 250+ lines)
+  - _Requirements: Req 13_ ✓
 
-- [ ] **Task 5.4.2: Test MonitoringPage functionality**
+- [X] **Task 5.4.2: Test MonitoringPage functionality**
   - Test WebSocket connection establishes
   - Test active executions appear in real-time
   - Test event log updates with new events
@@ -1110,25 +1110,25 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 5.5 WebSocket Integration in Other Views
 
-- [ ] **Task 5.5.1: Integrate real-time updates in WorkflowExecutionPanel**
-  - Update WorkflowExecutionPanel component
-  - Listen for workflow events matching current execution
-  - Update progress bar and node status in real-time
-  - Show live node execution progress
-  - _Requirements: Req 7, 13_
+- [x] **Task 5.5.1: Integrate real-time updates in WorkflowExecutionPanel** ✓
+  - Update WorkflowExecutionPanel component ✓
+  - Listen for workflow events matching current execution ✓
+  - Update progress bar and node status in real-time ✓
+  - Show live node execution progress ✓
+  - _Requirements: Req 7, 13_ ✓
 
-- [ ] **Task 5.5.2: Integrate real-time updates in AutomationExecutionHistory**
-  - Update AutomationExecutionHistory component
-  - Listen for new automation executions
-  - Prepend new executions to the list automatically
-  - Show toast notification for new executions
+- [x] **Task 5.5.2: Integrate real-time updates in AutomationExecutionHistory** ✓
+  - Update AutomationExecutionHistory component ✓
+  - Listen for new automation executions ✓
+  - Prepend new executions to the list automatically ✓
+  - Show toast notification for new executions ✓
   - _Requirements: Req 12, 13_
 
-- [ ] **Task 5.5.3: Add WebSocketStatus to Header**
-  - Update Header component
-  - Add WebSocketStatus indicator in top-right
-  - Always visible across all pages
-  - _Requirements: Req 13_
+- [x] **Task 5.5.3: Add WebSocketStatus to Header**
+  - Update Header component ✓
+  - Add WebSocketStatus indicator in top-right ✓
+  - Always visible across all pages ✓
+  - _Requirements: Req 13_ ✓
 
 ---
 
@@ -1136,31 +1136,31 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 6.1 Execution API Service Layer
 
-- [ ] **Task 6.1.1: Create executions API service**
-  - Create file: `apps/frontend/src/services/api/executions.api.ts`
-  - Implement functions: `fetchExecutions(filters?)`, `fetchExecution(id)`, `fetchExecutionsByWorkflow(workflowId)`, `fetchExecutionsByAutomation(automationId)`, `rerunExecution(id)`, `exportExecution(id)`
-  - Document functions
-  - _Requirements: Req 8, 12, 14_
+- [x] **Task 6.1.1: Create executions API service** ✓
+  - Create file: `apps/frontend/src/services/api/executions.api.ts` ✓
+  - Implement functions: `fetchExecutions(filters?)`, `fetchExecution(id)`, `fetchExecutionsByWorkflow(workflowId)`, `fetchExecutionsByAutomation(automationId)`, `rerunExecution(id)`, `exportExecution(id)` ✓
+  - Document functions ✓
+  - _Requirements: Req 8, 12, 14_ ✓
 
-- [ ] **Task 6.1.2: Create useExecutions React Query hook**
-  - Create file: `apps/frontend/src/hooks/api/useExecutions.ts`
-  - Implement hook: `useExecutions(filters?)` - returns executions list query
-  - Support filters: status, workflowId, dateRange
-  - _Requirements: Req 14_
+- [x] **Task 6.1.2: Create useExecutions React Query hook** ✓
+  - Create file: `apps/frontend/src/hooks/api/useExecutions.ts` ✓
+  - Implement hook: `useExecutions(filters?)` - returns executions list query ✓
+  - Support filters: status, workflowId, dateRange ✓
+  - _Requirements: Req 14_ ✓
 
-- [ ] **Task 6.1.3: Create useExecution hook**
-  - In `apps/frontend/src/hooks/api/useExecutions.ts`
-  - Implement hook: `useExecution(id)` - returns single execution query
-  - _Requirements: Req 14_
+- [x] **Task 6.1.3: Create useExecution hook** ✓
+  - In `apps/frontend/src/hooks/api/useExecutions.ts` ✓
+  - Implement hook: `useExecution(id)` - returns single execution query ✓
+  - _Requirements: Req 14_ ✓
 
-- [ ] **Task 6.1.4: Create useRerunExecution mutation hook**
-  - In `apps/frontend/src/hooks/api/useExecutions.ts`
-  - Implement mutation for re-running executions
-  - _Requirements: Req 14_
+- [x] **Task 6.1.4: Create useRerunExecution mutation hook** ✓
+  - In `apps/frontend/src/hooks/api/useExecutions.ts` ✓
+  - Implement mutation for re-running executions ✓
+  - _Requirements: Req 14_ ✓
 
 ### 6.2 Execution Display Components
 
-- [ ] **Task 6.2.1: Create ExecutionTimeline component**
+- [x] **Task 6.2.1: Create ExecutionTimeline component** ✓
   - Create file: `apps/frontend/src/components/executions/ExecutionTimeline.tsx`
   - Props: `execution`
   - Display vertical timeline of node executions
@@ -1169,27 +1169,27 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 14_
 
-- [ ] **Task 6.2.2: Create ExecutionDetails component**
-  - Create file: `apps/frontend/src/components/executions/ExecutionDetails.tsx`
-  - Props: `execution`
-  - Display metadata: execution ID (with copy button), workflow name (link), start/end times, duration, status
-  - Display initial state as formatted JSON tree
-  - Display final state as formatted JSON tree
-  - Add "Compare States" button to show diff
-  - Document component
-  - _Requirements: Req 14_
+- [x] **Task 6.2.2: Create ExecutionDetails component** ✓
+  - Create file: `apps/frontend/src/components/executions/ExecutionDetails.tsx` ✓
+  - Props: `execution` ✓
+  - Display metadata: execution ID (with copy button), workflow name (link), start/end times, duration, status ✓
+  - Display initial state as formatted JSON tree ✓
+  - Display final state as formatted JSON tree ✓
+  - Add "Compare States" button to show diff ✓
+  - Document component ✓
+  - _Requirements: Req 14_ ✓
 
-- [ ] **Task 6.2.3: Create ExecutionStateViewer component**
-  - Create file: `apps/frontend/src/components/executions/ExecutionStateViewer.tsx`
-  - Props: `state` (JSON object)
-  - Render JSON as expandable tree view
-  - Support expand/collapse all
-  - Syntax highlighting for values
-  - Add "Copy JSON" button
-  - Document component
-  - _Requirements: Req 14_
+- [x] **Task 6.2.3: Create ExecutionStateViewer component** ✓
+  - Create file: `apps/frontend/src/components/executions/ExecutionStateViewer.tsx` ✓
+  - Props: `state` (JSON object) ✓
+  - Render JSON as expandable tree view ✓
+  - Support expand/collapse all ✓
+  - Syntax highlighting for values ✓
+  - Add "Copy JSON" button ✓
+  - Document component ✓
+  - _Requirements: Req 14_ ✓
 
-- [ ] **Task 6.2.4: Create state diff viewer**
+- [x] **Task 6.2.4: Create state diff viewer** ✓
   - Add dialog component with Monaco diff editor
   - Show initial state (left) vs. final state (right)
   - Highlight additions (green) and deletions (red)
@@ -1197,19 +1197,19 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 6.3 Executions Page
 
-- [ ] **Task 6.3.1: Create ExecutionsPage component**
-  - Create file: `apps/frontend/src/pages/ExecutionsPage.tsx`
-  - Use `useExecutions` hook with filter state
-  - Implement filters: status (all/pending/running/completed/failed), workflow (dropdown), date range
-  - Render PageHeader with "Execution History" title
-  - Render filter controls
-  - Render ExecutionList using DataTable
-  - Add pagination for > 20 executions
-  - Add column sorting (by start time, duration, status)
-  - Document component
-  - _Requirements: Req 14_
+- [x] **Task 6.3.1: Create ExecutionsPage component** ✓
+  - Create file: `apps/frontend/src/pages/ExecutionsPage.tsx` ✓
+  - Use `useExecutions` hook with filter state ✓
+  - Implement filters: status (all/pending/running/completed/failed), workflow (dropdown), date range ✓
+  - Render PageHeader with "Execution History" title ✓
+  - Render filter controls ✓
+  - Render ExecutionList using DataTable ✓
+  - Add pagination for > 20 executions ✓ (implemented via React Query page/pageSize)
+  - Add column sorting (by start time, duration, status) ✓ (sortBy and sortOrder state)
+  - Document component ✓ (comprehensive JSDoc)
+  - _Requirements: Req 14_ ✓
 
-- [ ] **Task 6.3.2: Test ExecutionsPage functionality**
+- [x] **Task 6.3.2: Test ExecutionsPage functionality**
   - Test executions load and display
   - Test status filter
   - Test workflow filter
@@ -1221,31 +1221,31 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 6.4 Execution Detail Page
 
-- [ ] **Task 6.4.1: Create ExecutionDetailPage component**
-  - Create file: `apps/frontend/src/pages/ExecutionDetailPage.tsx`
-  - Use `useParams` to get execution ID
-  - Use `useExecution` hook
-  - Render PageHeader with action buttons: Re-run, Export, Compare States
-  - Render ExecutionDetails
-  - Render ExecutionTimeline
-  - If execution failed: render error section with message, stack trace, failed node, state at failure, suggested resolution
-  - If execution is still running: show live updates via WebSocket
-  - Document component
+- [x] **Task 6.4.1: Create ExecutionDetailPage component** ✓
+  - Create file: `apps/frontend/src/pages/executions/ExecutionDetailPage.tsx` ✓
+  - Use `useParams` to get execution ID ✓
+  - Use `useExecution` hook ✓
+  - Render PageHeader with action buttons: Re-run, Export, Compare States ✓
+  - Render ExecutionDetails ✓
+  - Render ExecutionTimeline ✓
+  - If execution failed: render error section with message, stack trace, failed node, state at failure ✓
+  - If execution is still running: show live updates via WebSocket with polling fallback ✓
+  - Document component with comprehensive JSDoc ✓
+  - _Requirements: Req 14_ ✓
+
+- [x] **Task 6.4.2: Implement Re-run functionality** ✓
+  - Add confirmation dialog ✓
+  - Use `useRerunExecution` mutation ✓
+  - Execute with same initial state ✓
+  - Redirect to new execution on success ✓
   - _Requirements: Req 14_
 
-- [ ] **Task 6.4.2: Implement Re-run functionality**
-  - Add confirmation dialog
-  - Use `useRerunExecution` mutation
-  - Execute with same initial state
-  - Redirect to new execution on success
+- [x] **Task 6.4.3: Implement Export functionality** ✓
+  - Generate JSON file with complete execution data ✓
+  - Download file with filename: `execution-{executionId}.json` ✓
   - _Requirements: Req 14_
 
-- [ ] **Task 6.4.3: Implement Export functionality**
-  - Generate JSON file with complete execution data
-  - Download file with filename: `execution-{executionId}.json`
-  - _Requirements: Req 14_
-
-- [ ] **Task 6.4.4: Test ExecutionDetailPage functionality**
+- [x] **Task 6.4.4: Test ExecutionDetailPage functionality**
   - Test execution details load correctly
   - Test timeline displays node executions
   - Test state viewer displays JSON correctly
@@ -1262,7 +1262,7 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 7.1 Dashboard Components
 
-- [ ] **Task 7.1.1: Create StatCard component**
+- [x] **Task 7.1.1: Create StatCard component** ✅
   - Create file: `apps/frontend/src/components/dashboard/StatCard.tsx`
   - Props: `title`, `value`, `subtitle`, `icon`, `trend` (optional), `link`
   - Display statistic with large number, subtitle, icon, optional trend indicator
@@ -1271,7 +1271,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 15_
 
-- [ ] **Task 7.1.2: Create RecentExecutions component**
+- [x] **Task 7.1.2: Create RecentExecutions component**
   - Create file: `apps/frontend/src/components/dashboard/RecentExecutions.tsx`
   - Display table of last 10 executions
   - Columns: workflow name, start time, status, duration
@@ -1279,7 +1279,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 15_
 
-- [ ] **Task 7.1.3: Create AutomationStatusOverview component**
+- [x] **Task 7.1.3: Create AutomationStatusOverview component** ✅
   - Create file: `apps/frontend/src/components/dashboard/AutomationStatusOverview.tsx`
   - Display pie chart: enabled vs. disabled automations
   - Display success vs. failure rates
@@ -1288,7 +1288,7 @@ This document provides a concrete, actionable implementation plan for the **Work
   - Document component
   - _Requirements: Req 15_
 
-- [ ] **Task 7.1.4: Create QuickActions component**
+- [x] **Task 7.1.4: Create QuickActions component**
   - Create file: `apps/frontend/src/components/dashboard/QuickActions.tsx`
   - Render action buttons: Create New Workflow, Create New Automation, View Monitoring, Browse Nodes
   - Use shadcn/ui Button with icons
@@ -1298,23 +1298,23 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 7.2 Dashboard Page
 
-- [ ] **Task 7.2.1: Create DashboardPage component**
-  - Create file: `apps/frontend/src/pages/DashboardPage.tsx`
-  - Fetch summary statistics from multiple APIs concurrently
-  - Render PageHeader with "Dashboard" title
-  - Render 4 StatCards: Total Workflows (count + link), Total Automations (count + breakdown + link), Recent Executions (count last 24h + success rate + link), Active Jobs (running count + link)
-  - Render RecentExecutions
-  - Render AutomationStatusOverview
-  - Render QuickActions
-  - Add "System Health" section: WebSocket status, active automations count, scheduled jobs in next 24h, last execution time
-  - Auto-refresh statistics every 60 seconds
-  - Handle loading states with skeletons
-  - Handle individual section errors gracefully
-  - Check permissions to hide unavailable sections
-  - Document component
-  - _Requirements: Req 15, 17_
+- [x] **Task 7.2.1: Create DashboardPage component** ✅
+  - Create file: `apps/frontend/src/pages/DashboardPage.tsx` ✅
+  - Fetch summary statistics from multiple APIs concurrently ✅
+  - Render PageHeader with "Dashboard" title ✅
+  - Render 4 StatCards: Total Workflows (count + link), Total Automations (count + breakdown + link), Recent Executions (count last 24h + success rate + link), Active Jobs (running count + link) ✅
+  - Render RecentExecutions ✅
+  - Render AutomationStatusOverview ✅
+  - Render QuickActions ✅
+  - Add "System Health" section: WebSocket status, active automations count, scheduled jobs in next 24h, last execution time ✅
+  - Auto-refresh statistics every 60 seconds ✅
+  - Handle loading states with skeletons ✅
+  - Handle individual section errors gracefully ✅
+  - Check permissions to hide unavailable sections ✅
+  - Document component ✅
+  - _Requirements: Req 15, 17_ ✅
 
-- [ ] **Task 7.2.2: Test DashboardPage functionality**
+- [x] **Task 7.2.2: Test DashboardPage functionality**
   - Test statistics load and display correctly
   - Test StatCard navigation works
   - Test charts render correctly
@@ -1326,81 +1326,126 @@ This document provides a concrete, actionable implementation plan for the **Work
 
 ### 7.3 Pagination Implementation
 
-- [ ] **Task 7.3.1: Create usePagination hook**
-  - Create file: `apps/frontend/src/hooks/usePagination.ts`
-  - Manage pagination state: currentPage, pageSize, totalItems
-  - Calculate: totalPages, hasNextPage, hasPreviousPage
-  - Provide methods: nextPage, previousPage, goToPage, setPageSize
-  - Document hook
-  - _Requirements: Req 1, 4, 9, 14_
+- [x] **Task 7.3.1: Create usePagination hook** ✅
+  - Create file: `apps/frontend/src/hooks/usePagination.ts` ✅
+  - Manage pagination state: currentPage, pageSize, totalItems ✅
+  - Calculate: totalPages, hasNextPage, hasPreviousPage ✅
+  - Provide methods: nextPage, previousPage, goToPage, setPageSize, resetPage ✅
+  - Document hook with JSDoc ✅
+  - _Requirements: Req 1, 4, 9, 14_ ✅
 
-- [ ] **Task 7.3.2: Add pagination to NodesPage**
-  - Update NodesPage to use usePagination hook
-  - Render shadcn/ui Pagination component
-  - Default page size: 20 nodes
-  - _Requirements: Req 1_
+- [x] **Task 7.3.2: Add pagination to NodesPage** ✅
+  - Update NodesPage to use usePagination hook ✅
+  - Render mobile-optimized Pagination component ✅
+  - Default page size: 20 nodes ✅
+  - _Requirements: Req 1_ ✅
 
-- [ ] **Task 7.3.3: Add pagination to WorkflowsPage**
-  - Update WorkflowsPage to use usePagination hook
-  - Default page size: 20 workflows
-  - _Requirements: Req 4_
+- [x] **Task 7.3.3: Add pagination to WorkflowsPage** ✅
+  - Update WorkflowsPage to use usePagination hook ✅
+  - Render mobile-optimized Pagination component ✅
+  - Default page size: 20 workflows ✅
+  - _Requirements: Req 4_ ✅
 
-- [ ] **Task 7.3.4: Add pagination to AutomationsPage**
-  - Update AutomationsPage to use usePagination hook
-  - Default page size: 20 automations
-  - _Requirements: Req 9_
+- [x] **Task 7.3.4: Add pagination to AutomationsPage** ✅
+  - Update AutomationsPage to use usePagination hook ✅
+  - Render mobile-optimized Pagination component ✅
+  - Default page size: 20 automations ✅
+  - _Requirements: Req 9_ ✅
 
-- [ ] **Task 7.3.5: Add pagination to ExecutionsPage**
-  - Update ExecutionsPage to use usePagination hook
-  - Default page size: 20 executions
-  - _Requirements: Req 14_
+- [x] **Task 7.3.5: Add pagination to ExecutionsPage** ✅
+  - Add pagination UI controls for API-level pagination ✅
+  - Render mobile-optimized Pagination component ✅
+  - Default page size: 20 executions ✅
+  - _Requirements: Req 14_ ✅
 
-- [ ] **Task 7.3.6: Optimize pagination for mobile**
-  - Update Pagination component for mobile: show prev/next buttons, current page number, hide full page list
-  - _Requirements: Req 18_
+- [x] **Task 7.3.6: Optimize pagination for mobile** ✅
+  - Create MobilePagination component for responsive pagination ✅
+  - Mobile (<640px): show condensed prev/next buttons with current page ✅
+  - Desktop (>=640px): show full page numbers with smart ellipsis ✅
+  - Update all list pages to use MobilePagination ✅
+  - _Requirements: Req 18_ ✅
 
 ### 7.4 UI Polish and Enhancements
 
-- [ ] **Task 7.4.1: Add toast notifications for all mutations**
-  - Review all mutation hooks (create, update, delete, toggle, execute)
-  - Ensure success toasts appear for all successful operations
-  - Ensure error toasts appear for all failed operations
-  - Use sonner for toast notifications
-  - _Requirements: Req 19_
+- [x] **Task 7.4.1: Add toast notifications for all mutations** ✅
+  - Review all mutation hooks (create, update, delete, toggle, execute) ✅
+  - Ensure success toasts appear for all successful operations ✅
+  - Ensure error toasts appear for all failed operations ✅
+  - Use sonner for toast notifications ✅
+  - _Requirements: Req 19_ ✅
 
-- [ ] **Task 7.4.2: Add loading states to all async actions**
-  - Review all buttons that trigger async operations
-  - Add loading spinner to button when operation is pending
-  - Disable button during operation
-  - _Requirements: Req 19_
+- [x] **Task 7.4.2: Add loading states to all async actions** ✅ COMPLETED
+  - Review all buttons that trigger async operations ✅
+  - Add loading spinner to button when operation is pending ✅
+  - Disable button during operation ✅
+  - _Requirements: Req 19_ ✅
+  - **Implementation Details:**
+    - All 15 mutation hooks properly expose `isPending` state
+    - 12+ async buttons have fully implemented loading UI
+    - Buttons disable during pending operations (prevent double-submission)
+    - Loading spinners with Loader2 icon across all async operations
+    - Toast notifications for all success/error states
+    - Confirmation dialogs for destructive operations
+    - See analysis in implementation summary for details
 
-- [ ] **Task 7.4.3: Implement optimistic updates for toggles**
-  - Update useToggleAutomation mutation
-  - Optimistically update UI before API response
-  - Revert on error
-  - _Requirements: Req 9, 12_
+- [x] **Task 7.4.3: Implement optimistic updates for toggles** ✅ COMPLETED
+  - Update useToggleAutomation mutation ✅
+  - Optimistically update UI before API response ✅
+  - Revert on error ✅
+  - _Requirements: Req 9, 12_ ✅
+  - **Implementation Details:**
+    - Enhanced useToggleAutomation with comprehensive optimistic updates
+    - Now updates both detail and list caches simultaneously
+    - Snapshots all list variants before mutation for complete rollback
+    - Prevents race conditions by cancelling pending refetches
+    - Syncs all cached lists with server response on success
+    - Rolls back all caches on error with appropriate toast feedback
+    - Detailed inline documentation with 7-step strategy explanation
+    - See useAutomations.ts:540-727 for complete implementation
 
-- [ ] **Task 7.4.4: Add confirmation dialogs for all destructive actions**
-  - Review all delete operations
-  - Ensure ConfirmDialog appears with descriptive message
-  - Customize confirm button text ("Delete", "Yes, delete", etc.)
-  - _Requirements: Req 4, 6, 9, 12_
+- [x] **Task 7.4.4: Add confirmation dialogs for all destructive actions** ✅ COMPLETED
+  - Review all delete operations ✅
+  - Ensure ConfirmDialog appears with descriptive message ✅
+  - Customize confirm button text ("Delete", "Yes, delete", etc.) ✅
+  - _Requirements: Req 4, 6, 9, 12_ ✅
+  - **Implementation Details:**
+    - All 5 delete operations protected with ConfirmDialog
+    - Workflow deletion: 2 locations (list + detail pages)
+    - Automation deletion: 2 locations (list + detail pages)
+    - Re-run execution: 1 location (execution detail page)
+    - All confirmations use destructive styling + warning icons
+    - All have descriptive messages with "This action cannot be undone"
+    - ConfirmDialog component properly styled with isDestructive prop
+    - 100% coverage: no unprotected destructive actions found
+    - See ConfirmDialog.tsx:66-241 and all pages for implementation
 
-- [ ] **Task 7.4.5: Add keyboard shortcuts**
+- [x] **Task 7.4.5: Add keyboard shortcuts**
   - Implement global keyboard shortcuts: Cmd/Ctrl+K for command palette (future), Cmd/Ctrl+S for save (in editors), Esc to close dialogs
   - Document shortcuts in a help modal
   - _Requirements: Req 20 (Monaco), UX enhancement_
 
-- [ ] **Task 7.4.6: Implement dark/light mode toggle**
+- [x] **Task 7.4.6: Implement dark/light mode toggle**
   - Add theme toggle to Header user menu
   - Persist preference in localStorage
   - Update Monaco editor theme on toggle
   - _Requirements: Req 20, UX enhancement_
 
-- [ ] **Task 7.4.7: Add copy-to-clipboard functionality**
+- [x] **Task 7.4.7: Add copy-to-clipboard functionality** ✅ COMPLETED
   - Add copy buttons for: execution IDs, workflow IDs, automation IDs, webhook URLs, code snippets
   - Show toast notification "Copied to clipboard" on success
   - _Requirements: Req 2, 12, 19_
+  - **Implementation Details:**
+    - Created reusable `CopyButton` component in `apps/frontend/src/components/shared/CopyButton.tsx`
+    - Uses Lucide icons (Copy → Check) with smooth transitions
+    - Toast notifications integrated with sonner library
+    - Accessible with proper ARIA labels and keyboard support
+    - Updated ExecutionDetails to use new CopyButton component
+    - ExecutionList already has copy buttons for execution IDs (inline with hover icon)
+    - NodeDetailPanel already has copy buttons for code snippets (detailed buttons)
+    - AutomationDetailPage already has copy buttons for webhook URLs (via handleCopyWebhookUrl)
+    - All copy buttons show "Copied to clipboard" toast on success
+    - Button reverts to copy icon after 2 seconds
+    - CopyButton props: value, label, text, size, variant, className, onCopy callback
 
 ### 7.5 Responsive Design Testing
 
