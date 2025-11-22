@@ -253,6 +253,24 @@ export function WorkflowExecutionPanel({
   // ============================================
 
   /**
+   * Reset real-time progress state
+   */
+  const resetRealtimeProgress = useCallback(() => {
+    setRealtimeProgress({
+      status: 'pending',
+      currentNode: null,
+      completedNodes: [],
+      failedNodes: [],
+      totalNodes: 0,
+      percentage: 0,
+      startTime: null,
+      elapsedTime: 0,
+      error: null,
+    });
+    setNodeTimeline([]);
+  }, []);
+
+  /**
    * Handle workflow execution
    * Parses initial state and executes workflow
    * Sets up real-time progress tracking via WebSocket
@@ -312,24 +330,6 @@ export function WorkflowExecutionPanel({
     });
     setNodeTimeline([]);
   }, [defaultInitialState]);
-
-  /**
-   * Reset real-time progress state
-   */
-  const resetRealtimeProgress = useCallback(() => {
-    setRealtimeProgress({
-      status: 'pending',
-      currentNode: null,
-      completedNodes: [],
-      failedNodes: [],
-      totalNodes: 0,
-      percentage: 0,
-      startTime: null,
-      elapsedTime: 0,
-      error: null,
-    });
-    setNodeTimeline([]);
-  }, []);
 
   // ============================================
   // WEBSOCKET EVENT LISTENERS

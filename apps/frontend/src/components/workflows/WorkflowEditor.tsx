@@ -26,7 +26,7 @@
  */
 
 import React, { useCallback, useEffect, useRef } from 'react';
-import Editor, { OnMount, Monaco } from '@monaco-editor/react';
+import Editor, { type OnMount, type Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';

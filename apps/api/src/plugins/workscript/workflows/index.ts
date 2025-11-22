@@ -4,7 +4,7 @@ import { WorkflowService } from '../services/WorkflowService'
 import { WorkflowRepository } from '../repositories/workflowRepository'
 import { writeFile, mkdir, readFile, readdir, stat } from 'fs/promises'
 import { join } from 'path'
-import { authenticate, requirePermission } from '../../../shared-services/auth/middleware'
+import { authenticate, optionalAuth, requirePermission } from '../../../shared-services/auth/middleware'
 import { Permission, type AuthContext } from '../../../shared-services/auth/types'
 
 const workflows = new Hono<{ Variables: AuthContext }>()
@@ -12,26 +12,40 @@ const workflows = new Hono<{ Variables: AuthContext }>()
 // Create workflow endpoint - saves workflow to database
 workflows.post('/create', authenticate, requirePermission(Permission.WORKFLOW_CREATE), async (c) => {
   try {
-    const workflowDefinition = await c.req.json() as WorkflowDefinition
-    
-    if (!workflowDefinition.id) {
+    // Parse the request body as CreateWorkflowPayload
+    const payload = await c.req.json() as {
+      name: string
+      description?: string
+      version?: string
+      definition: WorkflowDefinition
+      isActive?: boolean
+    }
+
+    if (!payload.name) {
+      return c.json({
+        error: 'Workflow name is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    if (!payload.definition) {
+      return c.json({
+        error: 'Workflow definition is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    if (!payload.definition.id) {
       return c.json({
         error: 'Workflow definition must have an id field',
         success: false
       }, { status: 400 })
     }
 
-    if (!workflowDefinition.name) {
-      return c.json({
-        error: 'Workflow definition must have a name field',
-        success: false
-      }, { status: 400 })
-    }
-
     // Validate workflow before saving
     const workflowService = await WorkflowService.getInstance()
-    const validationResult = workflowService.validateWorkflow(workflowDefinition)
-    
+    const validationResult = workflowService.validateWorkflow(payload.definition)
+
     if (!validationResult.valid) {
       return c.json({
         error: 'Workflow validation failed',
@@ -43,11 +57,12 @@ workflows.post('/create', authenticate, requirePermission(Permission.WORKFLOW_CR
     // Create workflow in database
     const workflowRepository = new WorkflowRepository()
     const createdWorkflow = await workflowRepository.create({
-      id: workflowDefinition.id,
-      name: workflowDefinition.name,
-      description: workflowDefinition.description || null,
-      definition: workflowDefinition,
-      version: workflowDefinition.version || '1.0.0'
+      id: payload.definition.id,
+      name: payload.name,
+      description: payload.description || null,
+      definition: payload.definition,
+      version: payload.version || '1.0.0',
+      isActive: payload.isActive !== undefined ? payload.isActive : true
     })
 
     return c.json({
@@ -85,18 +100,34 @@ workflows.post('/validate', authenticate, requirePermission(Permission.WORKFLOW_
 // Workflow execution endpoint
 workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECUTE), async (c) => {
   try {
-    const body = await c.req.json() as WorkflowDefinition & { initialState?: any }
-    const { initialState, ...workflowDefinition } = body
+    const body = await c.req.json()
+    const { definition, workflowId, initialState } = body
     const workflowService = await WorkflowService.getInstance()
+
+    // Execute workflow using definition or workflowId
+    const workflowDefinition = definition || workflowId
+    if (!workflowDefinition) {
+      return c.json({
+        error: 'Either "definition" or "workflowId" must be provided',
+        status: 'failed'
+      }, { status: 400 })
+    }
 
     // Execute workflow using singleton service with optional initial state
     const result = await workflowService.executeWorkflow(workflowDefinition, initialState)
 
     return c.json(result, { status: 202 })
   } catch (error) {
-    console.error('Workflow execution error:', error)
+    console.error('[API] Workflow execution error:', error)
+
+    // If it's a WorkflowValidationError, log the validation errors in detail
+    if (error && typeof error === 'object' && 'errors' in error && Array.isArray((error as any).errors)) {
+      console.error('[API] Validation errors:', JSON.stringify((error as any).errors, null, 2))
+    }
+
     return c.json({
       error: error instanceof Error ? error.message : 'Unknown error',
+      details: error && typeof error === 'object' && 'errors' in error ? (error as any).errors : undefined,
       status: 'failed'
     }, { status: 400 })
   }
@@ -423,6 +454,87 @@ async function getAllWorkflows(dir: string): Promise<Array<{
   return workflows
 }
 
+// Get workflow executions endpoint
+workflows.get('/:workflowId/executions', optionalAuth, async (c) => {
+  try {
+    const workflowId = c.req.param('workflowId')
+    const limit = c.req.query('limit') || '20'
+
+    if (!workflowId) {
+      return c.json({
+        error: 'Workflow ID is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    // Import necessary modules for querying executions
+    const { db } = await import('../../../db')
+    const { workflowExecutions } = await import('../schema/workscript.schema')
+    const { eq, desc } = await import('drizzle-orm')
+
+    // Query executions for this workflow
+    const executions = await db.select()
+      .from(workflowExecutions)
+      .where(eq(workflowExecutions.workflowId, workflowId))
+      .orderBy(desc(workflowExecutions.startedAt))
+      .limit(parseInt(limit, 10))
+
+    return c.json({
+      success: true,
+      items: executions,
+      count: executions.length
+    })
+  } catch (error) {
+    console.error('Failed to retrieve workflow executions:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      items: []
+    }, { status: 500 })
+  }
+})
+
+// Get workflow automations endpoint
+workflows.get('/:workflowId/automations', optionalAuth, async (c) => {
+  try {
+    const workflowId = c.req.param('workflowId')
+
+    if (!workflowId) {
+      return c.json({
+        error: 'Workflow ID is required',
+        success: false
+      }, { status: 400 })
+    }
+
+    // Import necessary modules for querying automations
+    const { db } = await import('../../../db')
+    const { automations } = await import('../../../db/schema/automations.schema')
+    const { eq, and, desc } = await import('drizzle-orm')
+
+    // Query automations for this workflow
+    const workflowAutomations = await db.select()
+      .from(automations)
+      .where(and(
+        eq(automations.workflowId, workflowId),
+        eq(automations.pluginId, 'workscript')
+      ))
+      .orderBy(desc(automations.createdAt))
+
+    return c.json({
+      success: true,
+      items: workflowAutomations,
+      count: workflowAutomations.length
+    })
+  } catch (error) {
+    console.error('Failed to retrieve workflow automations:', error)
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      success: false,
+      items: []
+    }, { status: 500 })
+  }
+})
+
 // Get workflow by ID endpoint
 workflows.get('/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_READ), async (c) => {
   try {
@@ -462,31 +574,18 @@ workflows.get('/:workflowId', authenticate, requirePermission(Permission.WORKFLO
 workflows.put('/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_UPDATE), async (c) => {
   try {
     const workflowId = c.req.param('workflowId')
-    const workflowData = await c.req.json()
+    const payload = await c.req.json() as {
+      name?: string
+      description?: string
+      version?: string
+      definition?: WorkflowDefinition
+      isActive?: boolean
+    }
 
     if (!workflowId) {
       return c.json({
         error: 'Workflow ID is required',
         success: false
-      }, { status: 400 })
-    }
-
-    if (!workflowData.name) {
-      return c.json({
-        error: 'Workflow name is required',
-        success: false
-      }, { status: 400 })
-    }
-
-    // Validate workflow before updating
-    const workflowService = await WorkflowService.getInstance()
-    const validationResult = workflowService.validateWorkflow(workflowData)
-
-    if (!validationResult.valid) {
-      return c.json({
-        error: 'Workflow validation failed',
-        valid: false,
-        validationErrors: validationResult.errors
       }, { status: 400 })
     }
 
@@ -501,12 +600,27 @@ workflows.put('/:workflowId', authenticate, requirePermission(Permission.WORKFLO
       }, { status: 404 })
     }
 
+    // Validate workflow definition if provided
+    if (payload.definition) {
+      const workflowService = await WorkflowService.getInstance()
+      const validationResult = workflowService.validateWorkflow(payload.definition)
+
+      if (!validationResult.valid) {
+        return c.json({
+          error: 'Workflow validation failed',
+          valid: false,
+          validationErrors: validationResult.errors
+        }, { status: 400 })
+      }
+    }
+
     // Update workflow
     const updatedWorkflow = await workflowRepository.update(workflowId, {
-      name: workflowData.name,
-      description: workflowData.description || null,
-      definition: workflowData,
-      version: workflowData.version || existingWorkflow.version
+      name: payload.name || existingWorkflow.name,
+      description: payload.description !== undefined ? payload.description : existingWorkflow.description,
+      definition: payload.definition || existingWorkflow.definition,
+      version: payload.version || existingWorkflow.version,
+      isActive: payload.isActive !== undefined ? payload.isActive : existingWorkflow.isActive
     })
 
     return c.json({

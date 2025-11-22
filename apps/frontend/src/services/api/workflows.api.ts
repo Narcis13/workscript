@@ -58,12 +58,13 @@ const WORKFLOWS_BASE_PATH = '/workscript/workflows';
 export async function fetchWorkflows(
   filters?: WorkflowFilterOptions
 ): Promise<Workflow[]> {
-  const response = await apiClient.get<ApiListResponse<Workflow>>(
+  const response = await apiClient.get<any>(
     `${WORKFLOWS_BASE_PATH}/allfromdb`,
     { params: filters }
   );
 
-  return response.data.items || response.data || [];
+  // The API returns { success: true, count: number, workflows: Workflow[] }
+  return response.data.workflows || response.data.items || response.data || [];
 }
 
 /**
@@ -79,9 +80,14 @@ export async function fetchWorkflows(
  * ```
  */
 export async function fetchWorkflow(id: string): Promise<Workflow> {
-  const response = await apiClient.get<ApiResponse<Workflow>>(
+  const response = await apiClient.get<any>(
     `${WORKFLOWS_BASE_PATH}/${id}`
   );
+
+  // The API returns { success: true, workflow: Workflow }
+  if (response.data.workflow) {
+    return response.data.workflow;
+  }
 
   if (response.data.data) {
     return response.data.data;
@@ -110,10 +116,15 @@ export async function fetchWorkflow(id: string): Promise<Workflow> {
 export async function createWorkflow(
   data: CreateWorkflowPayload
 ): Promise<Workflow> {
-  const response = await apiClient.post<ApiResponse<Workflow>>(
+  const response = await apiClient.post<any>(
     `${WORKFLOWS_BASE_PATH}/create`,
     data
   );
+
+  // The API returns { success: true, message: string, workflow: Workflow }
+  if (response.data.workflow) {
+    return response.data.workflow;
+  }
 
   if (response.data.data) {
     return response.data.data;
@@ -142,10 +153,15 @@ export async function updateWorkflow(
   id: string,
   data: UpdateWorkflowPayload
 ): Promise<Workflow> {
-  const response = await apiClient.put<ApiResponse<Workflow>>(
+  const response = await apiClient.put<any>(
     `${WORKFLOWS_BASE_PATH}/${id}`,
     data
   );
+
+  // The API returns { success: true, message: string, workflow: Workflow }
+  if (response.data.workflow) {
+    return response.data.workflow;
+  }
 
   if (response.data.data) {
     return response.data.data;
@@ -189,10 +205,15 @@ export async function duplicateWorkflow(
   id: string,
   data: DuplicateWorkflowRequest
 ): Promise<Workflow> {
-  const response = await apiClient.post<ApiResponse<Workflow>>(
+  const response = await apiClient.post<any>(
     `${WORKFLOWS_BASE_PATH}/${id}/duplicate`,
     data
   );
+
+  // Handle different response formats
+  if (response.data.workflow) {
+    return response.data.workflow;
+  }
 
   if (response.data.data) {
     return response.data.data;
@@ -236,16 +257,17 @@ export async function duplicateWorkflow(
 export async function validateWorkflow(
   definition: WorkflowDefinition
 ): Promise<ValidationResult> {
-  const response = await apiClient.post<ApiResponse<ValidationResult>>(
+  const response = await apiClient.post<any>(
     `${WORKFLOWS_BASE_PATH}/validate`,
-    { definition }
+    definition
   );
 
+  // The API returns the validation result directly
   if (response.data.data) {
     return response.data.data;
   }
 
-  return response.data as unknown as ValidationResult;
+  return response.data as ValidationResult;
 }
 
 // ============================================
@@ -288,16 +310,17 @@ export async function executeWorkflow(
     initialState,
   };
 
-  const response = await apiClient.post<ApiResponse<ExecutionResult>>(
+  const response = await apiClient.post<any>(
     `${WORKFLOWS_BASE_PATH}/run`,
     payload
   );
 
+  // The API returns the execution result directly
   if (response.data.data) {
     return response.data.data;
   }
 
-  return response.data as unknown as ExecutionResult;
+  return response.data as ExecutionResult;
 }
 
 /**
@@ -324,16 +347,17 @@ export async function executeWorkflowById(
     initialState,
   };
 
-  const response = await apiClient.post<ApiResponse<ExecutionResult>>(
+  const response = await apiClient.post<any>(
     `${WORKFLOWS_BASE_PATH}/run`,
     payload
   );
 
+  // The API returns the execution result directly
   if (response.data.data) {
     return response.data.data;
   }
 
-  return response.data as unknown as ExecutionResult;
+  return response.data as ExecutionResult;
 }
 
 // ============================================
@@ -357,12 +381,13 @@ export async function fetchWorkflowExecutions(
   workflowId: string,
   limit: number = 20
 ): Promise<ExecutionResult[]> {
-  const response = await apiClient.get<ApiListResponse<ExecutionResult>>(
+  const response = await apiClient.get<any>(
     `${WORKFLOWS_BASE_PATH}/${workflowId}/executions`,
     { params: { limit } }
   );
 
-  return response.data.items || response.data || [];
+  // Handle different response formats
+  return response.data.executions || response.data.items || response.data || [];
 }
 
 /**
@@ -380,11 +405,12 @@ export async function fetchWorkflowExecutions(
 export async function fetchWorkflowAutomations(
   workflowId: string
 ): Promise<any[]> {
-  const response = await apiClient.get<ApiListResponse<any>>(
+  const response = await apiClient.get<any>(
     `${WORKFLOWS_BASE_PATH}/${workflowId}/automations`
   );
 
-  return response.data.items || response.data || [];
+  // Handle different response formats
+  return response.data.automations || response.data.items || response.data || [];
 }
 
 // ============================================

@@ -164,7 +164,7 @@ export const authenticate = async (
     }
 
     // No valid credentials found
-    c.json(
+    return c.json(
       {
         success: false,
         error: 'Unauthorized',
@@ -174,7 +174,7 @@ export const authenticate = async (
     );
   } catch (error) {
     console.error('[Auth Middleware] Authentication error:', error);
-    c.json(
+    return c.json(
       {
         success: false,
         error: 'Authentication failed',
@@ -340,7 +340,7 @@ export const requirePermission = (...permissions: Permission[]) => {
       return await next();
     } catch (error) {
       console.error('[Auth Middleware] Permission check error:', error);
-      c.json(
+      return c.json(
         {
           success: false,
           error: 'Permission check failed',
@@ -412,7 +412,7 @@ export const requireRole = (...roles: Role[]) => {
       return await next();
     } catch (error) {
       console.error('[Auth Middleware] Role check error:', error);
-      c.json(
+      return c.json(
         {
           success: false,
           error: 'Role check failed',
@@ -554,7 +554,7 @@ export const ownsResource = (paramName: string = 'userId') => {
       return await next();
     } catch (error) {
       console.error('[Auth Middleware] Resource ownership check error:', error);
-      c.json(
+      return c.json(
         {
           success: false,
           error: 'Ownership check failed',

@@ -40,19 +40,19 @@ import {
   useWorkflowAutomations,
   useDeleteWorkflow,
   useDuplicateWorkflow,
-} from '../hooks/api/useWorkflows';
-import { AuthContext } from '../contexts/AuthContext';
-import { Permission } from '../types/auth';
-import { PageHeader } from '../components/shared/PageHeader';
-import { LoadingSpinner } from '../components/shared/LoadingSpinner';
-import { ConfirmDialog } from '../components/shared/ConfirmDialog';
-import { WorkflowDetailView } from '../components/workflows/WorkflowDetailView';
-import { WorkflowExecutionPanel } from '../components/workflows/WorkflowExecutionPanel';
-import { ExecutionList } from '../components/executions/ExecutionList';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { Badge } from '../components/ui/badge';
+} from '@/hooks/api/useWorkflows';
+import { AuthContext } from '@/contexts/AuthContext';
+import { Permission } from '@/types/auth';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
+import { WorkflowDetailView } from '@/components/workflows/WorkflowDetailView';
+import { WorkflowExecutionPanel } from '@/components/workflows/WorkflowExecutionPanel';
+import { ExecutionList } from '@/components/executions/ExecutionList';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -60,7 +60,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '../components/ui/breadcrumb';
+} from '@/components/ui/breadcrumb';
 import { toast } from 'sonner';
 
 /**
