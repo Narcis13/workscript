@@ -18,6 +18,7 @@ import { RouterProvider } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { router } from './routes';
 
 /**
@@ -48,14 +49,16 @@ function RouterLoadingFallback() {
  * Application Structure:
  * ```
  * ErrorBoundary
- *   └── AuthProvider
- *       └── Suspense (loading fallback)
- *           └── RouterProvider (all routes)
- *       └── Toaster (notifications)
+ *   └── TooltipProvider
+ *       └── AuthProvider
+ *           └── Suspense (loading fallback)
+ *               └── RouterProvider (all routes)
+ *           └── Toaster (notifications)
  * ```
  *
  * Features:
  * - Global error boundary catches React errors
+ * - Tooltip provider for all Radix UI tooltips
  * - Authentication context available to all components
  * - Suspense handles lazy-loaded route components
  * - Toast notifications for user feedback
@@ -74,15 +77,17 @@ function App() {
         }
       }}
     >
-      <AuthProvider>
-        {/* Suspense wrapper for lazy-loaded route components */}
-        <Suspense fallback={<RouterLoadingFallback />}>
-          <RouterProvider router={router} />
-        </Suspense>
+      <TooltipProvider>
+        <AuthProvider>
+          {/* Suspense wrapper for lazy-loaded route components */}
+          <Suspense fallback={<RouterLoadingFallback />}>
+            <RouterProvider router={router} />
+          </Suspense>
 
-        {/* Global toast notification container */}
-        <Toaster />
-      </AuthProvider>
+          {/* Global toast notification container */}
+          <Toaster />
+        </AuthProvider>
+      </TooltipProvider>
     </ErrorBoundary>
   );
 }

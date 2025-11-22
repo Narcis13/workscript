@@ -510,7 +510,7 @@ export function getExecutionStatusText(execution: ExecutionResult): string {
     return 'Failed with errors';
   }
 
-  if (execution.state && Object.keys(execution.state).length > 0) {
+  if (execution.stateChanges && execution.stateChanges.length > 0) {
     return 'Completed successfully';
   }
 

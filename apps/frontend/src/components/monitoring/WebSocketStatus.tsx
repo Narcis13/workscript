@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useWebSocketStore, useWebSocketConnection } from '@/stores/useWebSocketStore';
@@ -43,11 +42,27 @@ export function WebSocketStatus(): JSX.Element {
   const connection = useWebSocketConnection();
   const [displayTime, setDisplayTime] = useState<string>('');
 
-  // Update display time every second to show how long we've been connected/disconnected
+  // Use refs to store current values without causing interval recreation
+  const connectionStatusRef = useRef(connectionStatus);
+  const connectedAtRef = useRef(connection.connectedAt);
+  const disconnectedAtRef = useRef(connection.disconnectedAt);
+
+  // Update refs when values change
+  useEffect(() => {
+    connectionStatusRef.current = connectionStatus;
+    connectedAtRef.current = connection.connectedAt;
+    disconnectedAtRef.current = connection.disconnectedAt;
+  }, [connectionStatus, connection.connectedAt, connection.disconnectedAt]);
+
+  // Update display time every second - interval runs continuously without recreation
   useEffect(() => {
     const interval = setInterval(() => {
-      if (connection.connectedAt && connectionStatus === 'connected') {
-        const elapsed = Date.now() - connection.connectedAt.getTime();
+      const status = connectionStatusRef.current;
+      const connectedAt = connectedAtRef.current;
+      const disconnectedAt = disconnectedAtRef.current;
+
+      if (connectedAt && status === 'connected') {
+        const elapsed = Date.now() - connectedAt.getTime();
         const seconds = Math.floor(elapsed / 1000);
         const minutes = Math.floor(seconds / 60);
         const hours = Math.floor(minutes / 60);
@@ -59,8 +74,8 @@ export function WebSocketStatus(): JSX.Element {
         } else {
           setDisplayTime(`${seconds}s ago`);
         }
-      } else if (connection.disconnectedAt && connectionStatus === 'disconnected') {
-        const elapsed = Date.now() - connection.disconnectedAt.getTime();
+      } else if (disconnectedAt && status === 'disconnected') {
+        const elapsed = Date.now() - disconnectedAt.getTime();
         const seconds = Math.floor(elapsed / 1000);
         const minutes = Math.floor(seconds / 60);
 
@@ -73,7 +88,8 @@ export function WebSocketStatus(): JSX.Element {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [connection.connectedAt, connection.disconnectedAt, connectionStatus]);
+    // Empty deps - interval runs once and never recreated
+  }, []);
 
   /**
    * Get the status configuration (color, label, icon) based on connection status
@@ -124,18 +140,17 @@ export function WebSocketStatus(): JSX.Element {
   const isLoading = connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer',
-              'bg-gray-100 dark:bg-gray-800',
-              config.hoverBg
-            )}
-            role="status"
-            aria-label={`WebSocket connection status: ${config.label}`}
-          >
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            'flex items-center gap-2 px-3 py-2 rounded-lg transition-colors cursor-pointer',
+            'bg-gray-100 dark:bg-gray-800',
+            config.hoverBg
+          )}
+          role="status"
+          aria-label={`WebSocket connection status: ${config.label}`}
+        >
             {/* Status Dot */}
             <div className="relative flex items-center justify-center">
               <div
@@ -237,7 +252,6 @@ export function WebSocketStatus(): JSX.Element {
           </div>
         </TooltipContent>
       </Tooltip>
-    </TooltipProvider>
   );
 }
 

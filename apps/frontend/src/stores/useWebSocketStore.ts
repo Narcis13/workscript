@@ -429,17 +429,28 @@ export const useEventLog = () => useWebSocketStore((state) => state.eventLog);
  *
  * @returns Connection state metadata
  */
-export const useWebSocketConnection = () =>
-  useWebSocketStore((state) => ({
-    status: state.connectionStatus,
-    connectedAt: state.connectedAt,
-    disconnectedAt: state.disconnectedAt,
-    reconnectAttempts: state.reconnectAttempts,
-    maxReconnectAttempts: state.maxReconnectAttempts,
-    lastError: state.lastError,
-    latency: state.latency,
-    subscribedChannels: state.subscribedChannels
-  }));
+export const useWebSocketConnection = () => {
+  // Use individual selectors instead of creating a new object
+  const status = useWebSocketStore((state) => state.connectionStatus);
+  const connectedAt = useWebSocketStore((state) => state.connectedAt);
+  const disconnectedAt = useWebSocketStore((state) => state.disconnectedAt);
+  const reconnectAttempts = useWebSocketStore((state) => state.reconnectAttempts);
+  const maxReconnectAttempts = useWebSocketStore((state) => state.maxReconnectAttempts);
+  const lastError = useWebSocketStore((state) => state.lastError);
+  const latency = useWebSocketStore((state) => state.latency);
+  const subscribedChannels = useWebSocketStore((state) => state.subscribedChannels);
+
+  return {
+    status,
+    connectedAt,
+    disconnectedAt,
+    reconnectAttempts,
+    maxReconnectAttempts,
+    lastError,
+    latency,
+    subscribedChannels
+  };
+};
 
 /**
  * Hook to get execution count

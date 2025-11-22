@@ -22,6 +22,7 @@
 import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/components/guards/ProtectedRoute';
+import { RouteErrorBoundary } from '@/components/guards/RouteErrorBoundary';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Role } from '@/types/auth';
 
@@ -168,18 +169,28 @@ export const router = createBrowserRouter([
       // ----------------------------------------
       {
         path: 'dashboard',
-        element: <DashboardPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/">
+            <DashboardPage />
+          </RouteErrorBoundary>
+        ),
       },
       {
         path: 'dashboard/profile',
-        element: <ProfilePage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <ProfilePage />
+          </RouteErrorBoundary>
+        ),
       },
       {
         path: 'dashboard/users',
         element: (
-          <ProtectedRoute requiredRole={Role.ADMIN}>
-            <UsersPage />
-          </ProtectedRoute>
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <ProtectedRoute requiredRole={Role.ADMIN}>
+              <UsersPage />
+            </ProtectedRoute>
+          </RouteErrorBoundary>
         ),
       },
 
@@ -188,11 +199,19 @@ export const router = createBrowserRouter([
       // ----------------------------------------
       {
         path: 'nodes',
-        element: <NodesPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <NodesPage />
+          </RouteErrorBoundary>
+        ),
       },
       {
         path: 'nodes/:nodeId',
-        element: <NodeDetailPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/nodes">
+            <NodeDetailPage />
+          </RouteErrorBoundary>
+        ),
       },
 
       // ----------------------------------------
@@ -200,21 +219,37 @@ export const router = createBrowserRouter([
       // ----------------------------------------
       {
         path: 'workflows',
-        element: <WorkflowsPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <WorkflowsPage />
+          </RouteErrorBoundary>
+        ),
       },
       {
         path: 'workflows/new',
-        element: <WorkflowCreatePage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/workflows">
+            <WorkflowCreatePage />
+          </RouteErrorBoundary>
+        ),
         // TODO: Add WORKFLOW_CREATE permission check in Phase 3
       },
       {
         path: 'workflows/:id',
-        element: <WorkflowDetailPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/workflows">
+            <WorkflowDetailPage />
+          </RouteErrorBoundary>
+        ),
         // TODO: Add WORKFLOW_READ permission check in Phase 3
       },
       {
         path: 'workflows/:id/edit',
-        element: <WorkflowEditPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/workflows">
+            <WorkflowEditPage />
+          </RouteErrorBoundary>
+        ),
         // TODO: Add WORKFLOW_UPDATE permission check in Phase 3
       },
 
@@ -223,21 +258,37 @@ export const router = createBrowserRouter([
       // ----------------------------------------
       {
         path: 'automations',
-        element: <AutomationsPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <AutomationsPage />
+          </RouteErrorBoundary>
+        ),
       },
       {
         path: 'automations/new',
-        element: <AutomationCreatePage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/automations">
+            <AutomationCreatePage />
+          </RouteErrorBoundary>
+        ),
         // TODO: Add AUTOMATION_CREATE permission check in Phase 4
       },
       {
         path: 'automations/:id',
-        element: <AutomationDetailPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/automations">
+            <AutomationDetailPage />
+          </RouteErrorBoundary>
+        ),
         // TODO: Add AUTOMATION_READ permission check in Phase 4
       },
       {
         path: 'automations/:id/edit',
-        element: <AutomationEditPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/automations">
+            <AutomationEditPage />
+          </RouteErrorBoundary>
+        ),
         // TODO: Add AUTOMATION_UPDATE permission check in Phase 4
       },
 
@@ -246,11 +297,19 @@ export const router = createBrowserRouter([
       // ----------------------------------------
       {
         path: 'executions',
-        element: <ExecutionsPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <ExecutionsPage />
+          </RouteErrorBoundary>
+        ),
       },
       {
         path: 'executions/:id',
-        element: <ExecutionDetailPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/executions">
+            <ExecutionDetailPage />
+          </RouteErrorBoundary>
+        ),
       },
 
       // ----------------------------------------
@@ -258,7 +317,11 @@ export const router = createBrowserRouter([
       // ----------------------------------------
       {
         path: 'monitoring',
-        element: <MonitoringPage />,
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <MonitoringPage />
+          </RouteErrorBoundary>
+        ),
       },
     ],
   },

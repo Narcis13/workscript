@@ -122,9 +122,12 @@ class AuthService {
         // Check if error is 401 and we haven't already retried
         if (error.response?.status === 401 && !originalRequest._retry) {
           // Don't try to refresh on login/register/refresh endpoints
-          const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
-                                originalRequest.url?.includes('/auth/register') ||
-                                originalRequest.url?.includes('/auth/refresh');
+          // Use exact path matching to avoid false positives
+          const requestPath = originalRequest.url || '';
+          const authEndpoints = ['/auth/login', '/auth/register', '/auth/refresh'];
+          const isAuthEndpoint = authEndpoints.some(endpoint =>
+            requestPath === endpoint || requestPath.endsWith(endpoint)
+          );
 
           if (isAuthEndpoint) {
             return Promise.reject(error);

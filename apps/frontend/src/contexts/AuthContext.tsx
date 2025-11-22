@@ -14,7 +14,7 @@
  * @module contexts/AuthContext
  */
 
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { authService } from '../services/AuthService';
 import type { User, AuthContextType } from '../types/auth';
@@ -89,14 +89,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Check if user has tokens in localStorage
         if (authService.isAuthenticated()) {
           // Tokens exist - fetch current user from API
+          // The axios interceptor will automatically refresh the token if expired
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
         }
-      } catch (error) {
-        // Token validation failed - clear tokens and reset state
-        console.error('Failed to initialize authentication:', error);
-        authService.clearTokens();
-        setUser(null);
+      } catch (error: any) {
+        // Distinguish between auth errors (invalid/expired tokens) and other errors
+        const isAuthError =
+          error?.response?.status === 401 ||
+          error?.message?.includes('refresh token') ||
+          error?.message?.includes('authentication');
+
+        if (isAuthError) {
+          // Token validation/refresh failed - clear tokens and reset state
+          console.error('Authentication failed during initialization:', error);
+          authService.clearTokens();
+          setUser(null);
+        } else {
+          // Network error or temporary server issue - keep tokens, user will be logged out on next nav
+          console.error('Failed to initialize authentication (non-auth error):', error);
+          // Don't clear tokens - let user try again or navigate to trigger another auth check
+        }
       } finally {
         // Mark initialization as complete
         setIsLoading(false);
@@ -128,7 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * }
    * ```
    */
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = useCallback(async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
       const loggedInUser = await authService.login(email, password);
@@ -139,7 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Register new user with email and password
@@ -161,7 +174,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * }
    * ```
    */
-  const register = async (email: string, password: string): Promise<void> => {
+  const register = useCallback(async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
       const newUser = await authService.register(email, password);
@@ -172,7 +185,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Logout current user
@@ -187,7 +200,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * // User is now logged out, navigate to login page
    * ```
    */
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
       await authService.logout();
@@ -199,7 +212,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       setIsLoading(false);
     }
-  };
+  }, []);
 
   /**
    * Refresh current user data from API
@@ -216,7 +229,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * await refreshUser();
    * ```
    */
-  const refreshUser = async (): Promise<void> => {
+  const refreshUser = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
       const updatedUser = await authService.getCurrentUser();
@@ -230,7 +243,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // ============================================
   // COMPUTED VALUES
@@ -242,14 +255,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    */
   const isAuthenticated = !!user;
 
+  /**
+   * Check if current user has a specific permission
+   *
+   * @param permission - Permission string to check (e.g., 'WORKFLOW_READ', 'workflow:read')
+   * @returns True if user has the permission, false otherwise
+   *
+   * @example
+   * ```tsx
+   * const { hasPermission } = useAuth();
+   * if (hasPermission('WORKFLOW_READ')) {
+   *   // Show workflow list
+   * }
+   * ```
+   */
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!user || !user.permissions) {
+      return false;
+    }
+
+    // Check if user has the permission (case-insensitive comparison)
+    return user.permissions.some(
+      (p) => p.toLowerCase() === permission.toLowerCase()
+    );
+  }, [user]);
+
   // ============================================
   // CONTEXT VALUE
   // ============================================
 
   /**
    * Context value provided to all child components
+   * Memoized to prevent unnecessary re-renders
    */
-  const value: AuthContextType = {
+  const value: AuthContextType = useMemo(() => ({
     // State
     user,
     isAuthenticated,
@@ -260,13 +299,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     refreshUser,
-  };
+    hasPermission,
+  }), [user, isAuthenticated, isLoading, login, register, logout, refreshUser, hasPermission]);
 
   // ============================================
   // RENDER
   // ============================================
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// ============================================
+// CUSTOM HOOK
+// ============================================
+
+/**
+ * useAuth Hook
+ *
+ * Custom hook to access authentication context.
+ * Must be used within an AuthProvider component.
+ *
+ * @throws Error if used outside of AuthProvider
+ * @returns AuthContextType - Authentication state and methods
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const { user, isAuthenticated, login, logout } = useAuth();
+ *
+ *   if (!isAuthenticated) {
+ *     return <LoginForm onLogin={login} />;
+ *   }
+ *
+ *   return <div>Welcome {user.email}</div>;
+ * }
+ * ```
+ */
+export const useAuth = (): AuthContextType => {
+  const context = React.useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
 /**

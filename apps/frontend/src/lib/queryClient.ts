@@ -89,10 +89,11 @@ export const queryClient = new QueryClient({
       // 10 minutes = 600,000 milliseconds
       gcTime: 10 * 60 * 1000,
 
-      // Refetch queries when window regains focus (useful for data freshness)
-      refetchOnWindowFocus: true,
+      // Disable refetch on window focus by default to reduce API load
+      // Enable selectively for critical/real-time data (executions, monitoring)
+      refetchOnWindowFocus: false,
 
-      // Refetch queries when network reconnects
+      // Refetch queries when network reconnects (important for offline recovery)
       refetchOnReconnect: true,
 
       // Don't refetch on component mount if data is still fresh

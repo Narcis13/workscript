@@ -55,6 +55,7 @@ export interface QuickActionsProps {
 export const QuickActions: React.FC<QuickActionsProps> = ({ className }) => {
   const navigate = useNavigate();
 
+  // Define actions array - stable across renders
   const actions = [
     {
       id: "create-workflow",

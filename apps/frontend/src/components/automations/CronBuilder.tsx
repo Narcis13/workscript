@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Select,
   SelectContent,
@@ -20,7 +20,6 @@ import { Info } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
@@ -145,18 +144,55 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
   const [month, setMonth] = useState('*');
   const [dayOfWeek, setDayOfWeek] = useState('*');
 
+  // Ref to prevent circular updates between parsing and building
+  const isUpdatingFromExternal = useRef(false);
+
+  // Memoize dropdown options to prevent recreating arrays on every render
+  const minuteOptions = useMemo(() => {
+    const options = [{ value: '*', label: 'Every minute' }];
+    MINUTE_PRESETS.forEach((m) => options.push({ value: m, label: m }));
+    Array.from({ length: 60 }, (_, i) => String(i))
+      .filter((m) => !MINUTE_PRESETS.includes(m))
+      .forEach((m) => options.push({ value: m, label: m }));
+    return options;
+  }, []);
+
+  const hourOptions = useMemo(() => {
+    const options = [{ value: '*', label: 'Every hour' }];
+    HOUR_PRESETS.forEach((h) => options.push({ value: h, label: h }));
+    Array.from({ length: 24 }, (_, i) => String(i))
+      .filter((h) => !HOUR_PRESETS.includes(h))
+      .forEach((h) => options.push({ value: h, label: h }));
+    return options;
+  }, []);
+
+  const dayOptions = useMemo(() => {
+    const options = [
+      { value: '*', label: 'Every day' },
+      { value: 'L', label: 'Last day' }
+    ];
+    Array.from({ length: 31 }, (_, i) => String(i + 1))
+      .forEach((d) => options.push({ value: d, label: d }));
+    return options;
+  }, []);
+
   /**
    * Parse cron expression into individual components
    */
   const parseCronExpression = useCallback((expr: string) => {
     const parts = expr.trim().split(/\s+/);
     if (parts.length === 5) {
+      isUpdatingFromExternal.current = true;
       setMinute(parts[0]);
       setHour(parts[1]);
       setDayOfMonth(parts[2]);
       setMonth(parts[3]);
       setDayOfWeek(parts[4]);
       setIsRawMode(false);
+      // Reset flag after state updates
+      setTimeout(() => {
+        isUpdatingFromExternal.current = false;
+      }, 0);
     } else {
       // Invalid expression - switch to raw mode
       setIsRawMode(true);
@@ -225,20 +261,23 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
    * Effect to update when external value changes
    */
   useEffect(() => {
-    if (value !== cronExpression) {
+    if (value && value !== cronExpression) {
       parseCronExpression(value);
       setCronExpression(value);
     }
-  }, [value]);
+  }, [value, parseCronExpression]);
 
   /**
    * Effect to rebuild expression when dropdowns change
+   * Only runs if we're not currently updating from an external value
    */
   useEffect(() => {
-    if (!isRawMode) {
-      buildCronExpression();
+    if (!isRawMode && !isUpdatingFromExternal.current) {
+      const cron = `${minute} ${hour} ${dayOfMonth} ${month} ${dayOfWeek}`;
+      setCronExpression(cron);
+      onChange?.(cron);
     }
-  }, [minute, hour, dayOfMonth, month, dayOfWeek]);
+  }, [minute, hour, dayOfMonth, month, dayOfWeek, isRawMode, onChange]);
 
   return (
     <div className="space-y-4">
@@ -261,19 +300,11 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="*">Every minute</SelectItem>
-                  {MINUTE_PRESETS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
+                  {minuteOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
                     </SelectItem>
                   ))}
-                  {Array.from({ length: 60 }, (_, i) => String(i))
-                    .filter((m) => !MINUTE_PRESETS.includes(m))
-                    .map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -288,19 +319,11 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="*">Every hour</SelectItem>
-                  {HOUR_PRESETS.map((h) => (
-                    <SelectItem key={h} value={h}>
-                      {h}
+                  {hourOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
                     </SelectItem>
                   ))}
-                  {Array.from({ length: 24 }, (_, i) => String(i))
-                    .filter((h) => !HOUR_PRESETS.includes(h))
-                    .map((h) => (
-                      <SelectItem key={h} value={h}>
-                        {h}
-                      </SelectItem>
-                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -315,11 +338,9 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="*">Every day</SelectItem>
-                  <SelectItem value="L">Last day</SelectItem>
-                  {Array.from({ length: 31 }, (_, i) => String(i + 1)).map((d) => (
-                    <SelectItem key={d} value={d}>
-                      {d}
+                  {dayOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -406,23 +427,21 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
               <Label htmlFor="raw-cron" className="font-medium">
                 Cron Expression
               </Label>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-sm">
-                    <p className="mb-2">Cron format: minute hour day month dayOfWeek</p>
-                    <p className="mb-1">Examples:</p>
-                    <ul className="list-inside list-disc space-y-1 text-xs">
-                      <li>&apos;0 9 * * *&apos; - Daily at 9 AM</li>
-                      <li>&apos;*/5 * * * *&apos; - Every 5 minutes</li>
-                      <li>&apos;0 0 1 * *&apos; - First day of month</li>
-                      <li>&apos;0 9 * * 1-5&apos; - Weekdays at 9 AM</li>
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  <p className="mb-2">Cron format: minute hour day month dayOfWeek</p>
+                  <p className="mb-1">Examples:</p>
+                  <ul className="list-inside list-disc space-y-1 text-xs">
+                    <li>&apos;0 9 * * *&apos; - Daily at 9 AM</li>
+                    <li>&apos;*/5 * * * *&apos; - Every 5 minutes</li>
+                    <li>&apos;0 0 1 * *&apos; - First day of month</li>
+                    <li>&apos;0 9 * * 1-5&apos; - Weekdays at 9 AM</li>
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
             </div>
             <Input
               id="raw-cron"

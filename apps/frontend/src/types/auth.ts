@@ -326,6 +326,7 @@ export interface AuthContextType {
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  hasPermission: (permission: Permission | string) => boolean;
 }
 
 // ============================================

@@ -4,7 +4,6 @@ import { Check, X, Info, Loader2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
@@ -49,7 +48,7 @@ export const CronValidator: React.FC<CronValidatorProps> = ({
   timezone = 'UTC',
 }) => {
   const validateMutation = useValidateCron();
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   /**
    * Trigger validation with debounce
@@ -57,29 +56,27 @@ export const CronValidator: React.FC<CronValidatorProps> = ({
    */
   useEffect(() => {
     // Clear previous timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
     }
 
     // Set new debounce timer
     if (cronExpression.trim()) {
-      const timer = setTimeout(() => {
+      timerRef.current = setTimeout(() => {
         validateMutation.mutate({
           expression: cronExpression,
           timezone,
         });
       }, 300); // 300ms debounce as specified in requirements
-
-      setDebounceTimer(timer);
     }
 
     // Cleanup on unmount or when effect runs again
     return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
       }
     };
-  }, [cronExpression, timezone, validateMutation, debounceTimer]);
+  }, [cronExpression, timezone, validateMutation]);
 
   const result = validateMutation.data;
   const isLoading = validateMutation.isPending;
@@ -149,30 +146,28 @@ export const CronValidator: React.FC<CronValidatorProps> = ({
 
       {/* Info tooltip with cron syntax examples */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-4 w-4 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm" side="right">
-              <div className="space-y-2">
-                <p className="font-semibold">Cron Expression Format</p>
-                <p className="text-xs">Format: minute hour day month dayOfWeek</p>
-                <p className="text-xs">Each field: 0-59 (min), 0-23 (hour), 1-31 (day), 1-12 (month), 0-6 (dow)</p>
-                <div className="mt-2 space-y-1">
-                  <p className="font-semibold text-xs">Examples:</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• <span className="font-mono">0 9 * * *</span> - Daily at 9 AM</li>
-                    <li>• <span className="font-mono">*/5 * * * *</span> - Every 5 minutes</li>
-                    <li>• <span className="font-mono">0 0 1 * *</span> - First day of month</li>
-                    <li>• <span className="font-mono">0 9 * * 1-5</span> - Weekdays at 9 AM</li>
-                    <li>• <span className="font-mono">0 0 * * 0</span> - Every Sunday midnight</li>
-                  </ul>
-                </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info className="h-4 w-4 cursor-help" />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm" side="right">
+            <div className="space-y-2">
+              <p className="font-semibold">Cron Expression Format</p>
+              <p className="text-xs">Format: minute hour day month dayOfWeek</p>
+              <p className="text-xs">Each field: 0-59 (min), 0-23 (hour), 1-31 (day), 1-12 (month), 0-6 (dow)</p>
+              <div className="mt-2 space-y-1">
+                <p className="font-semibold text-xs">Examples:</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• <span className="font-mono">0 9 * * *</span> - Daily at 9 AM</li>
+                  <li>• <span className="font-mono">*/5 * * * *</span> - Every 5 minutes</li>
+                  <li>• <span className="font-mono">0 0 1 * *</span> - First day of month</li>
+                  <li>• <span className="font-mono">0 9 * * 1-5</span> - Weekdays at 9 AM</li>
+                  <li>• <span className="font-mono">0 0 * * 0</span> - Every Sunday midnight</li>
+                </ul>
               </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+            </div>
+          </TooltipContent>
+        </Tooltip>
         <span>Tip: Hover for cron syntax examples</span>
       </div>
     </div>

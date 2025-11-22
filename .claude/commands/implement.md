@@ -2,7 +2,7 @@
 description: Implement a specific phase or task from feature specifications with full context from requirements and implementation plan
 args:
   - name: feature
-    description: Feature name (matches folder in /specs/)
+    description: Feature name (matches folder in .kiro/specs/)
     required: true
   - name: task
     description: Phase or task identifier (e.g., "Phase 1", "Task 2.3", "Step 1")
@@ -15,7 +15,7 @@ You are about to implement a specific task from a feature specification. Follow 
 
 ## 1. Load Specification Documents
 
-Read the following specification documents from `/specs/{{feature}}/`:
+Read the following specification documents from `.kiro/specs/{{feature}}/`:
 
 **REQUIRED FILES:**
 - `requirements.md` - Feature requirements with acceptance criteria
@@ -71,9 +71,9 @@ From `requirements.md`, identify and extract:
 **Step-by-step approach:**
 
 1. **Read all spec files** - Use the Read tool to load:
-   - `/specs/{{feature}}/requirements.md`
-   - `/specs/{{feature}}/implementation_plan.md`
-   - `/specs/{{feature}}/README.md`
+   - `.kiro/specs/{{feature}}/requirements.md`
+   - `.kiro/specs/{{feature}}/implementation_plan.md`
+   - `.kiro/specs/{{feature}}/README.md`
 
 2. **Analyze the task** - Understand:
    - What needs to be built

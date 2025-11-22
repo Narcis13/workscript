@@ -117,45 +117,42 @@ export interface UseWebSocketReturn {
 export function useWebSocket(): UseWebSocketReturn {
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const eventHandlersRef = useRef<Map<string, (() => void)[]>>(new Map());
+  const isInitializedRef = useRef(false);
 
-  // Get store state and actions
+  // Subscribe to connection state only (not the entire store)
   const connectionStatus = useWebSocketStore((state) => state.connectionStatus);
   const reconnectAttempts = useWebSocketStore((state) => state.reconnectAttempts);
-  const maxReconnectAttempts = useWebSocketStore(
-    (state) => state.maxReconnectAttempts
-  );
+  const maxReconnectAttempts = useWebSocketStore((state) => state.maxReconnectAttempts);
   const lastError = useWebSocketStore((state) => state.lastError);
   const connectedAt = useWebSocketStore((state) => state.connectedAt);
   const disconnectedAt = useWebSocketStore((state) => state.disconnectedAt);
-  const subscribedChannels = useWebSocketStore(
-    (state) => state.subscribedChannels
-  );
-  const activeExecutionsCount = useWebSocketStore(
-    (state) => state.activeExecutions.size
-  );
+  const subscribedChannels = useWebSocketStore((state) => state.subscribedChannels);
   const eventLog = useWebSocketStore((state) => state.eventLog);
+  const activeExecutionsCount = useWebSocketStore((state) => state.activeExecutions.size);
 
-  const {
-    setConnectionStatus,
-    setError,
-    setReconnectAttempts,
-    setConnectedAt,
-    setDisconnectedAt,
-    setSubscribedChannels,
-    addExecution,
-    updateExecution,
-    removeExecution,
-    addEvent,
-    clearEvents: clearEventLogStore
-  } = useWebSocketStore();
+  // Get actions (these are stable references, won't cause re-renders)
+  const setConnectionStatus = useWebSocketStore((state) => state.setConnectionStatus);
+  const setError = useWebSocketStore((state) => state.setError);
+  const setReconnectAttempts = useWebSocketStore((state) => state.setReconnectAttempts);
+  const setConnectedAt = useWebSocketStore((state) => state.setConnectedAt);
+  const setDisconnectedAt = useWebSocketStore((state) => state.setDisconnectedAt);
+  const setSubscribedChannels = useWebSocketStore((state) => state.setSubscribedChannels);
+  const addExecution = useWebSocketStore((state) => state.addExecution);
+  const updateExecution = useWebSocketStore((state) => state.updateExecution);
+  const removeExecution = useWebSocketStore((state) => state.removeExecution);
+  const addEvent = useWebSocketStore((state) => state.addEvent);
+  const clearEventLogStore = useWebSocketStore((state) => state.clearEvents);
 
   /**
    * Initialize WebSocket client and set up event listeners
    */
   const initializeWebSocket = useCallback(() => {
-    if (wsClientRef.current) {
+    if (wsClientRef.current || isInitializedRef.current) {
       return;
     }
+
+    // Mark as initialized to prevent multiple initializations
+    isInitializedRef.current = true;
 
     // Get singleton instance
     const wsClient = WebSocketClient.getInstance({
@@ -464,7 +461,8 @@ export function useWebSocket(): UseWebSocketReturn {
       });
       eventHandlersRef.current.clear();
     };
-  }, [initializeWebSocket, connect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount - initializeWebSocket and connect have internal guards
 
   const isConnected = connectionStatus === 'connected';
 
