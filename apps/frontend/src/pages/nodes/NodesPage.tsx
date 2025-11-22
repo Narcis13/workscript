@@ -20,7 +20,6 @@
  */
 
 import { useState, useMemo } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { useNodes } from '@/hooks/api/useNodes';
 import { usePagination } from '@/hooks/usePagination';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -113,56 +112,54 @@ export default function NodesPage() {
   };
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <PageHeader
-          title="Node Library"
-          description="Browse and explore all available workflow nodes in the Workscript system"
-        >
-          {/* Total node count */}
-          {nodes && (
-            <p className="text-sm text-muted-foreground mt-2">
-              {filteredNodes.length} of {nodes.length} nodes
-              {searchQuery && ` matching "${searchQuery}"`}
-              {sourceFilter !== 'all' && ` in ${sourceFilter}`}
-            </p>
-          )}
-        </PageHeader>
-
-        {/* Filter Bar */}
-        <NodeFilterBar
-          searchValue={searchQuery}
-          sourceValue={sourceFilter}
-          onSearchChange={handleSearchChange}
-          onSourceChange={handleSourceChange}
-          disabled={isLoading}
-        />
-
-        {/* Node List */}
-        <NodeList
-          nodes={paginatedNodes}
-          loading={isLoading}
-          error={error}
-          onRetry={refetch}
-        />
-
-        {/* Pagination - Mobile Optimized */}
-        {!isLoading && !error && filteredNodes.length > pagination.pageSize && (
-          <div className="mt-8">
-            <MobilePagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              hasPreviousPage={pagination.hasPreviousPage}
-              hasNextPage={pagination.hasNextPage}
-              onPreviousPage={pagination.previousPage}
-              onNextPage={pagination.nextPage}
-              onGoToPage={pagination.goToPage}
-              className="p-4 bg-card border rounded-lg"
-            />
-          </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <PageHeader
+        title="Node Library"
+        description="Browse and explore all available workflow nodes in the Workscript system"
+      >
+        {/* Total node count */}
+        {nodes && (
+          <p className="text-sm text-muted-foreground mt-2">
+            {filteredNodes.length} of {nodes.length} nodes
+            {searchQuery && ` matching "${searchQuery}"`}
+            {sourceFilter !== 'all' && ` in ${sourceFilter}`}
+          </p>
         )}
-      </div>
-    </AppLayout>
+      </PageHeader>
+
+      {/* Filter Bar */}
+      <NodeFilterBar
+        searchValue={searchQuery}
+        sourceValue={sourceFilter}
+        onSearchChange={handleSearchChange}
+        onSourceChange={handleSourceChange}
+        disabled={isLoading}
+      />
+
+      {/* Node List */}
+      <NodeList
+        nodes={paginatedNodes}
+        loading={isLoading}
+        error={error}
+        onRetry={refetch}
+      />
+
+      {/* Pagination - Mobile Optimized */}
+      {!isLoading && !error && filteredNodes.length > pagination.pageSize && (
+        <div className="mt-8">
+          <MobilePagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            hasPreviousPage={pagination.hasPreviousPage}
+            hasNextPage={pagination.hasNextPage}
+            onPreviousPage={pagination.previousPage}
+            onNextPage={pagination.nextPage}
+            onGoToPage={pagination.goToPage}
+            className="p-4 bg-card border rounded-lg"
+          />
+        </div>
+      )}
+    </div>
   );
 }

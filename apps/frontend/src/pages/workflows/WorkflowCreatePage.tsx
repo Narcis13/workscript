@@ -8,7 +8,6 @@
  * @module pages/workflows/WorkflowCreatePage
  */
 
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FilePlus } from 'lucide-react';
 
@@ -26,39 +25,37 @@ import { FilePlus } from 'lucide-react';
  */
 export default function WorkflowCreatePage() {
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-            Create Workflow
-          </h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Define a new workflow with JSON configuration
-          </p>
-        </div>
-
-        {/* Placeholder Content */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <FilePlus className="h-8 w-8 text-slate-400" />
-              <div>
-                <CardTitle>Coming Soon</CardTitle>
-                <CardDescription>
-                  Workflow creation will be implemented in Phase 3
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              This page will provide a Monaco editor for creating workflow JSON definitions,
-              with real-time validation and test execution capabilities.
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          Create Workflow
+        </h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
+          Define a new workflow with JSON configuration
+        </p>
       </div>
-    </AppLayout>
+
+      {/* Placeholder Content */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <FilePlus className="h-8 w-8 text-slate-400" />
+            <div>
+              <CardTitle>Coming Soon</CardTitle>
+              <CardDescription>
+                Workflow creation will be implemented in Phase 3
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            This page will provide a Monaco editor for creating workflow JSON definitions,
+            with real-time validation and test execution capabilities.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -37,7 +37,6 @@ import {
   useRescheduleAutomation,
 } from '@/hooks/api/useAutomations';
 import { useQueryClient } from '@tanstack/react-query';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -210,69 +209,59 @@ export default function AutomationDetailPage(): React.ReactElement {
   // Loading states
   if (!id) {
     return (
-      <AppLayout>
-        <EmptyState
-          title="Invalid URL"
-          description="Automation ID is missing from the URL"
-          icon={AlertCircle}
-        />
-      </AppLayout>
+      <EmptyState
+        title="Invalid URL"
+        description="Automation ID is missing from the URL"
+        icon={AlertCircle}
+      />
     );
   }
 
   if (automationLoading) {
     return (
-      <AppLayout>
-        <LoadingSpinner label="Loading automation details..." />
-      </AppLayout>
+      <LoadingSpinner label="Loading automation details..." />
     );
   }
 
   if (automationError) {
     return (
-      <AppLayout>
-        <EmptyState
-          title="Error Loading Automation"
-          description={automationError.message || 'Failed to load automation details'}
-          icon={AlertCircle}
-          actionButton={{
-            label: 'Retry',
-            onClick: () => refetchAutomation(),
-          }}
-        />
-      </AppLayout>
+      <EmptyState
+        title="Error Loading Automation"
+        description={automationError.message || 'Failed to load automation details'}
+        icon={AlertCircle}
+        actionButton={{
+          label: 'Retry',
+          onClick: () => refetchAutomation(),
+        }}
+      />
     );
   }
 
   if (!automation) {
     return (
-      <AppLayout>
-        <EmptyState
-          title="Automation Not Found"
-          description="The automation you're looking for doesn't exist or has been deleted"
-          icon={AlertCircle}
-          actionButton={{
-            label: 'Back to Automations',
-            onClick: () => navigate('/automations'),
-          }}
-        />
-      </AppLayout>
+      <EmptyState
+        title="Automation Not Found"
+        description="The automation you're looking for doesn't exist or has been deleted"
+        icon={AlertCircle}
+        actionButton={{
+          label: 'Back to Automations',
+          onClick: () => navigate('/automations'),
+        }}
+      />
     );
   }
 
   if (!canRead) {
     return (
-      <AppLayout>
-        <EmptyState
-          title="Access Denied"
-          description="You don't have permission to view this automation"
-          icon={AlertCircle}
-          actionButton={{
-            label: 'Back to Automations',
-            onClick: () => navigate('/automations'),
-          }}
-        />
-      </AppLayout>
+      <EmptyState
+        title="Access Denied"
+        description="You don't have permission to view this automation"
+        icon={AlertCircle}
+        actionButton={{
+          label: 'Back to Automations',
+          onClick: () => navigate('/automations'),
+        }}
+      />
     );
   }
 
@@ -342,8 +331,7 @@ export default function AutomationDetailPage(): React.ReactElement {
   );
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Breadcrumbs */}
         <Breadcrumbs />
 
@@ -589,7 +577,6 @@ export default function AutomationDetailPage(): React.ReactElement {
             loading={rescheduleLoading}
           />
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 }

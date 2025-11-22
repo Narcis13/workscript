@@ -29,7 +29,6 @@
 
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -104,79 +103,77 @@ export default function NodeDetailPage() {
   // ============================================
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Breadcrumbs Navigation */}
-        <Breadcrumbs />
+    <div className="space-y-6">
+      {/* Breadcrumbs Navigation */}
+      <Breadcrumbs />
 
-        {/* Back Button */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/nodes">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Nodes
-            </Link>
-          </Button>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-center py-12">
-              <LoadingSpinner size="lg" label="Loading node details..." />
-            </div>
-          </div>
-        )}
-
-        {/* Error State - 404 Not Found */}
-        {isNotFound && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Node Not Found</AlertTitle>
-            <AlertDescription>
-              The node with ID "{nodeId}" could not be found. It may have been removed or the ID is incorrect.
-            </AlertDescription>
-            <div className="mt-4">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/nodes">Return to Nodes List</Link>
-              </Button>
-            </div>
-          </Alert>
-        )}
-
-        {/* Error State - General Error */}
-        {isError && !isNotFound && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error Loading Node</AlertTitle>
-            <AlertDescription>
-              {(error as any)?.message || 'An unexpected error occurred while loading the node details.'}
-            </AlertDescription>
-            <div className="mt-4 flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                Retry
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/nodes">Back to Nodes</Link>
-              </Button>
-            </div>
-          </Alert>
-        )}
-
-        {/* Success State - Node Details */}
-        {node && !isLoading && !isError && (
-          <div className="space-y-6">
-            {/* Node Metadata Panel */}
-            <NodeDetailPanel node={node} />
-
-            {/* Node Test Runner */}
-            <NodeTestRunner
-              nodeId={nodeId || ''}
-              exampleConfig={exampleConfig}
-            />
-          </div>
-        )}
+      {/* Back Button */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/nodes">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Nodes
+          </Link>
+        </Button>
       </div>
-    </AppLayout>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-center py-12">
+            <LoadingSpinner size="lg" label="Loading node details..." />
+          </div>
+        </div>
+      )}
+
+      {/* Error State - 404 Not Found */}
+      {isNotFound && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Node Not Found</AlertTitle>
+          <AlertDescription>
+            The node with ID "{nodeId}" could not be found. It may have been removed or the ID is incorrect.
+          </AlertDescription>
+          <div className="mt-4">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/nodes">Return to Nodes List</Link>
+            </Button>
+          </div>
+        </Alert>
+      )}
+
+      {/* Error State - General Error */}
+      {isError && !isNotFound && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error Loading Node</AlertTitle>
+          <AlertDescription>
+            {(error as any)?.message || 'An unexpected error occurred while loading the node details.'}
+          </AlertDescription>
+          <div className="mt-4 flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/nodes">Back to Nodes</Link>
+            </Button>
+          </div>
+        </Alert>
+      )}
+
+      {/* Success State - Node Details */}
+      {node && !isLoading && !isError && (
+        <div className="space-y-6">
+          {/* Node Metadata Panel */}
+          <NodeDetailPanel node={node} />
+
+          {/* Node Test Runner */}
+          <NodeTestRunner
+            nodeId={nodeId || ''}
+            exampleConfig={exampleConfig}
+          />
+        </div>
+      )}
+    </div>
   );
 }

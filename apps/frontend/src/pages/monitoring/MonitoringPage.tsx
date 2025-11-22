@@ -8,7 +8,6 @@
  * @module pages/monitoring/MonitoringPage
  */
 
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity } from 'lucide-react';
 
@@ -26,39 +25,37 @@ import { Activity } from 'lucide-react';
  */
 export default function MonitoringPage() {
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-            Real-time Monitoring
-          </h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Monitor live workflow executions and system events
-          </p>
-        </div>
-
-        {/* Placeholder Content */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Activity className="h-8 w-8 text-slate-400" />
-              <div>
-                <CardTitle>Coming Soon</CardTitle>
-                <CardDescription>
-                  Real-time monitoring will be implemented in Phase 5
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              This page will display live workflow executions with WebSocket updates,
-              showing node progress, execution status, and event logs in real-time.
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          Real-time Monitoring
+        </h1>
+        <p className="mt-2 text-slate-600 dark:text-slate-400">
+          Monitor live workflow executions and system events
+        </p>
       </div>
-    </AppLayout>
+
+      {/* Placeholder Content */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Activity className="h-8 w-8 text-slate-400" />
+            <div>
+              <CardTitle>Coming Soon</CardTitle>
+              <CardDescription>
+                Real-time monitoring will be implemented in Phase 5
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            This page will display live workflow executions with WebSocket updates,
+            showing node progress, execution status, and event logs in real-time.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
