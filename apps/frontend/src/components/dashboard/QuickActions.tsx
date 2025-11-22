@@ -100,11 +100,11 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className }) => {
             key={action.id}
             variant="secondary"
             onClick={action.onClick}
-            className="h-auto flex flex-col items-center gap-3 py-6 px-4 rounded-lg border hover:border-primary/50 hover:shadow-md transition-all duration-200"
+            className="h-auto flex flex-col items-center gap-2 py-4 px-3 rounded-lg border hover:border-primary/50 hover:shadow-md transition-all duration-200 min-h-[100px]"
             title={action.description}
           >
-            <IconComponent className="size-6 text-primary" />
-            <span className="font-medium text-center text-sm">
+            <IconComponent className="size-6 text-primary flex-shrink-0" />
+            <span className="font-medium text-center text-xs leading-tight whitespace-normal break-words w-full">
               {action.label}
             </span>
           </Button>

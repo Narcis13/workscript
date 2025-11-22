@@ -216,14 +216,23 @@ export class AuthManager {
         );
       }
 
-      // 6. Generate tokens
+      // 6. Generate tokens with expanded permissions
+      const userPermissions = (typeof user.permissions === 'string'
+        ? JSON.parse(user.permissions)
+        : user.permissions || []) as Permission[];
+
+      // Get all permissions for the user (role + custom permissions)
+      const allPermissions = this.permissionManager.getUserPermissions({
+        ...user,
+        role: user.role as Role,
+        permissions: userPermissions,
+      } as any);
+
       const { accessToken, refreshToken } = await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
         role: user.role as Role,
-        permissions: (typeof user.permissions === 'string'
-          ? JSON.parse(user.permissions)
-          : user.permissions || []) as Permission[],
+        permissions: allPermissions,
       });
 
       // 7. Store refresh token
@@ -391,14 +400,23 @@ export class AuthManager {
         .set({ lastLoginAt: new Date() })
         .where(eq(users.id, user.id));
 
-      // 8. Generate tokens
+      // 8. Generate tokens with expanded permissions
+      const userPermissions = (typeof user.permissions === 'string'
+        ? JSON.parse(user.permissions)
+        : user.permissions || []) as Permission[];
+
+      // Get all permissions for the user (role + custom permissions)
+      const allPermissions = this.permissionManager.getUserPermissions({
+        ...user,
+        role: user.role as Role,
+        permissions: userPermissions,
+      } as any);
+
       const { accessToken, refreshToken } = await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
         role: user.role as Role,
-        permissions: (typeof user.permissions === 'string'
-          ? JSON.parse(user.permissions)
-          : user.permissions || []) as Permission[],
+        permissions: allPermissions,
       });
 
       // Store refresh token
@@ -493,14 +511,23 @@ export class AuthManager {
         );
       }
 
-      // 4. Generate new tokens
+      // 4. Generate new tokens with expanded permissions
+      const userPermissions = (typeof user.permissions === 'string'
+        ? JSON.parse(user.permissions)
+        : user.permissions || []) as Permission[];
+
+      // Get all permissions for the user (role + custom permissions)
+      const allPermissions = this.permissionManager.getUserPermissions({
+        ...user,
+        role: user.role as Role,
+        permissions: userPermissions,
+      } as any);
+
       const newTokens = await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
         role: user.role as Role,
-        permissions: (typeof user.permissions === 'string'
-          ? JSON.parse(user.permissions)
-          : user.permissions || []) as Permission[],
+        permissions: allPermissions,
       });
 
       // Store new refresh token
@@ -899,13 +926,23 @@ export class AuthManager {
 
       console.log(`[AuthManager] Password reset completed for user: ${user.email}`);
 
-      // Generate new tokens for immediate login
-      const permissions = this.permissionManager.getRolePermissions(user.role as Role);
+      // Generate new tokens for immediate login with expanded permissions
+      const userPermissions = (typeof user.permissions === 'string'
+        ? JSON.parse(user.permissions)
+        : user.permissions || []) as Permission[];
+
+      // Get all permissions for the user (role + custom permissions)
+      const allPermissions = this.permissionManager.getUserPermissions({
+        ...user,
+        role: user.role as Role,
+        permissions: userPermissions,
+      } as any);
+
       return await this.jwtManager.generateTokens({
         userId: user.id,
         email: user.email,
         role: user.role as Role,
-        permissions
+        permissions: allPermissions
       });
     } catch (error) {
       console.error('[AuthManager] Password reset completion failed:', error);

@@ -96,6 +96,11 @@ export enum Permission {
   AUTOMATION_DELETE = 'automation:delete',
   AUTOMATION_EXECUTE = 'automation:execute',
 
+  // Execution permissions
+  EXECUTION_READ = 'execution:read',
+  EXECUTION_EXPORT = 'execution:export',
+  EXECUTION_RERUN = 'execution:rerun',
+
   // User management permissions
   USER_READ = 'user:read',
   USER_UPDATE = 'user:update',

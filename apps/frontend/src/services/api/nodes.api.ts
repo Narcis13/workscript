@@ -218,11 +218,12 @@ export async function fetchNodeMetadata(nodeId: string): Promise<NodeMetadata> {
     }
 
     // Make API request
-    const response: AxiosResponse<NodeMetadata> = await apiClient.get(
+    const response: AxiosResponse<{ success: boolean; metadata: NodeMetadata }> = await apiClient.get(
       `/workscript/nodes/metadata/${encodeURIComponent(nodeId)}`
     );
 
-    return response.data;
+    // Extract metadata from wrapped response
+    return response.data.metadata;
   } catch (error) {
     console.error(`[Nodes API] Failed to fetch metadata for node "${nodeId}":`, error);
     throw error;

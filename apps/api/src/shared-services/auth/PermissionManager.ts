@@ -109,6 +109,11 @@ export class PermissionManager {
       Permission.AUTOMATION_DELETE,
       Permission.AUTOMATION_EXECUTE,
 
+      // Execution permissions
+      Permission.EXECUTION_READ,
+      Permission.EXECUTION_EXPORT,
+      Permission.EXECUTION_RERUN,
+
       // User profile
       Permission.USER_READ,
       Permission.USER_UPDATE,
@@ -129,6 +134,9 @@ export class PermissionManager {
       // Read automations
       Permission.AUTOMATION_READ,
       Permission.AUTOMATION_EXECUTE,
+
+      // Read executions
+      Permission.EXECUTION_READ,
     ],
   };
 

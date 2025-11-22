@@ -258,6 +258,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * Check if current user has a specific permission
    *
+   * Checks both custom permissions (user.permissions array) AND role-based permissions.
+   * This matches the backend PermissionManager logic to ensure consistency.
+   *
+   * Permission checking order:
+   * 1. Check user's custom permissions array
+   * 2. Check user's role-based permissions (admin gets all, user gets workflow/automation/execution, api gets read-only)
+   *
    * @param permission - Permission string to check (e.g., 'WORKFLOW_READ', 'workflow:read')
    * @returns True if user has the permission, false otherwise
    *
@@ -270,14 +277,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * ```
    */
   const hasPermission = useCallback((permission: string): boolean => {
-    if (!user || !user.permissions) {
+    if (!user) {
       return false;
     }
 
-    // Check if user has the permission (case-insensitive comparison)
-    return user.permissions.some(
-      (p) => p.toLowerCase() === permission.toLowerCase()
-    );
+    // Normalize permission string (convert enum to string format)
+    const normalizedPermission = permission.toLowerCase().replace('_', ':');
+
+    // 1. Check custom permissions array (if exists)
+    if (user.permissions && user.permissions.length > 0) {
+      const hasCustomPermission = user.permissions.some(
+        (p) => p.toLowerCase() === normalizedPermission || p.toLowerCase() === permission.toLowerCase()
+      );
+      if (hasCustomPermission) {
+        return true;
+      }
+    }
+
+    // 2. Check role-based permissions (matches backend PermissionManager)
+    // ADMIN: All permissions
+    if (user.role === 'admin') {
+      return true;
+    }
+
+    // USER: Workflow, automation, and execution permissions
+    if (user.role === 'user') {
+      const userPermissions = [
+        'workflow:create', 'workflow:read', 'workflow:update', 'workflow:delete', 'workflow:execute',
+        'automation:create', 'automation:read', 'automation:update', 'automation:delete', 'automation:execute',
+        'execution:read', 'execution:export', 'execution:rerun',
+        'user:read', 'user:update',
+        'apikey:create', 'apikey:read', 'apikey:delete',
+      ];
+      return userPermissions.some(p => p === normalizedPermission || p.replace(':', '_').toUpperCase() === permission.toUpperCase());
+    }
+
+    // API: Read and execute only
+    if (user.role === 'api') {
+      const apiPermissions = [
+        'workflow:read', 'workflow:execute',
+        'automation:read', 'automation:execute',
+        'execution:read',
+      ];
+      return apiPermissions.some(p => p === normalizedPermission || p.replace(':', '_').toUpperCase() === permission.toUpperCase());
+    }
+
+    return false;
   }, [user]);
 
   // ============================================

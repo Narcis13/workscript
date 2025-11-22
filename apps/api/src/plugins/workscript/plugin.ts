@@ -2,6 +2,7 @@ import type { SaaSPlugin } from '../../core/plugins';
 import { Hono } from 'hono';
 import workflowRoutes from './workflows';
 import automationRoutes from './automations';
+import executionRoutes from './executions';
 import nodeRoutes from './nodes';
 import { WorkflowService } from './services/WorkflowService';
 import { CronScheduler, type AutomationExecutionContext } from '../../shared-services/scheduler';
@@ -19,6 +20,7 @@ router.get('/', (c) => c.json({
   endpoints: [
     '/workscript/workflows/*',
     '/workscript/automations/*',
+    '/workscript/executions/*',
     '/workscript/nodes/*'
   ]
 }));
@@ -26,6 +28,7 @@ router.get('/', (c) => c.json({
 // Mount sub-routers
 router.route('/workflows', workflowRoutes);
 router.route('/automations', automationRoutes);
+router.route('/executions', executionRoutes);
 router.route('/nodes', nodeRoutes);
 
 /**

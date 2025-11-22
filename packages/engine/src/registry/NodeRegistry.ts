@@ -167,45 +167,63 @@ export class NodeRegistry {
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       return [];
     }
-    
+
     // Find monorepo root by looking for package.json files in parent directories
     const basePath = this.findMonorepoRoot();
     const paths: Array<{ path: string; source: NodeSource }> = [];
-    
-    // Always include shared/nodes (universal nodes)
-    paths.push({ path: path.join(basePath, 'shared/nodes'), source: 'universal' });
-    
+
+    // Always include packages/engine/nodes (universal nodes)
+    paths.push({ path: path.join(basePath, 'packages/engine/nodes'), source: 'universal' });
+
     if (environment === 'server' || environment === 'universal') {
+      // New architecture: apps/api/src/nodes
+      paths.push({ path: path.join(basePath, 'apps/api/src/nodes'), source: 'server' });
+      // Legacy: server/nodes (for backwards compatibility)
       paths.push({ path: path.join(basePath, 'server/nodes'), source: 'server' });
     }
-    
+
     if (environment === 'client' || environment === 'universal') {
+      // New architecture: apps/frontend/nodes
+      paths.push({ path: path.join(basePath, 'apps/frontend/nodes'), source: 'client' });
+      // Legacy: client/nodes (for backwards compatibility)
       paths.push({ path: path.join(basePath, 'client/nodes'), source: 'client' });
     }
-    
+
     return paths;
   }
 
   /**
    * Find the monorepo root by looking for the directory that contains
-   * both shared/ and server/ subdirectories
+   * both packages/ and apps/ subdirectories (new architecture)
+   * or shared/ and server/ subdirectories (legacy architecture)
    */
   private findMonorepoRoot(): string {
     // Only available in Node.js environment
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       return process.cwd();
     }
-    
+
     let currentDir = process.cwd();
 
     // Walk up the directory tree to find the monorepo root
     while (currentDir !== path.dirname(currentDir)) {
       try {
-        const sharedPath = path.join(currentDir, 'shared');
-        const serverPath = path.join(currentDir, 'server');
-        
         // Use require('fs') to ensure we have the right fs module
         const nodeFs = require('fs');
+
+        // Check for new architecture (packages/ and apps/)
+        const packagesPath = path.join(currentDir, 'packages');
+        const appsPath = path.join(currentDir, 'apps');
+        const packagesExists = nodeFs.existsSync(packagesPath);
+        const appsExists = nodeFs.existsSync(appsPath);
+
+        if (packagesExists && appsExists) {
+          return currentDir;
+        }
+
+        // Check for legacy architecture (shared/ and server/)
+        const sharedPath = path.join(currentDir, 'shared');
+        const serverPath = path.join(currentDir, 'server');
         const sharedExists = nodeFs.existsSync(sharedPath);
         const serverExists = nodeFs.existsSync(serverPath);
 
@@ -215,10 +233,10 @@ export class NodeRegistry {
       } catch (error) {
         // Continue searching
       }
-      
+
       currentDir = path.dirname(currentDir);
     }
-    
+
     // Fallback to current working directory
     return process.cwd();
   }
@@ -392,29 +410,29 @@ export class NodeRegistry {
 
   /**
    * List all registered nodes
-   * @returns Array of node metadata
+   * @returns Array of node metadata with source information
    */
-  listNodes(environment?: Environment): NodeMetadata[] {
+  listNodes(environment?: Environment): (NodeMetadata & { source: NodeSource })[] {
     const nodes = Array.from(this.nodes.values());
-    
+
     if (!environment) {
-      return nodes.map(r => r.metadata);
+      return nodes.map(r => ({ ...r.metadata, source: r.source }));
     }
-    
+
     return nodes
       .filter(r => this.isNodeCompatible(r.source, environment))
-      .map(r => r.metadata);
+      .map(r => ({ ...r.metadata, source: r.source }));
   }
 
   /**
    * List nodes by source
    * @param source Filter by node source
-   * @returns Array of node metadata
+   * @returns Array of node metadata with source information
    */
-  listNodesBySource(source: NodeSource): NodeMetadata[] {
+  listNodesBySource(source: NodeSource): (NodeMetadata & { source: NodeSource })[] {
     return Array.from(this.nodes.values())
       .filter(r => r.source === source)
-      .map(r => r.metadata);
+      .map(r => ({ ...r.metadata, source: r.source }));
   }
 
   /**
