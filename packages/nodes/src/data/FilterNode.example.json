@@ -1,0 +1,302 @@
+{
+  "id": "filter-node-example",
+  "name": "Filter Node Example Workflow",
+  "version": "1.0.0",
+  "description": "Demonstrates the FilterNode with various filtering scenarios",
+  "initialState": {
+    "products": [
+      {
+        "id": 1,
+        "name": "Laptop Pro",
+        "price": 1299.99,
+        "category": "Electronics",
+        "inStock": true,
+        "rating": 4.5,
+        "tags": ["premium", "featured"],
+        "metadata": {
+          "weight": 1.5,
+          "warranty": "2 years"
+        }
+      },
+      {
+        "id": 2,
+        "name": "Wireless Mouse",
+        "price": 29.99,
+        "category": "Electronics",
+        "inStock": false,
+        "rating": 4.0,
+        "tags": ["accessories"],
+        "metadata": {
+          "weight": 0.1,
+          "warranty": "1 year"
+        }
+      },
+      {
+        "id": 3,
+        "name": "Programming Guide",
+        "price": 49.99,
+        "category": "Books",
+        "inStock": true,
+        "rating": 4.8,
+        "tags": ["bestseller", "featured"],
+        "metadata": {
+          "weight": 0.8,
+          "warranty": null
+        }
+      },
+      {
+        "id": 4,
+        "name": "Mechanical Keyboard",
+        "price": 149.99,
+        "category": "Electronics",
+        "inStock": true,
+        "rating": 4.7,
+        "tags": ["premium", "gaming"],
+        "metadata": {
+          "weight": 1.2,
+          "warranty": "3 years"
+        }
+      },
+      {
+        "id": 5,
+        "name": "Office Chair",
+        "price": 299.99,
+        "category": "Furniture",
+        "inStock": true,
+        "rating": 4.3,
+        "tags": [],
+        "metadata": {}
+      }
+    ]
+  },
+  "workflow": [
+    {
+      "log-start": {
+        "message": "Starting filter examples...",
+        "success?": "example-1-simple-filter"
+      }
+    },
+    {
+      "example-1-simple-filter": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "category",
+            "dataType": "string",
+            "operation": "equals",
+            "value": "Electronics"
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-1"
+      }
+    },
+    {
+      "log-example-1": {
+        "message": "Example 1: Filtered electronics products",
+        "data": "$.filterPassed",
+        "success?": "example-2-multiple-conditions"
+      }
+    },
+    {
+      "example-2-multiple-conditions": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "price",
+            "dataType": "number",
+            "operation": "gt",
+            "value": 100
+          },
+          {
+            "field": "inStock",
+            "dataType": "boolean",
+            "operation": "true"
+          },
+          {
+            "field": "category",
+            "dataType": "string",
+            "operation": "equals",
+            "value": "Electronics"
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-2"
+      }
+    },
+    {
+      "log-example-2": {
+        "message": "Example 2: Expensive electronics in stock",
+        "data": "$.filterPassed",
+        "success?": "example-3-price-range"
+      }
+    },
+    {
+      "example-3-price-range": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "price",
+            "dataType": "number",
+            "operation": "between",
+            "value": 50,
+            "value2": 200
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-3"
+      }
+    },
+    {
+      "log-example-3": {
+        "message": "Example 3: Products in price range $50-$200",
+        "data": "$.filterPassed",
+        "success?": "example-4-array-contains"
+      }
+    },
+    {
+      "example-4-array-contains": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "tags",
+            "dataType": "array",
+            "operation": "contains",
+            "value": "featured"
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-4"
+      }
+    },
+    {
+      "log-example-4": {
+        "message": "Example 4: Featured products",
+        "data": "$.filterPassed",
+        "success?": "example-5-nested-field"
+      }
+    },
+    {
+      "example-5-nested-field": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "metadata.weight",
+            "dataType": "number",
+            "operation": "lt",
+            "value": 1.0
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-5"
+      }
+    },
+    {
+      "log-example-5": {
+        "message": "Example 5: Lightweight products (weight < 1.0 kg)",
+        "data": "$.filterPassed",
+        "success?": "example-6-or-logic"
+      }
+    },
+    {
+      "example-6-or-logic": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "category",
+            "dataType": "string",
+            "operation": "equals",
+            "value": "Books"
+          },
+          {
+            "field": "tags",
+            "dataType": "array",
+            "operation": "contains",
+            "value": "bestseller"
+          }
+        ],
+        "matchMode": "any",
+        "passed?": "log-example-6"
+      }
+    },
+    {
+      "log-example-6": {
+        "message": "Example 6: Books OR bestsellers (ANY match)",
+        "data": "$.filterPassed",
+        "success?": "example-7-string-contains"
+      }
+    },
+    {
+      "example-7-string-contains": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "name",
+            "dataType": "string",
+            "operation": "contains",
+            "value": "Pro"
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-7"
+      }
+    },
+    {
+      "log-example-7": {
+        "message": "Example 7: Products with 'Pro' in name",
+        "data": "$.filterPassed",
+        "success?": "example-8-regex"
+      }
+    },
+    {
+      "example-8-regex": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "name",
+            "dataType": "string",
+            "operation": "regex",
+            "value": "^(Laptop|Mechanical).*"
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-8"
+      }
+    },
+    {
+      "log-example-8": {
+        "message": "Example 8: Products matching regex pattern",
+        "data": "$.filterPassed",
+        "success?": "example-9-high-rated"
+      }
+    },
+    {
+      "example-9-high-rated": {
+        "items": "$.products",
+        "conditions": [
+          {
+            "field": "rating",
+            "dataType": "number",
+            "operation": "gte",
+            "value": 4.5
+          }
+        ],
+        "matchMode": "all",
+        "passed?": "log-example-9"
+      }
+    },
+    {
+      "log-example-9": {
+        "message": "Example 9: Highly rated products (rating >= 4.5)",
+        "data": "$.filterPassed",
+        "success?": "log-final"
+      }
+    },
+    {
+      "log-final": {
+        "message": "All filter examples completed successfully!",
+        "stats": "$.filterStats"
+      }
+    }
+  ]
+}

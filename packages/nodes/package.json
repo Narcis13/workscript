@@ -1,0 +1,31 @@
+{
+  "name": "@workscript/nodes",
+  "version": "1.0.0",
+  "description": "Consolidated workflow nodes for Workscript server-side execution",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workscript/engine": "workspace:*",
+    "bcryptjs": "^3.0.3",
+    "mysql2": "^3.11.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [
+    "workflow",
+    "nodes",
+    "orchestration",
+    "server"
+  ],
+  "author": "Workscript",
+  "license": "MIT"
+}
