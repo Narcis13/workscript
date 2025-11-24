@@ -1,8 +1,23 @@
 # Manifest-Based Node Discovery System - Specification
 
+> **⚠️ DEPRECATED (November 2025)**
+>
+> This specification has been **superseded** by the **Server-Only Node Architecture Migration**.
+> See `.kiro/specs/new_nodes/` for the current implementation.
+>
+> **What Changed:**
+> - All nodes are now consolidated in `/packages/nodes/` (`@workscript/nodes`)
+> - NodeRegistry simplified to server-only execution (no manifest system needed)
+> - `registerFromArray(ALL_NODES)` is the new recommended approach
+> - Multi-environment node discovery has been removed
+>
+> **This document is preserved for historical reference only.**
+
+---
+
 **Feature:** Production-ready node discovery using build-time manifest generation
 **Target Application:** Monorepo-wide infrastructure upgrade (Engine, API, Frontend)
-**Status:** 📋 Ready for Implementation
+**Status:** ❌ DEPRECATED - See `.kiro/specs/new_nodes/`
 **Created:** 2025-11-22
 **Version:** 1.0.0
 

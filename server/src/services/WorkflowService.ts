@@ -1,10 +1,11 @@
 import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@workscript/engine';
+import { ALL_NODES } from '@workscript/nodes';
 import { WebSocketManager } from './WebSocketManager';
 
 /**
  * Singleton service for workflow engine components
- * Automatically discovers and registers nodes from shared (universal) and server environments
+ * Registers all nodes from @workscript/nodes package using consolidated exports.
  */
 export class WorkflowService {
   private static instance: WorkflowService | null = null;
@@ -39,68 +40,35 @@ export class WorkflowService {
   }
 
   /**
-   * Initialize the service by discovering and registering all server-compatible nodes
-   * This includes both shared (universal) nodes and server-specific nodes
+   * Initialize the service by registering all server-compatible nodes
+   * from the consolidated ALL_NODES export in @workscript/nodes.
    */
   private async initialize(): Promise<void> {
     if (this.initialized) {
       return;
     }
 
-    //console.log('🔧 Initializing WorkflowService...');
-    //console.log('🔍 Current working directory:', process.cwd());
-    
+    console.log('🔧 Initializing WorkflowService (Legacy Server)...');
+
     try {
-      // Debug: Log the paths that will be searched
-      const path = require('path');
-      const basePath = process.cwd();
-      // Go up one level from server directory to reach monorepo root
-      const monorepoRoot = path.resolve(basePath, '..');
-      const sharedPath = path.join(monorepoRoot, 'shared/nodes');
-      const serverPath = path.join(monorepoRoot, 'server/nodes');
-      
-   //   console.log('📂 Searching for nodes in:');
-     // console.log(`   - Shared: ${sharedPath}`);
-   //   console.log(`   - Server: ${serverPath}`);
-      
-      // Check if directories exist
-      const fs = require('fs').promises;
-      try {
-        await fs.access(sharedPath);
-     //   console.log('✅ Shared nodes directory exists');
-      } catch {
-        console.log('❌ Shared nodes directory not found');
-      }
-      
-      try {
-        await fs.access(serverPath);
-     //   console.log('✅ Server nodes directory exists');
-      } catch {
-        console.log('❌ Server nodes directory not found');
-      }
-      
-      // Discover nodes from both shared and server packages
-      // This will scan:
-      // - /shared/nodes/**/*.{ts,js} (universal nodes)  
-      // - /server/nodes/**/*.{ts,js} (server-specific nodes)
-      await this.registry.discoverFromPackages('server');
-      
+      // Register all nodes from the consolidated ALL_NODES array
+      // This uses the registerFromArray() method which is simpler and
+      // avoids workspace dependency resolution issues with dynamic imports
+      const registeredCount = await this.registry.registerFromArray(ALL_NODES, { source: 'server' });
+
       const nodeCount = this.registry.size;
-      const universalNodes = this.registry.listNodesBySource('universal');
       const serverNodes = this.registry.listNodesBySource('server');
-      
+
       console.log(`✅ WorkflowService initialized successfully`);
-      console.log(`📦 Registered ${nodeCount} nodes total:`);
-      console.log(`   - ${universalNodes.length} universal nodes from shared package`);
-      console.log(`   - ${serverNodes.length} server-specific nodes`);
+      console.log(`📦 Registered ${registeredCount} nodes from @workscript/nodes package`);
+      console.log(`   - ${serverNodes.length} server-compatible nodes available`);
+
       this.setupHooks();
       this.initialized = true;
     } catch (error) {
       console.error('❌ Failed to initialize WorkflowService:', error);
       throw new Error(`WorkflowService initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-  
   }
 
   /**
@@ -289,20 +257,30 @@ export class WorkflowService {
   }
 
   /**
-   * Get all available nodes for the server environment
+   * Get all available nodes
    * @returns Array of node metadata
    */
   public getAvailableNodes() {
-    return this.registry.listNodes('server');
+    return this.registry.listNodes();
   }
 
   /**
-   * Get nodes by source type
-   * @param source The source type to filter by
+   * Get all server nodes
    * @returns Array of node metadata
    */
-  public getNodesBySource(source: 'universal' | 'server') {
-    return this.registry.listNodesBySource(source);
+  public getServerNodes() {
+    return this.registry.listNodesBySource('server');
+  }
+
+  /**
+   * Get nodes by source type (for backward compatibility)
+   * Since all nodes are now server nodes, this always returns server nodes.
+   * @param source The source type to filter by (only 'server' is valid now)
+   * @returns Array of node metadata
+   */
+  public getNodesBySource(source: string) {
+    // All nodes are now registered as 'server' source
+    return this.registry.listNodesBySource('server');
   }
 
   /**
@@ -340,9 +318,9 @@ export class WorkflowService {
     return {
       initialized: this.initialized,
       totalNodes: this.registry.size,
-      universalNodes: this.registry.listNodesBySource('universal').length,
       serverNodes: this.registry.listNodesBySource('server').length,
-      environment: 'server' as const
+      environment: 'server' as const,
+      package: '@workscript/nodes'
     };
   }
 }

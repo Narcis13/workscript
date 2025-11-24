@@ -4,73 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚀 Architecture Migration Complete (November 2025)
 
-**✅ MIGRATION COMPLETE: New Modular Plugin Architecture**
+**✅ MIGRATION COMPLETE: Server-Only Node Architecture**
 
-The project has been successfully migrated to a modern `/packages` and `/apps` architecture as outlined in `workscript_prospect.md`:
+The project has been successfully migrated to a **server-only node execution model** with a dedicated `@workscript/nodes` package:
 
 ### Current Structure:
-- **`/packages/engine`** - Core workflow engine (migrated from `/shared`, package: `@workscript/engine`)
+- **`/packages/engine`** - Core workflow engine, pure orchestration (package: `@workscript/engine`)
+- **`/packages/nodes`** - **ALL workflow nodes consolidated here** (package: `@workscript/nodes`) ✨ NEW
 - **`/packages/ui`** - Shared UI components (shadcn/ui, package: `@workscript/ui`)
 - **`/packages/config`** - Shared configurations for ESLint, TypeScript, Tailwind
-- **`/apps/api`** - Plugin-based API server with Workscript plugin
-- **`/apps/frontend`** - Vite + React SPA (starting point for workflow UI)
+- **`/apps/api`** - Plugin-based API server with Workscript plugin (workflow execution)
+- **`/apps/frontend`** - Vite + React SPA (management UI only, no local execution)
 - **`/server`** - Legacy CRM API (kept for Real Estate CRM features)
-- **`/client`** - Legacy frontend (kept for workflow integration reference)
 
 ### Import Updates (COMPLETED):
-All imports now use `@workscript/engine`:
 ```typescript
-// ✅ Current imports (all files updated)
-import { ExecutionEngine } from '@workscript/engine';
-import { UNIVERSAL_NODES } from '@workscript/engine/nodes';
+// ✅ Engine imports (orchestration)
+import { ExecutionEngine, StateManager, NodeRegistry, HookManager } from '@workscript/engine';
+
+// ✅ Node imports (all nodes consolidated)
+import { ALL_NODES, MathNode, DatabaseNode, FilterNode } from '@workscript/nodes';
 ```
 
 ### Workspace Configuration:
 ```json
 {
-  "workspaces": ["./server", "./client", "./packages/*", "./apps/*"]
+  "workspaces": ["./server", "./packages/*", "./apps/*"]
 }
 ```
-**Note:** `/shared` removed - migration complete!
+**Note:** `/client` removed - server-only execution complete!
 
 ### Architecture Roles:
-- **`/packages/engine`** - Core workflow orchestration (universal)
+- **`/packages/engine`** - Core workflow orchestration (no node implementations)
+- **`/packages/nodes`** - **Single source of truth for all nodes** (35+ nodes)
 - **`/packages/ui`** - Shared React components
 - **`/packages/config`** - Shared tooling configurations
-- **`/apps/api`** - Modern plugin-based API for SaaS products
-- **`/apps/frontend`** - Frontend starting point (Vite + React)
-- **`/server`** - Legacy CRM (keep for Real Estate features)
-- **`/client`** - Legacy frontend (keep as reference)
+- **`/apps/api`** - API server for workflow execution (all workflows run server-side)
+- **`/apps/frontend`** - Management UI (create, monitor, view workflows via API)
+- **`/server`** - Legacy CRM (uses `@workscript/nodes` for workflows)
 
 ---
 
 ## Project Overview
 
-This is an **Agentic Workflow Orchestration System** built as a TypeScript monorepo using the bhvr stack (Bun + Hono + Vite + React). The project implements a **production-ready, shared-core** node-based workflow system with JSON definitions, comprehensive validation, lifecycle hooks, real-time event streaming, database persistence, and UI workflow generation.
+This is an **Agentic Workflow Orchestration System** built as a TypeScript monorepo using the bhvr stack (Bun + Hono + Vite + React). The project implements a **production-ready, server-only** node-based workflow system with JSON definitions, comprehensive validation, lifecycle hooks, real-time event streaming, database persistence, and management UI.
 
-**Key Achievement:** The **core engine is fully implemented in the @workscript/engine package** (formerly `/shared`, now `/packages/engine`) and executes workflows across server (Hono API), client (browser), and CLI environments with **distributed node architectures**.
+**Key Achievement:** The **core engine (`@workscript/engine`) is a pure orchestration layer**, while all **35+ workflow nodes are consolidated in the `@workscript/nodes` package**. All workflows execute server-side via the API, with the frontend serving as a management interface.
 
 ## Essential Commands
 
-### Development (New Architecture)
-- `bun run dev` - Start all services (engine, api, frontend) with hot reload and concurrently
+### Development
+- `bun run dev` - Start all services (engine, nodes, api, frontend) with hot reload
 - `bun run dev:engine` - Start engine TypeScript watch mode
+- `bun run dev:nodes` - Start nodes TypeScript watch mode
 - `bun run dev:api` - Start API server with hot reload
 - `bun run dev:frontend` - Start Vite dev server
-- `bun install` - Install dependencies and auto-build engine package
-
-### Development (Legacy - for reference)
-- `bun run dev:legacy` - Start legacy server + client
-- `bun run dev:client` - Start legacy client only
-- `bun run dev:server` - Start legacy server only
+- `bun install` - Install dependencies and auto-build packages
 
 ### Build & Test
-- `bun run build` - Build all packages (engine → api → frontend)
+- `bun run build` - Build all packages (engine → nodes → api → frontend)
 - `bun run build:engine` - Build engine package only
+- `bun run build:nodes` - Build nodes package only
 - `bun run build:api` - Build API server only
 - `bun run build:frontend` - Build frontend only
-- `bun run test` - Run tests for engine and API
+- `bun run test` - Run tests for engine, nodes, and API
 - `bun run test:engine` - Run engine tests
+- `bun run test:nodes` - Run nodes tests
 - `bun run test:api` - Run API tests
 - `bun run typecheck` - Type-check all packages
 
@@ -91,51 +90,75 @@ This is an **Agentic Workflow Orchestration System** built as a TypeScript monor
 
 ## Architecture Overview
 
-The codebase follows a **modular plugin-based monorepo architecture** with packages and apps designed for **multi-environment execution**:
+The codebase follows a **modular plugin-based monorepo architecture** with **server-only workflow execution**:
 
 ### Packages (Shared Core Libraries)
 
 #### 1. Engine Package (`/packages/engine`) - `@workscript/engine` ✅
 
-**Status:** Production-ready with advanced features
+**Status:** Production-ready - Pure orchestration layer
 
 **Core Components:**
 - **ExecutionEngine** (`/packages/engine/src/engine/`) - Orchestrates workflow execution with lifecycle hooks
 - **WorkflowParser** (`/packages/engine/src/parser/`) - AST-like parsing with JSON Schema + semantic validation
 - **StateManager** (`/packages/engine/src/state/`) - Advanced state management with snapshots, watchers, change detection
 - **StateResolver** (`/packages/engine/src/state/`) - Elegant `$.key` syntax for state access
-- **NodeRegistry** (`/packages/engine/src/registry/`) - Multi-package node discovery and registration
+- **NodeRegistry** (`/packages/engine/src/registry/`) - Simplified node registration (server-only)
 - **HookManager** (`/packages/engine/src/hooks/`) - Comprehensive lifecycle hook system
 - **EventEmitter** (`/packages/engine/src/events/`) - Event-driven architecture foundation
 
-**Node Library:**
-- **Universal Nodes** (`/packages/engine/nodes/`) - Zero dependencies, environment-agnostic
-  - `MathNode` - Mathematical operations
-  - `LogicNode` - Boolean logic
-  - `DataTransformNode` - Object/array transformations
-  - `StateSetterNode` - Direct state manipulation with `$.path` syntax
-  - `EmptyNode` - No-op placeholder
-  - `LogNode` - Logging and debugging
-- **Data Manipulation Nodes** (`/packages/engine/nodes/data/`) - Comprehensive data processing
-  - `FilterNode` - Complex filtering with multiple data types
-  - `SortNode` - Array sorting
-  - `AggregateNode` - Data aggregation
-  - `SummarizeNode` - Data summarization
-  - `LimitNode` - Result limiting
-  - `SplitOutNode` - Data splitting
-  - `RemoveDuplicatesNode` - Deduplication
-  - `EditFieldsNode` - Field manipulation
-  - `TransformObjectNode` - Object transformation
-  - `JSONExtractNode` - JSON parsing
-  - `CompareDatasetsNode` - Dataset comparison
-  - `SwitchNode` - Conditional routing
+**Note:** The engine package is now a **pure orchestration layer** - it does NOT contain node implementations. All nodes are in `@workscript/nodes`.
 
 **Types & Schemas:**
 - Complete TypeScript type definitions
 - JSON Schema for workflow validation
 - WebSocket message types
 
-### 2. UI Package (`/packages/ui`) - `@workscript/ui` ✅
+#### 2. Nodes Package (`/packages/nodes`) - `@workscript/nodes` ✅ NEW
+
+**Status:** Production-ready - Single source of truth for all nodes
+
+**Purpose:** Consolidates ALL workflow nodes in one package (35+ nodes)
+
+**Core Nodes:**
+- `MathNode` - Mathematical operations
+- `LogicNode` - Boolean logic
+- `DataTransformNode` - Object/array transformations
+- `StateSetterNode` - Direct state manipulation with `$.path` syntax
+- `EmptyNode` - No-op placeholder
+- `LogNode` - Logging and debugging
+
+**Data Manipulation Nodes** (`/packages/nodes/src/data/`):
+- `FilterNode` - Complex filtering with multiple data types
+- `SortNode` - Array sorting
+- `AggregateNode` - Data aggregation
+- `SummarizeNode` - Data summarization
+- `LimitNode` - Result limiting
+- `SplitOutNode` - Data splitting
+- `RemoveDuplicatesNode` - Deduplication
+- `EditFieldsNode` - Field manipulation
+- `TransformObjectNode` - Object transformation
+- `JSONExtractNode` - JSON parsing
+- `CompareDatasetsNode` - Dataset comparison
+- `SwitchNode` - Conditional routing
+- And more...
+
+**Server Nodes:**
+- `FileSystemNode` - File operations (read, write, delete, mkdir)
+- `DatabaseNode` - Database queries and operations
+- `AuthNode` - Authentication and authorization
+
+**Custom Integrations** (`/packages/nodes/src/custom/`):
+- **Gmail Integration** (`google/gmail/`) - googleConnect, sendEmail, listEmails
+- **Zoca Integration** (`zoca/`) - toateContactele, fiecareElement, aplicaFiltre
+
+**Usage:**
+```typescript
+import { ALL_NODES } from '@workscript/nodes';
+import { MathNode, DatabaseNode, FilterNode } from '@workscript/nodes';
+```
+
+#### 3. UI Package (`/packages/ui`) - `@workscript/ui` ✅
 
 **Status:** Active development
 
@@ -150,7 +173,7 @@ The codebase follows a **modular plugin-based monorepo architecture** with packa
 import { Button, cn } from '@workscript/ui';
 ```
 
-### 3. Config Package (`/packages/config`) - `@workscript/config` ✅
+#### 4. Config Package (`/packages/config`) - `@workscript/config` ✅
 
 **Status:** Active
 
@@ -173,11 +196,11 @@ import { Button, cn } from '@workscript/ui';
 
 ## Applications
 
-### 1. API Server (`/apps/api`) - **PLUGIN-BASED API** ✅
+### 1. API Server (`/apps/api`) - **WORKFLOW EXECUTION SERVER** ✅
 
 **Status:** Production-ready
 
-**Architecture:** Plugin-based SaaS platform architecture
+**Architecture:** Plugin-based SaaS platform with server-only workflow execution
 
 **Plugin System:**
 - **PluginLoader** - Automatic plugin discovery and registration
@@ -196,19 +219,20 @@ import { Button, cn } from '@workscript/ui';
 - **WebSocketManager** - Real-time event broadcasting
 - **CronScheduler** - Automated workflow execution
 
-**API Nodes** (`/apps/api/nodes/`):
-- `FileSystemNode` - File operations (read, write, delete, mkdir)
-- `DatabaseNode` - Database queries and operations
-- `AuthNode` - Authentication and authorization
-- **Custom Integrations** (`/apps/api/nodes/custom/`):
-  - Gmail integration (googleConnect, sendEmail, listEmails)
-  - Zoca integration (toateContactele, fiecareElement, aplicaFiltre)
+**Node Registration:**
+```typescript
+import { ALL_NODES } from '@workscript/nodes';
+import { NodeRegistry } from '@workscript/engine';
 
-**Note:** Legacy server code in `/server` is maintained for Real Estate CRM features (see Legacy Applications section below)
+const registry = new NodeRegistry();
+await registry.registerFromArray(ALL_NODES);
+```
 
-### 2. Frontend App (`/apps/frontend`) - **VITE + REACT SPA** ✅
+**Note:** All nodes are now imported from `@workscript/nodes` package. No local nodes directory.
 
-**Status:** Starting point for workflow UI
+### 2. Frontend App (`/apps/frontend`) - **MANAGEMENT UI** ✅
+
+**Status:** Production-ready management interface
 
 **Stack:**
 - Vite 7 + React 19
@@ -216,25 +240,20 @@ import { Button, cn } from '@workscript/ui';
 - TypeScript
 - shadcn/ui components integration
 
-**Purpose:** Modern SPA for workflow builder and execution UI
+**Purpose:** Management UI for workflows - **NO local workflow execution**
 
-**Frontend Nodes** (`/apps/frontend/nodes/`):
-- `LocalStorageNode` - Browser storage operations
-- `FetchNode` - HTTP requests from browser
-- `DOMNode` - DOM manipulation
-- **UI Workflow Nodes** - Interactive UI generation
-  - `FormUINode` - Dynamic form rendering
-  - `DataTableUINode` - Data table visualization
-  - `ChartUINode` - Chart and graph rendering
-  - `DashboardUINode` - Dashboard composition
-  - `FileProcessorUINode` - File upload and processing
-  - `ActionButtonGroupUINode` - Action button groups
+**Features:**
+- Create and edit workflow definitions
+- Trigger workflow execution via API
+- Monitor workflow execution status
+- View execution results and history
+- Real-time updates via WebSocket
 
-**Note:** Legacy client code in `/client` contains reference implementations of UI workflow integration (see Legacy Applications section below)
+**Important:** The frontend does NOT execute workflows locally. All workflow execution happens server-side via API calls.
 
 ---
 
-## Legacy Applications (Kept for Reference)
+## Legacy Applications
 
 ### Server (`/server`) - **LEGACY CRM API**
 
@@ -246,35 +265,23 @@ import { Button, cn } from '@workscript/ui';
 - AI Lead Scoring, Property Matching
 - WhatsApp conversations
 - Email templates
-- Legacy server nodes (`/server/nodes/`)
+
+**Node Usage:** Now uses `@workscript/nodes` package for workflow execution
 
 **Keep for:** Production CRM functionality not yet migrated to EstateFlow plugin
-
-### Client (`/client`) - **LEGACY FRONTEND**
-
-**Status:** Reference for workflow integration
-
-**Contains:**
-- Full workflow UI integration
-- ClientWorkflowService
-- UI workflow nodes (FormUI, DataTable, Chart, Dashboard)
-- WebSocket workflow demos
-- Legacy client nodes (`/client/nodes/`)
-
-**Keep for:** Reference implementation of workflow UI integration
 
 ---
 
 ## Key Concepts & Advanced Features
 
-### 1. Multi-Environment Workflow System
+### 1. Server-Only Workflow System
 
 **Core Concepts:**
 - **Nodes** - Basic execution units with `nodeId`, `nodeType`, and `config`
 - **Edges** - Define workflow flow with conditional routing (`success?`, `error?`, etc.)
 - **Loops** - Nodes ending with `...` enable iteration with automatic loop-back
 - **Shared State** - Mutable state object accessible across all nodes with atomic updates
-- **Environment Compatibility** - Same workflows run on server, client, or universal contexts
+- **Server Execution** - All workflows execute server-side via the API for consistency and security
 
 ### 2. State Management & Resolution
 
@@ -368,32 +375,42 @@ import { Button, cn } from '@workscript/ui';
 - Dashboards with multiple widgets
 - File upload and processing
 
-### 7. Distributed Node Architecture
+### 7. Consolidated Node Architecture
 
-**Three-Tier Node System:**
+**Single Package for All Nodes:** `@workscript/nodes`
 
-1. **Universal Nodes** (`/packages/engine/nodes/`) - Zero external dependencies
-   - Pure computation and logic
-   - Work in any JavaScript runtime
-   - Examples: Math, Logic, Data transformation
+All 35+ workflow nodes are consolidated in a single package for simplicity and maintainability:
 
-2. **API Nodes** (`/apps/api/nodes/`) - Server-specific dependencies
-   - File system, databases, authentication
-   - Network operations, external APIs
-   - Examples: FileSystem, Database, Auth, Gmail
-   - **Note:** Legacy server nodes in `/server/nodes/` (CRM features only)
+**Node Categories:**
+1. **Core Nodes** - Pure computation and logic
+   - Math, Logic, DataTransform, StateSetter, Empty, Log
 
-3. **Frontend Nodes** (`/apps/frontend/nodes/`) - Browser-specific APIs
-   - DOM manipulation, client storage
-   - Browser APIs, UI rendering
-   - Examples: LocalStorage, Fetch, DOM, UI nodes
-   - **Note:** Legacy client nodes in `/client/nodes/` (reference implementations)
+2. **Data Manipulation Nodes** (`/data/`) - Comprehensive data processing
+   - Filter, Sort, Aggregate, Summarize, Limit, SplitOut
+   - RemoveDuplicates, EditFields, TransformObject, JSONExtract
+   - CompareDatasets, Switch, ValidateData, MergeDatasets, and more
 
-**Automatic Discovery:**
-- NodeRegistry loads appropriate nodes based on environment
-- `discoverFromPackages('api')` - Loads universal + API nodes
-- `discoverFromPackages('frontend')` - Loads universal + frontend nodes
-- `discoverFromPackages('universal')` - Loads only universal nodes
+3. **Server Nodes** - File system, databases, authentication
+   - FileSystem, Database, Auth
+
+4. **Custom Integrations** (`/custom/`) - Third-party service integrations
+   - Google Gmail (googleConnect, sendEmail, listEmails)
+   - Zoca (toateContactele, fiecareElement, aplicaFiltre)
+
+**Node Registration:**
+```typescript
+import { ALL_NODES } from '@workscript/nodes';
+import { NodeRegistry } from '@workscript/engine';
+
+const registry = new NodeRegistry();
+await registry.registerFromArray(ALL_NODES);
+```
+
+**Benefits of Consolidated Architecture:**
+- Single source of truth for all nodes
+- Simpler imports and dependency management
+- Server-side only execution for security
+- Easier testing and maintenance
 
 ## Important Conventions
 
@@ -405,29 +422,32 @@ import { Button, cn } from '@workscript/ui';
 
 ### Architecture Rules
 1. **Engine-First** - Core engine logic goes in `/packages/engine/`, not duplicated
-2. **Node Placement** - Consider dependencies when placing nodes:
-   - No dependencies → `/packages/engine/nodes/`
-   - Server dependencies (fs, db) → `/apps/api/nodes/`
-   - Browser APIs → `/apps/frontend/nodes/`
-   - **Legacy:** Existing nodes in `/server/nodes/` and `/client/nodes/` remain for CRM features
-3. **Import Structure** - Always import from `@workscript/engine` package for core types and engine
+2. **Nodes-Consolidated** - ALL nodes go in `/packages/nodes/src/`:
+   - Core nodes → `/packages/nodes/src/`
+   - Data manipulation → `/packages/nodes/src/data/`
+   - Custom integrations → `/packages/nodes/src/custom/`
+3. **Import Structure**:
+   - Engine: `import { ExecutionEngine, StateManager } from '@workscript/engine'`
+   - Nodes: `import { ALL_NODES, MathNode } from '@workscript/nodes'`
 4. **State Immutability** - Use StateManager methods, don't mutate state directly
+5. **Server-Only Execution** - All workflow execution happens via API, no client-side execution
 
 ### Development Workflow
-1. **Build Order** - Engine package builds first, then api and frontend
+1. **Build Order** - Packages build in order: engine → nodes → api → frontend
 2. **Hot Reload** - Use `bun run dev` for concurrent development of all apps
-3. **Testing** - Test workflows in target environment (api/frontend/universal)
+3. **Testing** - Test workflows via API (all execution is server-side)
 4. **Validation** - Workflows are validated before execution (JSON Schema + semantic)
 
-## Multi-Environment Usage Examples
+## Usage Examples
 
-### API Server Environment (Hono API)
+### Server-Side Workflow Execution (API)
 ```typescript
 import { ExecutionEngine, NodeRegistry, StateManager, HookManager } from '@workscript/engine';
+import { ALL_NODES } from '@workscript/nodes';
 
-// API server initialization - loads universal + API nodes
+// Initialize NodeRegistry with all nodes
 const registry = new NodeRegistry();
-await registry.discoverFromPackages('api');
+await registry.registerFromArray(ALL_NODES);
 
 const stateManager = new StateManager();
 const hookManager = new HookManager();
@@ -441,33 +461,35 @@ hookManager.register('workflow:after-end', {
   }
 });
 
-// Execute workflow with API server capabilities
+// Execute workflow
 const result = await engine.execute(parsedWorkflow);
 ```
 
-### Frontend Environment (Browser)
+### Frontend Workflow Triggering (via API)
 ```typescript
-import { ExecutionEngine, NodeRegistry, StateManager } from '@workscript/engine';
+// Frontend does NOT execute workflows locally
+// Instead, it calls the API to trigger execution
 
-// Frontend initialization - loads universal + frontend nodes
-const registry = new NodeRegistry();
-await registry.discoverFromPackages('frontend');
+const response = await fetch('/api/workflows/execute', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ workflowId: 'my-workflow', input: { data: 'value' } })
+});
 
-const engine = new ExecutionEngine(registry, new StateManager());
-
-// Execute workflow in browser
-const result = await engine.execute(parsedWorkflow);
+const result = await response.json();
 ```
 
-### Universal Environment (CLI/Testing)
+### CLI/Testing Environment
 ```typescript
 import { ExecutionEngine, NodeRegistry, StateManager } from '@workscript/engine';
+import { ALL_NODES } from '@workscript/nodes';
 
-// Universal initialization - loads only universal nodes
+// Same initialization as API - all nodes available
 const registry = new NodeRegistry();
-await registry.discoverFromPackages('universal');
+await registry.registerFromArray(ALL_NODES);
 
 const engine = new ExecutionEngine(registry, new StateManager());
+const result = await engine.execute(parsedWorkflow);
 ```
 
 ## Workflow Definition Examples
@@ -594,18 +616,19 @@ const engine = new ExecutionEngine(registry, new StateManager());
 - **State Management** - Leverage StateManager's advanced features (snapshots, watchers)
 
 ### Node Development
-- **Node Placement** - Choose package based on dependencies
+- **Node Location** - All new nodes go in `/packages/nodes/src/` (or subdirectories)
 - **Metadata** - Include complete metadata with AI hints for better LLM integration
 - **Validation** - Always validate inputs before processing
 - **Error Handling** - Return error edges instead of throwing exceptions
 - **State Updates** - Update state for important results
 - **Edge Data** - Return meaningful data with edge functions
+- **Exports** - Add new nodes to `/packages/nodes/src/index.ts` and `ALL_NODES` array
 
 ### Testing Strategy
 - **Unit Tests** - Test individual components in isolation
 - **Integration Tests** - Test component interactions
 - **E2E Tests** - Test complete workflows through API
-- **Environment Tests** - Test nodes in their target environment
+- **Node Tests** - Test nodes in `/packages/nodes/` alongside implementations
 
 ### Debugging
 - **Validation Errors** - Include line/column numbers and source package
@@ -639,11 +662,10 @@ const engine = new ExecutionEngine(registry, new StateManager());
 
 **When Adding Features:**
 - ✅ Core engine features → `/packages/engine/src/`
-- ✅ Universal nodes → `/packages/engine/nodes/`
-- ✅ API server nodes → `/apps/api/nodes/`
-- ✅ Frontend nodes → `/apps/frontend/nodes/`
-- ✅ Business integrations → `/apps/api/nodes/custom/` or `/apps/frontend/nodes/custom/`
-- **Note:** Legacy paths `/server/nodes/` and `/client/nodes/` remain for CRM features only
+- ✅ **ALL nodes** → `/packages/nodes/src/` (single location)
+- ✅ Core nodes → `/packages/nodes/src/`
+- ✅ Data manipulation nodes → `/packages/nodes/src/data/`
+- ✅ Custom integrations → `/packages/nodes/src/custom/`
 
 **When Modifying Existing Code:**
 - ✅ Maintain backward compatibility
@@ -653,18 +675,18 @@ const engine = new ExecutionEngine(registry, new StateManager());
 
 ### Implementation Priorities
 
-**Current State - No Migration Needed:**
-The system is **production-ready** with all core features implemented:
-- ✅ Shared-core architecture complete
+**Current State - Server-Only Architecture:**
+The system is **production-ready** with server-only workflow execution:
+- ✅ Engine is pure orchestration (no node implementations)
+- ✅ All 35+ nodes consolidated in `@workscript/nodes`
 - ✅ Advanced features implemented (hooks, state resolution, WebSocket)
 - ✅ Database persistence and automation
-- ✅ UI workflow system
-- ✅ Comprehensive node library
+- ✅ Frontend is management UI only (no local execution)
 
 **Focus Areas for New Development:**
-1. **New Node Types** - Add domain-specific nodes following established patterns
-2. **Business Integrations** - Extend custom integrations in `/apps/api/nodes/custom/`
-3. **UI Components** - Add new UI workflow nodes in `/apps/frontend/nodes/ui/`
+1. **New Node Types** - Add nodes to `/packages/nodes/src/` following established patterns
+2. **Business Integrations** - Add custom integrations in `/packages/nodes/src/custom/`
+3. **Management UI** - Enhance frontend workflow management features
 4. **Performance Optimization** - Optimize execution engine and state management
 5. **Enhanced Monitoring** - Expand hook system and WebSocket events
 
@@ -709,18 +731,21 @@ bun run .kiro/framework/generate-artifacts.ts path/to/spec.md project-name
 
 ## Node Development Patterns
 
-### Universal Node Pattern (Zero Dependencies)
+### Standard Node Pattern (All nodes in @workscript/nodes)
+
+All nodes follow the same pattern and go in `/packages/nodes/src/`:
 
 ```typescript
-import { WorkflowNode } from '../src/types';
-import type { ExecutionContext, EdgeMap } from '../src/types';
+// /packages/nodes/src/MathNode.ts
+import { WorkflowNode } from '@workscript/engine';
+import type { ExecutionContext, EdgeMap } from '@workscript/engine';
 
 export class MathNode extends WorkflowNode {
   metadata = {
     id: 'math',
     name: 'Math Operations',
     version: '1.0.0',
-    description: 'Universal math node - performs basic mathematical operations',
+    description: 'Performs basic mathematical operations',
     inputs: ['operation', 'values'],
     outputs: ['result'],
     ai_hints: {
@@ -774,9 +799,10 @@ export class MathNode extends WorkflowNode {
 export default MathNode;
 ```
 
-### API Server Node Pattern (Server Dependencies)
+### Server Node Pattern (with dependencies)
 
 ```typescript
+// /packages/nodes/src/FileSystemNode.ts
 import { WorkflowNode } from '@workscript/engine';
 import type { ExecutionContext, EdgeMap } from '@workscript/engine';
 import fs from 'fs/promises';
@@ -786,7 +812,7 @@ export class FileSystemNode extends WorkflowNode {
     id: 'filesystem',
     name: 'File System Operations',
     version: '1.0.0',
-    description: 'Server-specific file system operations',
+    description: 'Server-side file system operations',
     inputs: ['operation', 'path', 'content'],
     outputs: ['result', 'content', 'exists'],
     ai_hints: {
@@ -851,84 +877,25 @@ export class FileSystemNode extends WorkflowNode {
 export default FileSystemNode;
 ```
 
-### Frontend Node Pattern (Browser APIs)
+### Adding a New Node
 
-```typescript
-import { WorkflowNode } from '@workscript/engine';
-import type { ExecutionContext, EdgeMap } from '@workscript/engine';
+1. Create the node file in `/packages/nodes/src/` (or appropriate subdirectory)
+2. Export the node in `/packages/nodes/src/index.ts`:
+   ```typescript
+   // Add import
+   import MyNewNode from './MyNewNode';
 
-export class LocalStorageNode extends WorkflowNode {
-  metadata = {
-    id: 'localStorage',
-    name: 'Local Storage Operations',
-    version: '1.0.0',
-    description: 'Client-specific browser storage operations',
-    inputs: ['operation', 'key', 'value'],
-    outputs: ['value', 'success'],
-    ai_hints: {
-      purpose: 'Interact with browser localStorage',
-      when_to_use: 'When you need to store or retrieve data in the browser',
-      expected_edges: ['success', 'error', 'found', 'not_found'],
-      example_usage: '{"storage-1": {"operation": "get", "key": "userData", "found?": "process"}}',
-      example_config: '{"operation": "get|set|remove|clear", "key?": "string", "value?": "any"}',
-      get_from_state: [],
-      post_to_state: ['storageValue', 'storageKey']
-    }
-  };
+   // Add to ALL_NODES array
+   export const ALL_NODES = [
+     // ... existing nodes
+     MyNewNode,
+   ];
 
-  async execute(context: ExecutionContext, config?: any): Promise<EdgeMap> {
-    const { operation, key, value } = config || {};
-
-    if (!operation) {
-      return {
-        error: () => ({ error: 'Missing operation' })
-      };
-    }
-
-    try {
-      switch (operation) {
-        case 'get': {
-          if (!key) {
-            return {
-              error: () => ({ error: 'Missing key for get operation' })
-            };
-          }
-          const data = localStorage.getItem(key);
-          context.state.storageValue = data;
-          return {
-            [data !== null ? 'found' : 'not_found']: () => ({ value: data })
-          };
-        }
-        case 'set': {
-          if (!key) {
-            return {
-              error: () => ({ error: 'Missing key for set operation' })
-            };
-          }
-          localStorage.setItem(key, JSON.stringify(value));
-          context.state.storageKey = key;
-          return {
-            success: () => ({ key, value })
-          };
-        }
-        // ... more operations
-        default:
-          return {
-            error: () => ({ error: `Unknown operation: ${operation}` })
-          };
-      }
-    } catch (error) {
-      return {
-        error: () => ({
-          error: error instanceof Error ? error.message : 'LocalStorage operation failed'
-        })
-      };
-    }
-  }
-}
-
-export default LocalStorageNode;
-```
+   // Add individual export
+   export { MyNewNode };
+   ```
+3. Rebuild: `bun run build:nodes`
+4. Test the node
 
 ## Package Structure (Current State)
 
@@ -937,42 +904,62 @@ workscript/
 ├── .kiro/
 │   ├── framework/              # Documentation generation framework
 │   └── specs/
-│       └── json-workflow-engine/
-│           ├── design.md       # 📘 COMPREHENSIVE ARCHITECTURAL GUIDE (2,300+ lines)
-│           ├── requirements.md # User stories and acceptance criteria
-│           └── tasks.md        # Implementation task breakdown
+│       ├── json-workflow-engine/
+│       │   ├── design.md       # 📘 COMPREHENSIVE ARCHITECTURAL GUIDE
+│       │   ├── requirements.md # User stories and acceptance criteria
+│       │   └── tasks.md        # Implementation task breakdown
+│       └── new_nodes/          # Server-only migration specs
+│           ├── requirements.md # Migration requirements
+│           └── implementation_plan.md # Migration tasks
 │
 ├── packages/                   # ✅ Shared Core Libraries
-│   ├── engine/                 # @workscript/engine (Core workflow engine)
+│   ├── engine/                 # @workscript/engine (Pure orchestration)
 │   │   ├── src/
 │   │   │   ├── engine/         # ExecutionEngine with lifecycle hooks
 │   │   │   ├── parser/         # WorkflowParser with AST parsing
 │   │   │   ├── state/          # StateManager + StateResolver
-│   │   │   ├── registry/       # NodeRegistry with multi-package discovery
+│   │   │   ├── registry/       # NodeRegistry (server-only)
 │   │   │   ├── hooks/          # HookManager for lifecycle events
 │   │   │   ├── events/         # EventEmitter and WebSocket types
 │   │   │   ├── types/          # Complete TypeScript type definitions
 │   │   │   └── schemas/        # JSON Schema for validation
-│   │   ├── nodes/              # Universal nodes (zero dependencies)
-│   │   │   ├── MathNode.ts
+│   │   └── package.json        # NO node implementations here
+│   │
+│   ├── nodes/                  # @workscript/nodes ✨ ALL NODES HERE
+│   │   ├── src/
+│   │   │   ├── MathNode.ts     # Core nodes
 │   │   │   ├── LogicNode.ts
 │   │   │   ├── DataTransformNode.ts
 │   │   │   ├── StateSetterNode.ts
 │   │   │   ├── EmptyNode.ts
 │   │   │   ├── LogNode.ts
-│   │   │   └── data/           # Data manipulation library
-│   │   │       ├── FilterNode.ts
-│   │   │       ├── SortNode.ts
-│   │   │       ├── AggregateNode.ts
-│   │   │       ├── SummarizeNode.ts
-│   │   │       ├── LimitNode.ts
-│   │   │       ├── SplitOutNode.ts
-│   │   │       ├── RemoveDuplicatesNode.ts
-│   │   │       ├── EditFieldsNode.ts
-│   │   │       ├── TransformObjectNode.ts
-│   │   │       ├── JSONExtractNode.ts
-│   │   │       ├── CompareDatasetsNode.ts
-│   │   │       └── SwitchNode.ts
+│   │   │   ├── FileSystemNode.ts  # Server nodes
+│   │   │   ├── DatabaseNode.ts
+│   │   │   ├── AuthNode.ts
+│   │   │   ├── data/           # Data manipulation nodes
+│   │   │   │   ├── FilterNode.ts
+│   │   │   │   ├── SortNode.ts
+│   │   │   │   ├── AggregateNode.ts
+│   │   │   │   ├── SummarizeNode.ts
+│   │   │   │   ├── LimitNode.ts
+│   │   │   │   ├── SplitOutNode.ts
+│   │   │   │   ├── RemoveDuplicatesNode.ts
+│   │   │   │   ├── EditFieldsNode.ts
+│   │   │   │   ├── TransformObjectNode.ts
+│   │   │   │   ├── JSONExtractNode.ts
+│   │   │   │   ├── CompareDatasetsNode.ts
+│   │   │   │   ├── SwitchNode.ts
+│   │   │   │   └── ...
+│   │   │   ├── custom/         # Custom integrations
+│   │   │   │   ├── google/gmail/
+│   │   │   │   │   ├── googleConnect.ts
+│   │   │   │   │   ├── sendEmail.ts
+│   │   │   │   │   └── listEmails.ts
+│   │   │   │   └── zoca/
+│   │   │   │       ├── toateContactele.ts
+│   │   │   │       ├── fiecareElement.ts
+│   │   │   │       └── aplicaFiltre.ts
+│   │   │   └── index.ts        # Exports ALL_NODES array
 │   │   └── package.json
 │   │
 │   ├── ui/                     # @workscript/ui (Shared UI components)
@@ -983,98 +970,43 @@ workscript/
 │   │   │   └── utils.ts        # cn() utility
 │   │   └── package.json
 │   │
-│   ├── config/                 # @workscript/config (Shared configs)
-│   │   ├── eslint/
-│   │   ├── typescript/
-│   │   ├── tailwind/
-│   │   └── package.json
-│   │
-│   └── utils/                  # @workscript/utils (Shared utilities)
+│   └── config/                 # @workscript/config (Shared configs)
+│       ├── eslint/
+│       ├── typescript/
+│       ├── tailwind/
 │       └── package.json
 │
 ├── apps/                       # ✅ Applications
-│   ├── api/                    # Plugin-based API server (Hono)
+│   ├── api/                    # Workflow execution server (Hono)
 │   │   ├── src/
 │   │   │   ├── index.ts        # Hono API entry point
 │   │   │   ├── plugins/        # SaaS plugins
-│   │   │   │   ├── workscript/ # Workscript plugin
-│   │   │   │   │   ├── routes/ # API routes
-│   │   │   │   │   ├── services/ # Business logic
-│   │   │   │   │   └── schema/ # Database schema
-│   │   │   │   └── ...
+│   │   │   │   └── workscript/ # Workscript plugin
+│   │   │   │       ├── routes/ # API routes
+│   │   │   │       ├── services/ # Business logic (uses @workscript/nodes)
+│   │   │   │       └── schema/ # Database schema
 │   │   │   ├── shared-services/ # Shared services
 │   │   │   │   ├── WebSocketManager.ts
-│   │   │   │   ├── CronScheduler.ts
-│   │   │   │   └── ...
+│   │   │   │   └── CronScheduler.ts
 │   │   │   └── middleware/     # API middleware
-│   │   ├── nodes/              # API-specific nodes
-│   │   │   ├── FileSystemNode.ts
-│   │   │   ├── DatabaseNode.ts
-│   │   │   ├── AuthNode.ts
-│   │   │   └── custom/         # Custom integrations
-│   │   │       ├── google/gmail/
-│   │   │       └── zoca/
-│   │   └── package.json
+│   │   └── package.json        # Depends on @workscript/nodes
 │   │
-│   ├── frontend/               # Vite + React SPA
-│   │   ├── src/
-│   │   │   ├── App.tsx
-│   │   │   ├── components/
-│   │   │   ├── hooks/
-│   │   │   └── services/
-│   │   ├── nodes/              # Frontend-specific nodes
-│   │   │   ├── LocalStorageNode.ts
-│   │   │   ├── FetchNode.ts
-│   │   │   ├── DOMNode.ts
-│   │   │   └── ui/             # UI workflow nodes
-│   │   │       ├── FormUINode.ts
-│   │   │       ├── DataTableUINode.ts
-│   │   │       ├── ChartUINode.ts
-│   │   │       ├── DashboardUINode.ts
-│   │   │       ├── FileProcessorUINode.ts
-│   │   │       └── ActionButtonGroupUINode.ts
-│   │   └── package.json
-│   │
-│   ├── docs/                   # Documentation site (optional)
-│   ├── mobile/                 # Mobile app (future)
-│   └── client/                 # Placeholder (not fully populated)
+│   └── frontend/               # Management UI (Vite + React)
+│       ├── src/
+│       │   ├── App.tsx
+│       │   ├── components/     # UI components
+│       │   ├── hooks/          # React hooks
+│       │   └── services/       # API clients (NO local execution)
+│       └── package.json        # NO @workscript/nodes dependency
 │
 ├── server/                     # ⚠️ LEGACY - Real Estate CRM API
-│   ├── src/                    # Legacy Hono API
+│   ├── src/                    # Hono API
 │   │   ├── index.ts
 │   │   ├── api/                # CRM routes
-│   │   ├── services/           # CRM services
+│   │   ├── services/           # CRM services (uses @workscript/nodes)
 │   │   ├── db/                 # CRM schema (13+ tables)
-│   │   ├── middleware/
-│   │   └── lib/
-│   ├── nodes/                  # Legacy server nodes
-│   │   ├── FileSystemNode.ts
-│   │   ├── DatabaseNode.ts
-│   │   ├── AuthNode.ts
-│   │   └── custom/
-│   │       ├── google/gmail/
-│   │       └── zoca/
-│   └── package.json
-│
-├── client/                     # ⚠️ LEGACY - Reference frontend
-│   ├── src/                    # Legacy React app
-│   │   ├── App.tsx
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   └── services/
-│   ├── nodes/                  # Legacy client nodes
-│   │   ├── LocalStorageNode.ts
-│   │   ├── FetchNode.ts
-│   │   ├── DOMNode.ts
-│   │   ├── ui/
-│   │   │   ├── FormUINode.ts
-│   │   │   ├── DataTableUINode.ts
-│   │   │   ├── ChartUINode.ts
-│   │   │   └── ...
-│   │   └── utils/
-│   │       ├── ButtonNode.ts
-│   │       └── ...
-│   └── package.json
+│   │   └── middleware/
+│   └── package.json            # Depends on @workscript/nodes
 │
 ├── package.json                # Root workspace config
 ├── CLAUDE.md                   # This file - guidance for Claude Code
@@ -1084,7 +1016,7 @@ workscript/
 
 **Key:**
 - ✅ **Production-ready** - Active development, use for new features
-- ⚠️ **Legacy** - Kept for Real Estate CRM features, reference only
+- ⚠️ **Legacy** - Kept for Real Estate CRM features
 
 ## Technology Stack
 
@@ -1114,13 +1046,20 @@ workscript/
 
 ### ✅ Production-Ready Features
 
-**Core Engine:**
+**Core Engine (`@workscript/engine`):**
 - ✅ ExecutionEngine with lifecycle hooks
 - ✅ WorkflowParser with AST-like parsing
 - ✅ StateManager with snapshots, watchers, change detection
 - ✅ StateResolver with `$.key` syntax
-- ✅ NodeRegistry with multi-package discovery
+- ✅ NodeRegistry with simplified server-only registration
 - ✅ HookManager with comprehensive event system
+
+**Consolidated Nodes (`@workscript/nodes`):**
+- ✅ 35+ nodes in a single package
+- ✅ Core nodes (Math, Logic, DataTransform, etc.)
+- ✅ Data manipulation nodes (Filter, Sort, Aggregate, etc.)
+- ✅ Server nodes (FileSystem, Database, Auth)
+- ✅ Custom integrations (Gmail, Zoca)
 
 **Advanced Features:**
 - ✅ State setter nodes (`$.path` syntax)
@@ -1128,31 +1067,78 @@ workscript/
 - ✅ WebSocket real-time event streaming
 - ✅ Database persistence (workflows, executions, automations)
 - ✅ CronScheduler for automated execution
-- ✅ UI workflow system with UINode base class
-
-**Node Libraries:**
-- ✅ Universal nodes (17+ nodes)
-- ✅ Server nodes (6+ nodes + custom integrations)
-- ✅ Client nodes (12+ nodes including UI)
 
 **Infrastructure:**
-- ✅ REST API with Hono
+- ✅ REST API with Hono (server-only workflow execution)
 - ✅ WebSocket server
 - ✅ Database layer with Drizzle ORM
+- ✅ Management UI (frontend for workflow management)
 - ✅ Middleware (security, logging, error handling)
 
 ### 🎯 Development Focus
 
-**No migration needed - focus on:**
-1. **New Features** - Add domain-specific nodes and integrations
-2. **Performance** - Optimize execution and state management
-3. **Monitoring** - Enhance observability with hooks and WebSocket
-4. **Documentation** - Expand API documentation and examples
+**Server-only architecture complete - focus on:**
+1. **New Node Types** - Add nodes to `/packages/nodes/src/`
+2. **Custom Integrations** - Extend `/packages/nodes/src/custom/`
+3. **Management UI** - Enhance frontend workflow management
+4. **Performance** - Optimize execution and state management
 5. **Testing** - Increase test coverage
 
 ---
 
-**Document Version:** 2.0.0
-**Last Updated:** 2025-01-18
-**Status:** Current Implementation - Production Ready
+## Migration Notes (November 2025)
+
+### What Changed
+
+The project migrated from a **distributed multi-environment node architecture** to a **server-only consolidated architecture**:
+
+**Before:**
+- Nodes spread across 5 locations (`/packages/engine/nodes/`, `/apps/api/nodes/`, `/apps/frontend/nodes/`, `/server/nodes/`, `/client/nodes/`)
+- NodeRegistry supported 3 environments (universal, server, client)
+- Frontend could execute workflows locally
+
+**After:**
+- All 35+ nodes consolidated in `/packages/nodes/` (`@workscript/nodes`)
+- Engine is pure orchestration (no node implementations)
+- NodeRegistry simplified to server-only
+- Frontend is management UI only (all execution via API)
+- Legacy `/client/` directory removed
+
+### Benefits
+
+1. **Single Source of Truth** - All nodes in one package
+2. **Simpler Imports** - `import { ALL_NODES } from '@workscript/nodes'`
+3. **Better Security** - Server-only execution prevents client tampering
+4. **Easier Maintenance** - No environment-specific discovery logic
+5. **Cleaner Architecture** - Clear separation of concerns
+
+### Migration Path
+
+If updating from the old architecture:
+
+1. **Update node imports:**
+   ```typescript
+   // Old
+   import { UNIVERSAL_NODES } from '@workscript/engine/nodes';
+
+   // New
+   import { ALL_NODES } from '@workscript/nodes';
+   ```
+
+2. **Update NodeRegistry usage:**
+   ```typescript
+   // Old
+   await registry.discoverFromPackages('api');
+
+   // New
+   await registry.registerFromArray(ALL_NODES);
+   ```
+
+3. **Remove client-side workflow execution** - Use API calls instead
+
+---
+
+**Document Version:** 3.0.0
+**Last Updated:** 2025-11-24
+**Status:** Server-Only Architecture - Production Ready
 

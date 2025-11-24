@@ -6,10 +6,14 @@ import type { ExecutionContext, EdgeMap } from '@workscript/engine';
  *
  * NOTE: This node requires ContactRepository to be provided through dependency injection.
  * The repository should be passed via the execution context or node config.
- * This is a legacy Zoca integration node that depends on the CRM database layer.
+ * This is a Zoca CRM integration node that depends on the CRM database layer.
  *
- * TODO: After migration, this node will need to be updated to use the proper
- * database abstraction layer or API endpoint from the server package.
+ * **Architecture Note (November 2025):** This node is part of the consolidated
+ * `@workscript/nodes` package. It executes server-side via the API and receives
+ * the ContactRepository through dependency injection from the server's CRM layer.
+ *
+ * The server package (/server) provides the repository instances when executing
+ * workflows that use this node.
  */
 export class ToateContacteleNode extends WorkflowNode {
   metadata = {

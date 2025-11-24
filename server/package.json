@@ -22,7 +22,8 @@
     "hono": "^4.7.11",
     "mysql2": "^3.11.5",
     "node-html-parser": "^6.1.13",
-    "@workscript/engine": "workspace:*"
+    "@workscript/engine": "workspace:*",
+    "@workscript/nodes": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "latest",

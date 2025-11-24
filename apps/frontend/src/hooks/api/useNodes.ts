@@ -7,6 +7,11 @@
  * - Fetching detailed metadata for specific nodes
  * - Executing nodes in isolation for testing
  *
+ * **Architecture Note (November 2025):** With server-only execution, all nodes
+ * are served from `@workscript/nodes` package via the API. The frontend uses
+ * these hooks to display and interact with nodes but does NOT execute workflows
+ * locally. All workflow execution happens server-side.
+ *
  * These hooks automatically handle:
  * - Loading states
  * - Error handling
@@ -81,8 +86,11 @@ export const nodesKeys = {
 /**
  * Hook for fetching all available workflow nodes
  *
- * Retrieves the complete list of nodes from the Workscript registry with optional filtering.
- * The data is automatically cached and can be filtered by source (universal/server/client).
+ * Retrieves the complete list of nodes from the Workscript registry (35+ nodes
+ * from `@workscript/nodes` package) with optional filtering.
+ *
+ * **Note:** All nodes execute server-side. Source filtering is kept for backward
+ * compatibility and UI organization but all nodes are available via API execution.
  *
  * **Features:**
  * - Automatic caching with React Query
@@ -93,21 +101,21 @@ export const nodesKeys = {
  *
  * **Example Usage:**
  * ```typescript
- * // Fetch all nodes
+ * // Fetch all nodes (recommended)
  * const { data: nodes, isLoading, error, refetch } = useNodes();
- *
- * // Fetch only universal nodes
- * const { data: universalNodes } = useNodes({ source: NodeSource.UNIVERSAL });
  *
  * // Search for specific nodes
  * const { data: searchResults } = useNodes({ search: 'math' });
+ *
+ * // Filter by category
+ * const { data: dataNodes } = useNodes({ category: 'data' });
  *
  * // Disable query until user action
  * const { data, refetch } = useNodes(undefined, { enabled: false });
  * ```
  *
  * @param params - Optional filter parameters
- * @param params.source - Filter by node source (universal, server, client)
+ * @param params.source - Filter by node source (kept for backward compatibility)
  * @param params.search - Search query to match against node name, ID, or description
  * @param params.category - Filter by node category
  * @param params.tags - Filter by node tags
@@ -343,18 +351,22 @@ export function usePrefetchNodeMetadata() {
 /**
  * Hook for filtering nodes by source on the client side
  *
- * Useful when you have all nodes loaded and want to filter by source without
- * making additional API calls.
+ * Useful when you have all nodes loaded and want to filter by source for
+ * UI organization purposes.
+ *
+ * **Note (November 2025):** With server-only execution, source filtering is
+ * kept for backward compatibility and UI organization. All nodes execute via API.
  *
  * **Example Usage:**
  * ```typescript
  * const { data: allNodes } = useNodes();
- * const universalNodes = useFilteredNodes(allNodes, NodeSource.UNIVERSAL);
+ * const serverNodes = useFilteredNodes(allNodes, NodeSource.SERVER);
  * ```
  *
  * @param nodes - Array of node metadata
- * @param source - Node source to filter by
+ * @param source - Node source to filter by (kept for backward compatibility)
  * @returns Filtered array of nodes
+ * @deprecated Source filtering is kept for UI organization. All nodes execute server-side.
  */
 export function useFilteredNodes(nodes: NodeMetadata[] | undefined, source?: NodeSource): NodeMetadata[] {
   if (!nodes) return [];

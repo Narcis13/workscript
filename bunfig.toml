@@ -1,6 +1,6 @@
 [install]
 # Workspace configuration
-workspaces = ["./packages/*", "./apps/*", "./server", "./client"]
+workspaces = ["./packages/*", "./apps/*", "./server"]
 
 [module]
 # Module resolution configuration for workspace packages

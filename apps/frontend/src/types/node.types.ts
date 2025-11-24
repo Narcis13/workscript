@@ -13,15 +13,28 @@ import type { NodeMetadata as EngineNodeMetadata, AIHints, ExecutionContext, Edg
  * Node source enum
  *
  * Indicates where a node can be executed.
+ *
+ * **NOTE (November 2025):** With the server-only architecture migration,
+ * all workflow nodes now execute exclusively on the server via the API.
+ * The `CLIENT` and `UNIVERSAL` values are kept for backward compatibility
+ * but new code should treat all nodes as `SERVER`.
+ *
+ * @see .kiro/specs/new_nodes/ for architecture details
  */
 export enum NodeSource {
-  /** Universal nodes (run anywhere) */
+  /**
+   * Universal nodes (run anywhere)
+   * @deprecated All nodes now execute server-side. Kept for backward compatibility.
+   */
   UNIVERSAL = 'universal',
 
-  /** Server-specific nodes (only on API server) */
+  /** Server-specific nodes (only on API server) - This is now the only execution environment */
   SERVER = 'server',
 
-  /** Client-specific nodes (only in browser) */
+  /**
+   * Client-specific nodes (only in browser)
+   * @deprecated Client-side execution has been removed. All workflows execute via API.
+   */
   CLIENT = 'client'
 }
 
@@ -223,12 +236,20 @@ export interface NodeFilterOptions {
  * Node discovery result
  *
  * Result of discovering nodes from packages.
+ *
+ * **NOTE (November 2025):** With the server-only architecture,
+ * all nodes are now discovered from `@workscript/nodes` package.
+ * The `bySource` breakdown is kept for backward compatibility.
  */
 export interface NodeDiscoveryResult {
   /** Total number of nodes found */
   total: number;
 
-  /** Nodes by source */
+  /**
+   * Nodes by source
+   * @deprecated With server-only architecture, all nodes are SERVER nodes.
+   * The universal/client values are kept for backward compatibility only.
+   */
   bySource: {
     universal: number;
     server: number;
@@ -241,7 +262,7 @@ export interface NodeDiscoveryResult {
   /** Discovery timestamp */
   discoveredAt: Date;
 
-  /** Packages scanned */
+  /** Packages scanned - Now typically just ['@workscript/nodes'] */
   packagesScanned: string[];
 }
 

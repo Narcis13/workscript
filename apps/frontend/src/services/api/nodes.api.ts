@@ -7,6 +7,16 @@
  * - Fetching detailed metadata for specific nodes
  * - Executing nodes in isolation for testing purposes
  *
+ * **Architecture Note (November 2025):**
+ * With the server-only architecture migration, all workflow nodes now execute
+ * exclusively on the API server via `@workscript/nodes` package. The frontend
+ * serves as a management UI only - it does NOT execute workflows locally.
+ *
+ * All node filtering by "source" (universal/server/client) is kept for backward
+ * compatibility, but all nodes are now effectively server nodes.
+ *
+ * @see .kiro/specs/new_nodes/ for architecture details
+ *
  * Requirements Coverage:
  * - Requirement 1: Node Library Browser
  * - Requirement 2: Node Detail View and Metadata Display
@@ -104,25 +114,27 @@ export interface ExecuteNodeResponse {
  * Fetch all available nodes from the registry
  *
  * Retrieves the complete list of workflow nodes available in the Workscript engine.
- * Nodes can be filtered by source (universal/server/client) to show only nodes
- * that can execute in specific environments.
+ * All nodes are served from the `@workscript/nodes` package on the server.
+ *
+ * **Architecture Note:** With server-only execution, source filtering is kept for
+ * backward compatibility but all 35+ nodes execute exclusively on the API server.
  *
  * **API Endpoint:** `GET /workscript/workflows/allnodes`
  *
  * **Example Usage:**
  * ```typescript
- * // Fetch all nodes
+ * // Fetch all nodes (recommended)
  * const allNodes = await fetchAllNodes();
- *
- * // Fetch only universal nodes
- * const universalNodes = await fetchAllNodes({ source: NodeSource.UNIVERSAL });
  *
  * // Search for specific nodes
  * const mathNodes = await fetchAllNodes({ search: 'math' });
+ *
+ * // Filter by category
+ * const dataNodes = await fetchAllNodes({ category: 'data' });
  * ```
  *
  * @param params - Optional filter parameters
- * @param params.source - Filter by node source (universal, server, client)
+ * @param params.source - Filter by node source (kept for backward compatibility)
  * @param params.search - Search query to match against node name, ID, or description
  * @param params.category - Filter by node category
  * @param params.tags - Filter by node tags
@@ -131,7 +143,6 @@ export interface ExecuteNodeResponse {
  * @throws {AxiosError} If the API request fails
  *
  * @see {@link NodeMetadata} for the structure of returned node data
- * @see {@link NodeSource} for available source filter values
  */
 export async function fetchAllNodes(params?: FetchNodesParams): Promise<NodeMetadata[]> {
   try {
@@ -311,42 +322,41 @@ export async function executeNode(
 // ============================================
 
 /**
- * Check if a node is available in the current environment
+ * Check if a node is available for execution via the API
  *
- * Determines whether a node can be executed based on its source and the current
- * execution environment (client-side browser vs. server-side API).
+ * **Architecture Note (November 2025):** With server-only execution, all nodes
+ * are now available via the API regardless of their legacy "source" designation.
+ * This function is kept for backward compatibility but now always returns true
+ * since all workflow execution happens server-side.
  *
  * @param node - Node metadata to check
- * @returns true if the node is available in the current environment
+ * @returns true - all nodes are now available via API execution
  *
  * @example
  * ```typescript
  * const mathNode = await fetchNodeMetadata('math');
  * const available = isNodeAvailable(mathNode);
- * console.log('Math node available:', available); // true (universal nodes always available)
+ * console.log('Math node available:', available); // true (all nodes available via API)
  *
  * const fsNode = await fetchNodeMetadata('filesystem');
- * console.log('Filesystem node available:', isNodeAvailable(fsNode)); // false (server-only)
+ * console.log('Filesystem node available:', isNodeAvailable(fsNode)); // true (executes on server)
  * ```
+ *
+ * @deprecated This function is kept for backward compatibility. With server-only
+ * execution, all nodes are available via the API. Use the API directly to execute
+ * workflows instead of checking availability client-side.
  */
 export function isNodeAvailable(node: NodeMetadata): boolean {
-  // Universal nodes are always available
-  if (node.source === 'universal') {
-    return true;
-  }
-
-  // Client nodes are available in browser
-  if (node.source === 'client') {
-    return typeof window !== 'undefined';
-  }
-
-  // Server nodes are not available in browser
-  if (node.source === 'server') {
-    return typeof window === 'undefined';
-  }
-
-  // Unknown source, assume not available
-  return false;
+  // With server-only architecture, all nodes are available via API execution
+  // The frontend never executes workflows locally anymore
+  //
+  // Legacy logic kept for reference:
+  // - Universal nodes were available everywhere
+  // - Client nodes were browser-only
+  // - Server nodes were API-only
+  //
+  // Now: All nodes execute on the server via API
+  return true;
 }
 
 /**
@@ -457,7 +467,11 @@ export function filterNodesBySearch(nodes: NodeMetadata[], query: string): NodeM
 /**
  * Filter nodes by source
  *
- * Client-side filtering of nodes by their execution environment.
+ * Client-side filtering of nodes by their legacy source designation.
+ *
+ * **Architecture Note (November 2025):** With server-only execution, source
+ * filtering is kept for backward compatibility and UI organization purposes only.
+ * All nodes execute on the server regardless of their source designation.
  *
  * @param nodes - Array of node metadata to filter
  * @param source - Node source to filter by
@@ -466,9 +480,12 @@ export function filterNodesBySearch(nodes: NodeMetadata[], query: string): NodeM
  * @example
  * ```typescript
  * const allNodes = await fetchAllNodes();
- * const universalNodes = filterNodesBySource(allNodes, NodeSource.UNIVERSAL);
+ * // Filter by category for UI display (all nodes execute server-side)
  * const serverNodes = filterNodesBySource(allNodes, NodeSource.SERVER);
  * ```
+ *
+ * @deprecated Source filtering is kept for backward compatibility.
+ * All nodes now execute server-side via the API.
  */
 export function filterNodesBySource(nodes: NodeMetadata[], source: NodeSource): NodeMetadata[] {
   return nodes.filter((node) => node.source === source);

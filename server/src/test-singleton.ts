@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
 /**
- * Test script for WorkflowService singleton and NodeRegistry auto-discovery
+ * Test script for WorkflowService singleton and node registration
  * This verifies that:
  * 1. WorkflowService creates a proper singleton
- * 2. NodeRegistry discovers nodes from shared/ and server/ packages
- * 3. All nodes are properly registered and accessible
+ * 2. All nodes from @workscript/nodes are properly registered
+ * 3. All nodes are properly accessible
  */
 
 import { WorkflowService } from './services/WorkflowService'
@@ -16,17 +16,17 @@ async function testSingletonBehavior() {
   try {
     console.log('📞 Getting first instance of WorkflowService...')
     const instance1 = await WorkflowService.getInstance()
-    
+
     console.log('📞 Getting second instance of WorkflowService...')
     const instance2 = await WorkflowService.getInstance()
-    
+
     // Test singleton behavior
     const isSingleton = instance1 === instance2
     console.log(`✅ Singleton test: ${isSingleton ? 'PASSED' : 'FAILED'}`)
     console.log(`   - Instance 1: ${instance1.constructor.name}`)
     console.log(`   - Instance 2: ${instance2.constructor.name}`)
     console.log(`   - Same reference: ${isSingleton}\n`)
-    
+
     return instance1
   } catch (error) {
     console.error('❌ Singleton test failed:', error)
@@ -35,7 +35,7 @@ async function testSingletonBehavior() {
 }
 
 async function testNodeDiscovery(workflowService: any) {
-  console.log('🔍 Testing Node Discovery and Registration...\n')
+  console.log('🔍 Testing Node Registration from @workscript/nodes...\n')
 
   try {
     // Get service information
@@ -44,8 +44,8 @@ async function testNodeDiscovery(workflowService: any) {
     console.log(`   - Environment: ${serviceInfo.environment}`)
     console.log(`   - Initialized: ${serviceInfo.initialized}`)
     console.log(`   - Total Nodes: ${serviceInfo.totalNodes}`)
-    console.log(`   - Universal Nodes: ${serviceInfo.universalNodes}`)
-    console.log(`   - Server Nodes: ${serviceInfo.serverNodes}\n`)
+    console.log(`   - Server Nodes: ${serviceInfo.serverNodes}`)
+    console.log(`   - Package: ${serviceInfo.package}\n`)
 
     // Get all available nodes
     const allNodes = workflowService.getAvailableNodes()
@@ -55,20 +55,15 @@ async function testNodeDiscovery(workflowService: any) {
     })
     console.log()
 
-    // Get universal nodes (from shared package)
-    const universalNodes = workflowService.getNodesBySource('universal')
-    console.log(`🌍 Universal Nodes from /shared/nodes/ (${universalNodes.length}):`)
-    universalNodes.forEach((node: any, index: number) => {
+    // Get server nodes
+    const serverNodes = workflowService.getServerNodes()
+    console.log(`🖥️  Server Nodes from @workscript/nodes (${serverNodes.length}):`)
+    serverNodes.slice(0, 10).forEach((node: any, index: number) => {
       console.log(`   ${index + 1}. ${node.id} - ${node.name} (v${node.version})`)
     })
-    console.log()
-
-    // Get server-specific nodes
-    const serverNodes = workflowService.getNodesBySource('server')
-    console.log(`🖥️  Server Nodes from /server/nodes/ (${serverNodes.length}):`)
-    serverNodes.forEach((node: any, index: number) => {
-      console.log(`   ${index + 1}. ${node.id} - ${node.name} (v${node.version})`)
-    })
+    if (serverNodes.length > 10) {
+      console.log(`   ... and ${serverNodes.length - 10} more nodes`)
+    }
     console.log()
 
     // Test specific node availability
@@ -82,11 +77,10 @@ async function testNodeDiscovery(workflowService: any) {
 
     return {
       totalNodes: allNodes.length,
-      universalNodes: universalNodes.length,
       serverNodes: serverNodes.length
     }
   } catch (error) {
-    console.error('❌ Node discovery test failed:', error)
+    console.error('❌ Node registration test failed:', error)
     throw error
   }
 }
@@ -126,7 +120,7 @@ async function runAllTests() {
     // Test 1: Singleton behavior
     const workflowService = await testSingletonBehavior()
 
-    // Test 2: Node discovery and registration
+    // Test 2: Node registration
     const nodeStats = await testNodeDiscovery(workflowService)
 
     // Test 3: Node metadata retrieval
@@ -137,9 +131,8 @@ async function runAllTests() {
     console.log()
     console.log('📊 Final Summary:')
     console.log(`   - Singleton: ✅ Working correctly`)
-    console.log(`   - Node Discovery: ✅ Found ${nodeStats.totalNodes} total nodes`)
-    console.log(`   - Universal Nodes: ✅ Found ${nodeStats.universalNodes} from /shared/nodes/`)
-    console.log(`   - Server Nodes: ✅ Found ${nodeStats.serverNodes} from /server/nodes/`)
+    console.log(`   - Node Registration: ✅ Found ${nodeStats.totalNodes} total nodes from @workscript/nodes`)
+    console.log(`   - Server Nodes: ✅ ${nodeStats.serverNodes} server-compatible nodes available`)
     console.log()
     console.log('🔧 WorkflowService is ready for production use!')
 
