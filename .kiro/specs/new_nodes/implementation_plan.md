@@ -277,24 +277,27 @@ This document provides a concrete, actionable implementation plan for migrating 
 
 ### 4.1 Simplify NodeRegistry
 
-- [ ] **Task 4.1.1: Backup NodeRegistry.ts**
+- [x] **Task 4.1.1: Backup NodeRegistry.ts**
   - Copy current `/packages/engine/src/registry/NodeRegistry.ts`
   - Save as `NodeRegistry.ts.backup` temporarily
   - _Requirements: 4_
+  - ✅ **COMPLETED:** Backup created at `NodeRegistry.ts.backup`
 
-- [ ] **Task 4.1.2: Remove environment type complexity**
+- [x] **Task 4.1.2: Remove environment type complexity**
   - Open `/packages/engine/src/registry/NodeRegistry.ts`
   - Simplify or remove `Environment` type (keep only 'server' or remove entirely)
   - Update type definitions
   - _Requirements: 4_
+  - ✅ **COMPLETED:** Environment type removed, NodeSource simplified to 'server' only
 
-- [ ] **Task 4.1.3: Simplify discoverFromPackages()**
+- [x] **Task 4.1.3: Simplify discoverFromPackages()**
   - Remove or simplify environment parameter
   - Update method signature to not require environment
   - Update implementation to only call getDiscoveryPaths() with 'server'
   - _Requirements: 4_
+  - ✅ **COMPLETED:** Method simplified, environment parameter removed
 
-- [ ] **Task 4.1.4: Update getDiscoveryPaths()**
+- [x] **Task 4.1.4: Update getDiscoveryPaths()**
   - Refactor to return only `/packages/nodes/` path:
     ```typescript
     private getDiscoveryPaths(): DiscoveryPath[] {
@@ -308,8 +311,9 @@ This document provides a concrete, actionable implementation plan for migrating 
     }
     ```
   - _Requirements: 4_
+  - ✅ **COMPLETED:** Method refactored to only return `/packages/nodes/` paths
 
-- [ ] **Task 4.1.5: Handle production builds**
+- [x] **Task 4.1.5: Handle production builds**
   - Update getDiscoveryPaths() to also check dist/:
     ```typescript
     const paths: DiscoveryPath[] = [
@@ -325,19 +329,22 @@ This document provides a concrete, actionable implementation plan for migrating 
     return paths;
     ```
   - _Requirements: 4, 9_
+  - ✅ **COMPLETED:** Production build support added, checks for dist/ directory
 
-- [ ] **Task 4.1.6: Remove legacy path references**
+- [x] **Task 4.1.6: Remove legacy path references**
   - Remove references to `/apps/frontend/nodes/`
   - Remove references to `/client/nodes/`
   - Remove references to `/server/nodes/`
   - Remove references to `/apps/api/src/nodes/`
   - _Requirements: 4, 17_
+  - ✅ **COMPLETED:** All legacy path references removed from getDiscoveryPaths()
 
-- [ ] **Task 4.1.7: Update discovery filtering**
+- [x] **Task 4.1.7: Update discovery filtering**
   - Ensure glob pattern is `**/*.{ts,js}`
   - Ensure test files are excluded
   - Ensure index.ts is excluded from node class loading
   - _Requirements: 4, 9_
+  - ✅ **COMPLETED:** Discovery filtering already in place and verified
 
 ### 4.2 Test NodeRegistry Changes
 

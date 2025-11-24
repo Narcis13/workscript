@@ -24,8 +24,8 @@ export class NodeRegistrationError extends Error {
   }
 }
 
-// Server-only architecture: all nodes are treated as 'server' nodes
-type NodeSource = 'server';
+type NodeSource = 'universal' | 'server' | 'client';
+type Environment = 'server' | 'client' | 'universal';
 
 interface NodeRegistration {
   nodeClass: typeof WorkflowNode;
@@ -53,7 +53,7 @@ export class NodeRegistry {
       const { StateSetterNode } = await import('../../nodes/StateSetterNode');
       await this.register(StateSetterNode, {
         singleton: false,
-        source: 'server'
+        source: 'universal'
       });
 
       this.builtInNodesRegistered = true;
@@ -119,7 +119,7 @@ export class NodeRegistry {
       nodeClass,
       metadata,
       singleton: options?.singleton ?? false,
-      source: options?.source ?? 'server'
+      source: options?.source ?? 'universal'
     });
 
     // If singleton, create the instance now
@@ -129,54 +129,64 @@ export class NodeRegistry {
   }
 
   /**
-   * Discover and register nodes from the nodes package
-   * Server-only architecture: all nodes are in /packages/nodes/
+   * Discover and register nodes from multiple package directories
+   * @param environment Target environment ('server' | 'client' | 'universal')
    */
-  async discoverFromPackages(): Promise<void> {
+  async discoverFromPackages(environment: Environment = 'universal'): Promise<void> {
     // Register built-in nodes first
     await this.ensureBuiltInNodes();
 
     // In browser environment, log warning and suggest manual registration
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
-      console.warn('File-based node discovery is not available in browser environment.');
+      console.warn('File-based node discovery is not available in browser environment. Use registerClientNodes() method instead.');
       return;
     }
 
-    const discoveryPaths = this.getDiscoveryPaths();
+    const discoveryPaths = this.getDiscoveryPaths(environment);
 
     for (const { path: discoveryPath, source } of discoveryPaths) {
       await this.discoverFromPath(discoveryPath, source);
     }
   }
 
+  /**
+   * Manually register client-specific nodes (for browser environments)
+   * @param nodeClasses Array of node classes to register
+   */
+  async registerClientNodes(nodeClasses: Array<typeof WorkflowNode>): Promise<void> {
+    for (const nodeClass of nodeClasses) {
+      await this.register(nodeClass, { source: 'client' });
+    }
+  }
 
   /**
-   * Get discovery paths for server-only architecture
-   * Server-only: all nodes are in /packages/nodes/
+   * Get discovery paths based on environment
    */
-  private getDiscoveryPaths(): Array<{ path: string; source: NodeSource }> {
+  private getDiscoveryPaths(environment: Environment): Array<{ path: string; source: NodeSource }> {
     // Only available in Node.js environment
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       return [];
     }
 
-    // Find monorepo root
+    // Find monorepo root by looking for package.json files in parent directories
     const basePath = this.findMonorepoRoot();
     const paths: Array<{ path: string; source: NodeSource }> = [];
 
-    // Server-only architecture: all nodes in /packages/nodes/
-    const nodesSrcPath = path.join(basePath, 'packages/nodes/src');
-    paths.push({ path: nodesSrcPath, source: 'server' });
+    // Always include packages/engine/nodes (universal nodes)
+    paths.push({ path: path.join(basePath, 'packages/engine/nodes'), source: 'universal' });
 
-    // Check for production build (dist/ directory)
-    const nodesDistPath = path.join(basePath, 'packages/nodes/dist');
-    try {
-      const nodeFs = require('fs');
-      if (nodeFs.existsSync(nodesDistPath)) {
-        paths.push({ path: nodesDistPath, source: 'server' });
-      }
-    } catch (error) {
-      // Ignore if fs is not available
+    if (environment === 'server' || environment === 'universal') {
+      // New architecture: apps/api/src/nodes
+      paths.push({ path: path.join(basePath, 'apps/api/src/nodes'), source: 'server' });
+      // Legacy: server/nodes (for backwards compatibility)
+      paths.push({ path: path.join(basePath, 'server/nodes'), source: 'server' });
+    }
+
+    if (environment === 'client' || environment === 'universal') {
+      // New architecture: apps/frontend/nodes
+      paths.push({ path: path.join(basePath, 'apps/frontend/nodes'), source: 'client' });
+      // Legacy: client/nodes (for backwards compatibility)
+      paths.push({ path: path.join(basePath, 'client/nodes'), source: 'client' });
     }
 
     return paths;
@@ -234,9 +244,9 @@ export class NodeRegistry {
   /**
    * Discover and register nodes from a directory
    * @param directory Directory path to scan for node files
-   * @param source Node source type (always 'server' in server-only architecture)
+   * @param source Node source type
    */
-  async discoverFromPath(directory: string, source: NodeSource = 'server'): Promise<void> {
+  async discoverFromPath(directory: string, source: NodeSource = 'universal'): Promise<void> {
     // Only available in Node.js environment
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       console.warn('Node discovery is not available in browser environment');
@@ -257,9 +267,9 @@ export class NodeRegistry {
   /**
    * Discover and register nodes from a directory (legacy method)
    * @param directory Directory path to scan for node files
-   * @param source Node source type (always 'server' in server-only architecture)
+   * @param source Node source type
    */
-  async discover(directory: string, source: NodeSource = 'server'): Promise<void> {
+  async discover(directory: string, source: NodeSource = 'universal'): Promise<void> {
     // Only available in Node.js environment
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       console.warn('Node discovery is not available in browser environment');
@@ -297,9 +307,10 @@ export class NodeRegistry {
   /**
    * Get an instance of a registered node
    * @param nodeId The node ID to instantiate
+   * @param environment Optional environment check
    * @returns A new or singleton instance of the node
    */
-  getInstance(nodeId: string): WorkflowNode {
+  getInstance(nodeId: string, environment?: Environment): WorkflowNode {
     // Check if node is already registered first
     let registration = this.nodes.get(nodeId);
 
@@ -313,7 +324,7 @@ export class NodeRegistry {
         // Register synchronously for built-in nodes
         try {
           const { StateSetterNode } = require('../../nodes/StateSetterNode');
-          this.registerSync(StateSetterNode, { singleton: false, source: 'server' });
+          this.registerSync(StateSetterNode, { singleton: false, source: 'universal' });
           this.builtInNodesRegistered = true;
           registration = this.nodes.get(nodeId);
         } catch (error) {
@@ -324,6 +335,11 @@ export class NodeRegistry {
 
     if (!registration) {
       throw new NodeNotFoundError(nodeId);
+    }
+
+    // Check environment compatibility
+    if (environment && !this.isNodeCompatible(registration.source, environment)) {
+      throw new NodeNotFoundError(`Node ${nodeId} is not available in ${environment} environment`);
     }
 
     // Return singleton instance if available
@@ -370,7 +386,7 @@ export class NodeRegistry {
       nodeClass,
       metadata,
       singleton: options?.singleton ?? false,
-      source: options?.source ?? 'server'
+      source: options?.source ?? 'universal'
     });
 
     // If singleton, create the instance now
@@ -396,9 +412,16 @@ export class NodeRegistry {
    * List all registered nodes
    * @returns Array of node metadata with source information
    */
-  listNodes(): (NodeMetadata & { source: NodeSource })[] {
+  listNodes(environment?: Environment): (NodeMetadata & { source: NodeSource })[] {
     const nodes = Array.from(this.nodes.values());
-    return nodes.map(r => ({ ...r.metadata, source: r.source }));
+
+    if (!environment) {
+      return nodes.map(r => ({ ...r.metadata, source: r.source }));
+    }
+
+    return nodes
+      .filter(r => this.isNodeCompatible(r.source, environment))
+      .map(r => ({ ...r.metadata, source: r.source }));
   }
 
   /**
@@ -412,6 +435,14 @@ export class NodeRegistry {
       .map(r => ({ ...r.metadata, source: r.source }));
   }
 
+  /**
+   * Check if a node is compatible with an environment
+   */
+  private isNodeCompatible(nodeSource: NodeSource, environment: Environment): boolean {
+    if (environment === 'universal') return true;
+    if (nodeSource === 'universal') return true;
+    return nodeSource === environment;
+  }
 
   /**
    * Check if a node is registered
