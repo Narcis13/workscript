@@ -1,15 +1,17 @@
 import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@workscript/engine';
+import { ALL_NODES } from '@workscript/nodes';
 import { WebSocketManager } from '../../../shared-services/websocket';
 
 /**
  * Workscript Plugin - Workflow Service
  *
  * Singleton service for workflow engine components.
- * Automatically discovers and registers nodes from:
- * - @workscript/engine (universal nodes)
- * - /apps/api/nodes/ (server-specific nodes)
- * - /apps/api/plugins/workscript/nodes/ (plugin-specific nodes, if any)
+ * Registers all nodes from @workscript/nodes package using consolidated exports:
+ * - Core nodes (Math, Logic, DataTransform, etc.)
+ * - Data manipulation nodes (Filter, Sort, Aggregate, etc.)
+ * - Server nodes (FileSystem, Database, Auth)
+ * - Custom integration nodes (Gmail, Zoca, etc.)
  */
 export class WorkflowService {
   private static instance: WorkflowService | null = null;
@@ -44,10 +46,11 @@ export class WorkflowService {
   }
 
   /**
-   * Initialize the service by discovering and registering all server-compatible nodes
-   * This includes:
-   * - Universal nodes from @workscript/engine package
-   * - Server-specific nodes from /apps/api/nodes/
+   * Initialize the service by registering all server-compatible nodes
+   * from the consolidated ALL_NODES export.
+   *
+   * This approach uses the consolidated export from @workscript/nodes instead
+   * of dynamic file discovery, which resolves workspace dependency issues.
    */
   private async initialize(): Promise<void> {
     if (this.initialized) {
@@ -57,20 +60,18 @@ export class WorkflowService {
     console.log('🔧 Initializing WorkflowService (Workscript Plugin)...');
 
     try {
-      // Discover nodes from @workscript/engine and server environment
-      // This will automatically scan:
-      // - @workscript/engine/nodes/**/*.{ts,js} (universal nodes)
-      // - /apps/api/nodes/**/*.{ts,js} (server-specific nodes)
-      await this.registry.discoverFromPackages('server');
+      // Register all nodes from the consolidated ALL_NODES array
+      // This uses the new registerFromArray() method which is simpler and
+      // avoids workspace dependency resolution issues with dynamic imports
+      const registeredCount = await this.registry.registerFromArray(ALL_NODES, { source: 'server' });
 
       const nodeCount = this.registry.size;
-      const universalNodes = this.registry.listNodesBySource('universal');
       const serverNodes = this.registry.listNodesBySource('server');
 
       console.log(`✅ WorkflowService initialized successfully`);
-      console.log(`📦 Registered ${nodeCount} nodes total:`);
-      console.log(`   - ${universalNodes.length} universal nodes from @workscript/engine`);
-      console.log(`   - ${serverNodes.length} server-specific nodes`);
+      console.log(`📦 Registered ${registeredCount} nodes from @workscript/nodes package`);
+      console.log(`   - ${serverNodes.length} server-compatible nodes available`);
+      console.log(`   - Node IDs: ${serverNodes.slice(0, 5).join(', ')}${serverNodes.length > 5 ? '...' : ''}`);
 
       // Setup WebSocket hooks for real-time workflow monitoring
       this.setupHooks();
@@ -255,20 +256,19 @@ export class WorkflowService {
   }
 
   /**
-   * Get all available nodes for the server environment
+   * Get all available nodes
    * @returns Array of node metadata
    */
   public getAvailableNodes() {
-    return this.registry.listNodes('server');
+    return this.registry.listNodes();
   }
 
   /**
-   * Get nodes by source type
-   * @param source - The source type to filter by
+   * Get all server nodes
    * @returns Array of node metadata
    */
-  public getNodesBySource(source: 'universal' | 'server') {
-    return this.registry.listNodesBySource(source);
+  public getServerNodes() {
+    return this.registry.listNodesBySource('server');
   }
 
   /**
@@ -306,10 +306,10 @@ export class WorkflowService {
     return {
       initialized: this.initialized,
       totalNodes: this.registry.size,
-      universalNodes: this.registry.listNodesBySource('universal').length,
       serverNodes: this.registry.listNodesBySource('server').length,
       environment: 'server' as const,
-      plugin: 'workscript'
+      plugin: 'workscript',
+      package: '@workscript/nodes'
     };
   }
 }

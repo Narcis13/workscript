@@ -37,42 +37,6 @@ interface NodeRegistration {
 export class NodeRegistry {
   private nodes: Map<string, NodeRegistration> = new Map();
   private instances: Map<string, WorkflowNode> = new Map();
-  private builtInNodesRegistered: boolean = false;
-
-  /**
-   * Register built-in nodes that are always available
-   * This is called automatically when needed
-   */
-  private async registerBuiltInNodes(): Promise<void> {
-    if (this.builtInNodesRegistered) {
-      return; // Already registered
-    }
-
-    try {
-      // Import and register StateSetterNode
-      const { StateSetterNode } = await import('../../nodes/StateSetterNode');
-      await this.register(StateSetterNode, {
-        singleton: false,
-        source: 'server'
-      });
-
-      this.builtInNodesRegistered = true;
-    } catch (error) {
-      console.warn('Failed to register built-in nodes:', error);
-      throw new NodeRegistrationError(
-        'Failed to register built-in nodes: ' + (error instanceof Error ? error.message : 'Unknown error')
-      );
-    }
-  }
-
-  /**
-   * Ensure built-in nodes are registered before operations
-   */
-  private async ensureBuiltInNodes(): Promise<void> {
-    if (!this.builtInNodesRegistered) {
-      await this.registerBuiltInNodes();
-    }
-  }
 
   /**
    * Register a workflow node class
@@ -129,13 +93,51 @@ export class NodeRegistry {
   }
 
   /**
+   * Register multiple nodes from an array of node classes
+   * This is the recommended approach for server-only architecture
+   * @param nodeClasses Array of node classes to register
+   * @param options Registration options applied to all nodes
+   * @returns Number of nodes successfully registered
+   */
+  async registerFromArray(
+    nodeClasses: (typeof WorkflowNode)[],
+    options?: { singleton?: boolean; source?: NodeSource }
+  ): Promise<number> {
+    let registeredCount = 0;
+    const errors: Array<{ nodeClass: any; error: Error }> = [];
+
+    for (const NodeClass of nodeClasses) {
+      try {
+        await this.register(NodeClass, options);
+        registeredCount++;
+      } catch (error) {
+        // Collect errors but continue registering other nodes
+        errors.push({
+          nodeClass: NodeClass,
+          error: error instanceof Error ? error : new Error(String(error))
+        });
+      }
+    }
+
+    // Log any errors encountered
+    if (errors.length > 0) {
+      console.warn(`⚠️  Failed to register ${errors.length} node(s):`);
+      errors.forEach(({ nodeClass, error }) => {
+        console.warn(`   - ${nodeClass.name || 'Unknown'}: ${error.message}`);
+      });
+    }
+
+    return registeredCount;
+  }
+
+  /**
    * Discover and register nodes from the nodes package
    * Server-only architecture: all nodes are in /packages/nodes/
+   *
+   * @deprecated Use registerFromArray() with ALL_NODES from @workscript/nodes instead.
+   * This method uses dynamic imports which have workspace dependency issues.
    */
   async discoverFromPackages(): Promise<void> {
-    // Register built-in nodes first
-    await this.ensureBuiltInNodes();
-
     // In browser environment, log warning and suggest manual registration
     if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
       console.warn('File-based node discovery is not available in browser environment.');
@@ -270,8 +272,8 @@ export class NodeRegistry {
 
     for (const file of files) {
       try {
-        // Skip test files and index files
-        if (file.includes('.test.') || file.endsWith('index.ts') || file.endsWith('index.js')) {
+        // Skip test files, index files, and TypeScript declaration files
+        if (file.includes('.test.') || file.endsWith('index.ts') || file.endsWith('index.js') || file.endsWith('.d.ts')) {
           continue;
         }
 
@@ -301,26 +303,7 @@ export class NodeRegistry {
    */
   getInstance(nodeId: string): WorkflowNode {
     // Check if node is already registered first
-    let registration = this.nodes.get(nodeId);
-
-    // Only attempt lazy load if node is NOT registered and it's a built-in node
-    // AND we're in Node.js environment (not browser)
-    if (!registration && nodeId === '__state_setter__' && !this.builtInNodesRegistered) {
-      // Check if we're in Node.js environment before attempting require()
-      const isNodeEnvironment = typeof globalThis === 'undefined' || !('window' in globalThis);
-
-      if (isNodeEnvironment) {
-        // Register synchronously for built-in nodes
-        try {
-          const { StateSetterNode } = require('../../nodes/StateSetterNode');
-          this.registerSync(StateSetterNode, { singleton: false, source: 'server' });
-          this.builtInNodesRegistered = true;
-          registration = this.nodes.get(nodeId);
-        } catch (error) {
-          throw new NodeNotFoundError(`Failed to register built-in node: ${nodeId}`);
-        }
-      }
-    }
+    const registration = this.nodes.get(nodeId);
 
     if (!registration) {
       throw new NodeNotFoundError(nodeId);
@@ -419,11 +402,6 @@ export class NodeRegistry {
    * @returns True if the node is registered
    */
   hasNode(nodeId: string): boolean {
-    // Check if it's a built-in node that hasn't been registered yet
-    if (nodeId === '__state_setter__' && !this.builtInNodesRegistered) {
-      // Synchronously mark as true since we'll register it lazily
-      return true;
-    }
     return this.nodes.has(nodeId);
   }
 

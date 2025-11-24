@@ -18,6 +18,7 @@
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "@workscript/engine": "workspace:*",
+    "@workscript/nodes": "workspace:*",
     "bcryptjs": "^3.0.3",
     "croner": "^9.0.0",
     "drizzle-orm": "^0.37.0",

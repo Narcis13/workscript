@@ -1,0 +1,11 @@
+[install]
+# Workspace configuration
+workspaces = ["./packages/*", "./apps/*", "./server", "./client"]
+
+[module]
+# Module resolution configuration for workspace packages
+[module.paths]
+"@workscript/engine" = "./packages/engine/src"
+"@workscript/nodes" = "./packages/nodes/src"
+"@workscript/ui" = "./packages/ui"
+"@workscript/config" = "./packages/config"
