@@ -5,35 +5,21 @@ import { useWorkflowService } from '../hooks/useWorkflowService';
 
 export function WorkflowDemo() {
   const [result, setResult] = useState<unknown>(null);
-  const [loading, setLoading] = useState(false);
 
-  // Use the new workflow service hook for automatic node discovery and service management
+  // Use the workflow service hook for API-based workflow execution
   const {
-    service,
-    loading: serviceLoading,
+    loading,
     error: serviceError,
-    initialized,
     executeWorkflow: executeWorkflowService,
-    getServiceInfo
   } = useWorkflowService();
 
   const executeWorkflow = async () => {
-    if (!service || !initialized) {
-      setResult({
-        error: 'Workflow service not initialized',
-        status: 'failed'
-      });
-      return;
-    }
-
-    setLoading(true);
     try {
-
       const workflowDefinition: WorkflowDefinition = {
-        id: 'client-demo',
-        name: 'Client Workflow Demo',
+        id: 'api-demo',
+        name: 'API Workflow Demo',
         version: '1.0.0',
-        description: 'Demo workflow running in browser with client nodes',
+        description: 'Demo workflow running on the API server',
         initialState: {
           developer: 'Narcis Brindusescu'
         },
@@ -41,13 +27,11 @@ export function WorkflowDemo() {
           'empty',
           'log-input',
           {'$.author': {'name': 'Narcis Brindusescu'}},
-
-
           'log'
         ]
       };
 
-      // Execute workflow using the service (no manual engine setup needed!)
+      // Execute workflow via API
       const executionResult = await executeWorkflowService(workflowDefinition);
 
       setResult(executionResult);
@@ -56,69 +40,46 @@ export function WorkflowDemo() {
         error: error instanceof Error ? error.message : 'Unknown error',
         status: 'failed'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Show loading state while service initializes
-  if (serviceLoading) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <h2 className="text-3xl font-bold mb-4">Client Workflow Engine Demo</h2>
-        <div className="flex items-center gap-2 mb-6">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-          <span className="text-gray-600">Initializing workflow service...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error state if service failed to initialize
+  // Show error state if service encountered an error
   if (serviceError) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <h2 className="text-3xl font-bold mb-4">Client Workflow Engine Demo</h2>
+        <h2 className="text-3xl font-bold mb-4">Server Workflow Engine Demo</h2>
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          <strong className="font-bold">Service Initialization Error:</strong>
+          <strong className="font-bold">Execution Error:</strong>
           <span className="block sm:inline"> {serviceError.message}</span>
         </div>
       </div>
     );
   }
 
-  // Get service information for display
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const serviceInfo = getServiceInfo() as any;
-
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h2 className="text-3xl font-bold mb-4">Client Workflow Engine Demo</h2>
+      <h2 className="text-3xl font-bold mb-4">Server Workflow Engine Demo</h2>
       <p className="mb-4 text-gray-600">
-        This demonstrates the shared workflow engine running in the browser with automatic client node discovery.
+        This demonstrates workflows executing on the API server. All workflow execution
+        happens server-side for consistency and security.
       </p>
 
       {/* Service Status Display */}
       <div className="bg-blue-50 border border-blue-200 p-4 rounded-md mb-6">
-        <h3 className="font-semibold text-blue-800 mb-2">Service Status:</h3>
+        <h3 className="font-semibold text-blue-800 mb-2">Execution Mode:</h3>
         <div className="text-sm text-blue-700 space-y-1">
-          <div>✅ Service initialized: {initialized ? 'Yes' : 'No'}</div>
-          <div>📦 Total nodes registered: {serviceInfo.totalNodes}</div>
-          <div>🌐 Universal nodes: {serviceInfo.universalNodes}</div>
-          <div>💻 Client nodes: {serviceInfo.clientNodes}</div>
-          <div>
-            Available nodes: {' '}
-            {service?.getAvailableNodes().map(n => n.id).join(', ') || 'None'}
-          </div>
+          <div>✅ API-based workflow execution</div>
+          <div>🔒 Server-side processing for security</div>
+          <div>🌐 All nodes available on server</div>
         </div>
       </div>
 
       <Button
         onClick={executeWorkflow}
-        disabled={loading || !initialized}
+        disabled={loading}
         className="mb-6"
       >
-        {loading ? 'Executing...' : 'Run Client Workflow'}
+        {loading ? 'Executing on server...' : 'Run Server Workflow'}
       </Button>
 
       {result !== null && (
