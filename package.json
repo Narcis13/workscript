@@ -15,7 +15,7 @@
     "dev:engine": "cd packages/engine && bun run dev",
     "dev:api": "cd apps/api && bun run dev",
     "dev:frontend": "cd apps/frontend && bun run dev",
-    "dev": "concurrently --names \"NODES,ENGINE,API,FRONTEND\" --prefix-colors \"magenta,cyan,yellow,green\" \"bun run dev:nodes\" \"bun run dev:engine\" \"bun run dev:api\" \"bun run dev:frontend\"",
+    "dev": "bun run build:engine && concurrently --names \"NODES,ENGINE,API,FRONTEND\" --prefix-colors \"magenta,cyan,yellow,green\" \"bun run dev:nodes\" \"bun run dev:engine\" \"bun run dev:api\" \"bun run dev:frontend\"",
     "build:nodes": "cd packages/nodes && bun run build",
     "build:engine": "cd packages/engine && bun run build",
     "build:api": "cd apps/api && bun run build",
