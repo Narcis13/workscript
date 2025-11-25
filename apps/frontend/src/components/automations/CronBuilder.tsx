@@ -136,16 +136,35 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
   timezone = 'UTC',
   onTimezoneChange,
 }) => {
+  // Parse initial value to set correct initial states
+  const parseInitialValue = (val: string) => {
+    const parts = val.trim().split(/\s+/);
+    if (parts.length === 5) {
+      return {
+        minute: parts[0],
+        hour: parts[1],
+        dayOfMonth: parts[2],
+        month: parts[3],
+        dayOfWeek: parts[4],
+      };
+    }
+    return { minute: '0', hour: '0', dayOfMonth: '*', month: '*', dayOfWeek: '*' };
+  };
+
+  const initialParts = useMemo(() => parseInitialValue(value), []);
+
   const [cronExpression, setCronExpression] = useState(value);
   const [isRawMode, setIsRawMode] = useState(false);
-  const [minute, setMinute] = useState('0');
-  const [hour, setHour] = useState('0');
-  const [dayOfMonth, setDayOfMonth] = useState('*');
-  const [month, setMonth] = useState('*');
-  const [dayOfWeek, setDayOfWeek] = useState('*');
+  const [minute, setMinute] = useState(initialParts.minute);
+  const [hour, setHour] = useState(initialParts.hour);
+  const [dayOfMonth, setDayOfMonth] = useState(initialParts.dayOfMonth);
+  const [month, setMonth] = useState(initialParts.month);
+  const [dayOfWeek, setDayOfWeek] = useState(initialParts.dayOfWeek);
 
   // Ref to prevent circular updates between parsing and building
   const isUpdatingFromExternal = useRef(false);
+  // Ref to skip the initial mount effect
+  const isInitialMount = useRef(true);
 
   // Memoize dropdown options to prevent recreating arrays on every render
   const minuteOptions = useMemo(() => {
@@ -257,27 +276,58 @@ export const CronBuilder: React.FC<CronBuilderProps> = ({
     parseCronExpression(presetValue);
   };
 
+  // Track the last value we received from outside to prevent loops
+  const lastExternalValueRef = useRef(value);
+
   /**
    * Effect to update when external value changes
+   * Does NOT run on initial mount since we already initialized from value
    */
+  const isExternalEffectFirstRun = useRef(true);
   useEffect(() => {
-    if (value && value !== cronExpression) {
+    // Skip first run - we already initialized states from value
+    if (isExternalEffectFirstRun.current) {
+      isExternalEffectFirstRun.current = false;
+      return;
+    }
+
+    // Only sync if the value actually changed from outside (not from our own onChange)
+    if (value && value !== lastExternalValueRef.current) {
+      lastExternalValueRef.current = value;
       parseCronExpression(value);
       setCronExpression(value);
     }
   }, [value, parseCronExpression]);
 
+  // Store onChange in a ref to avoid it being a dependency that causes re-renders
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
   /**
    * Effect to rebuild expression when dropdowns change
    * Only runs if we're not currently updating from an external value
+   * Skips initial mount to prevent unnecessary onChange call
    */
   useEffect(() => {
+    // Skip the first render to avoid calling onChange on mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     if (!isRawMode && !isUpdatingFromExternal.current) {
       const cron = `${minute} ${hour} ${dayOfMonth} ${month} ${dayOfWeek}`;
-      setCronExpression(cron);
-      onChange?.(cron);
+
+      // Only call onChange if the value actually changed
+      if (cron !== lastExternalValueRef.current) {
+        setCronExpression(cron);
+        lastExternalValueRef.current = cron;
+        onChangeRef.current?.(cron);
+      }
     }
-  }, [minute, hour, dayOfMonth, month, dayOfWeek, isRawMode, onChange]);
+  }, [minute, hour, dayOfMonth, month, dayOfWeek, isRawMode]);
 
   return (
     <div className="space-y-4">

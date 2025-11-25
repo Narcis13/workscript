@@ -104,11 +104,28 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
     const { definition, workflowId, initialState } = body
     const workflowService = await WorkflowService.getInstance()
 
-    // Execute workflow using definition or workflowId
-    const workflowDefinition = definition || workflowId
+    // Resolve workflow definition from either direct definition or workflowId
+    let workflowDefinition: WorkflowDefinition | undefined
+
+    if (definition && typeof definition === 'object') {
+      // Direct workflow definition provided
+      workflowDefinition = definition
+    } else if (workflowId && typeof workflowId === 'string') {
+      // Fetch workflow from database by ID
+      const workflowRepository = new WorkflowRepository()
+      const workflow = await workflowRepository.findById(workflowId)
+      if (!workflow) {
+        return c.json({
+          error: `Workflow not found: ${workflowId}`,
+          status: 'failed'
+        }, { status: 404 })
+      }
+      workflowDefinition = workflow.definition as WorkflowDefinition
+    }
+
     if (!workflowDefinition) {
       return c.json({
-        error: 'Either "definition" or "workflowId" must be provided',
+        error: 'Either "definition" (object) or "workflowId" (string) must be provided',
         status: 'failed'
       }, { status: 400 })
     }

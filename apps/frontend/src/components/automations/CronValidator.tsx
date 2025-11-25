@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useValidateCron } from '@/hooks/api/useAutomations';
 import { Check, X, Info, Loader2 } from 'lucide-react';
 import {
@@ -50,6 +50,12 @@ export const CronValidator: React.FC<CronValidatorProps> = ({
   const validateMutation = useValidateCron();
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // Store mutate function in a ref to avoid infinite loops from dependency changes
+  const mutateRef = React.useRef(validateMutation.mutate);
+  React.useEffect(() => {
+    mutateRef.current = validateMutation.mutate;
+  }, [validateMutation.mutate]);
+
   /**
    * Trigger validation with debounce
    * Debounces at 300ms to reduce API calls while user is typing
@@ -63,7 +69,7 @@ export const CronValidator: React.FC<CronValidatorProps> = ({
     // Set new debounce timer
     if (cronExpression.trim()) {
       timerRef.current = setTimeout(() => {
-        validateMutation.mutate({
+        mutateRef.current({
           expression: cronExpression,
           timezone,
         });
@@ -76,7 +82,7 @@ export const CronValidator: React.FC<CronValidatorProps> = ({
         clearTimeout(timerRef.current);
       }
     };
-  }, [cronExpression, timezone, validateMutation]);
+  }, [cronExpression, timezone]);
 
   const result = validateMutation.data;
   const isLoading = validateMutation.isPending;

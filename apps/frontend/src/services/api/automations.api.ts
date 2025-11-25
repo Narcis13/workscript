@@ -23,20 +23,21 @@
  */
 
 import { apiClient } from './client';
-import type {
-  Automation,
-  AutomationWithStats,
-  CreateAutomationPayload,
-  UpdateAutomationPayload,
-  AutomationExecution,
-  AutomationStats,
-  AutomationFilterOptions,
-  AutomationExecutionFilterOptions,
-  RescheduleAutomationRequest,
-  ToggleAutomationRequest,
-  CronValidationResult,
-  AutomationSummaryStats,
-  TriggerConfig,
+import {
+  TriggerType,
+  type Automation,
+  type AutomationWithStats,
+  type CreateAutomationPayload,
+  type UpdateAutomationPayload,
+  type AutomationExecution,
+  type AutomationStats,
+  type AutomationFilterOptions,
+  type AutomationExecutionFilterOptions,
+  type RescheduleAutomationRequest,
+  type ToggleAutomationRequest,
+  type CronValidationResult,
+  type AutomationSummaryStats,
+  type TriggerConfig,
 } from '../../types/automation.types';
 import type { ApiResponse, ApiListResponse } from '../../types/api.types';
 
@@ -44,6 +45,69 @@ import type { ApiResponse, ApiListResponse } from '../../types/api.types';
  * Base path for automation API endpoints
  */
 const AUTOMATIONS_BASE_PATH = '/workscript/automations';
+
+// ============================================
+// API RESPONSE TRANSFORMATION
+// ============================================
+
+/**
+ * Transform API automation response to frontend Automation type
+ *
+ * The API returns triggerType and triggerConfig as separate fields,
+ * but the frontend expects a nested trigger object with specific field names.
+ *
+ * API format:
+ * - triggerType: 'cron' | 'webhook' | 'immediate'
+ * - triggerConfig: { cronExpression?, webhookUrl?, ... }
+ *
+ * Frontend format:
+ * - trigger: { type: 'cron', expression: '...', timezone: '...' }
+ * - trigger: { type: 'webhook', path: '...', method: '...' }
+ * - trigger: { type: 'immediate', enabled: true }
+ */
+function transformAutomationFromApi(apiAutomation: any): Automation {
+  const { triggerType, triggerConfig, ...rest } = apiAutomation;
+
+  // If already has trigger object (for backwards compatibility), return as-is
+  if (apiAutomation.trigger && typeof apiAutomation.trigger === 'object') {
+    return apiAutomation as Automation;
+  }
+
+  // Transform triggerType + triggerConfig to trigger object
+  let trigger: TriggerConfig;
+
+  if (triggerType === 'cron') {
+    trigger = {
+      type: TriggerType.CRON,
+      expression: triggerConfig?.cronExpression || triggerConfig?.expression || '0 9 * * *',
+      timezone: triggerConfig?.timezone || 'UTC',
+    };
+  } else if (triggerType === 'webhook') {
+    trigger = {
+      type: TriggerType.WEBHOOK,
+      path: triggerConfig?.webhookUrl || triggerConfig?.path || 'automation',
+      method: triggerConfig?.method || 'POST',
+    };
+  } else {
+    // immediate or unknown
+    trigger = {
+      type: TriggerType.IMMEDIATE,
+      enabled: triggerConfig?.enabled ?? true,
+    };
+  }
+
+  return {
+    ...rest,
+    trigger,
+  } as Automation;
+}
+
+/**
+ * Transform an array of API automations to frontend format
+ */
+function transformAutomationsFromApi(apiAutomations: any[]): Automation[] {
+  return apiAutomations.map(transformAutomationFromApi);
+}
 
 // ============================================
 // AUTOMATION CRUD OPERATIONS
@@ -86,7 +150,8 @@ export async function fetchAutomations(
     { params: filters }
   );
 
-  return (response.data.items || (response.data as any) || []) as Automation[];
+  const rawData = response.data.items || (response.data as any) || [];
+  return transformAutomationsFromApi(rawData);
 }
 
 /**
@@ -107,11 +172,8 @@ export async function fetchAutomation(id: string): Promise<Automation> {
     `${AUTOMATIONS_BASE_PATH}/${id}`
   );
 
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as unknown as Automation;
+  const rawData = response.data.data || response.data;
+  return transformAutomationFromApi(rawData);
 }
 
 /**
@@ -138,11 +200,8 @@ export async function fetchAutomationWithStats(
     `${AUTOMATIONS_BASE_PATH}/${id}/stats`
   );
 
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as unknown as AutomationWithStats;
+  const rawData = response.data.data || response.data;
+  return transformAutomationFromApi(rawData) as AutomationWithStats;
 }
 
 /**
@@ -190,11 +249,8 @@ export async function createAutomation(
     data
   );
 
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as unknown as Automation;
+  const rawData = response.data.data || response.data;
+  return transformAutomationFromApi(rawData);
 }
 
 /**
@@ -234,11 +290,8 @@ export async function updateAutomation(
     data
   );
 
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as unknown as Automation;
+  const rawData = response.data.data || response.data;
+  return transformAutomationFromApi(rawData);
 }
 
 /**
@@ -298,11 +351,8 @@ export async function toggleAutomation(
     payload
   );
 
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as unknown as Automation;
+  const rawData = response.data.data || response.data;
+  return transformAutomationFromApi(rawData);
 }
 
 /**
@@ -378,11 +428,8 @@ export async function rescheduleAutomation(
     cronConfig
   );
 
-  if (response.data.data) {
-    return response.data.data;
-  }
-
-  return response.data as unknown as Automation;
+  const rawData = response.data.data || response.data;
+  return transformAutomationFromApi(rawData);
 }
 
 // ============================================
@@ -422,7 +469,7 @@ export async function validateCronExpression(
 ): Promise<CronValidationResult> {
   const response = await apiClient.post<ApiResponse<CronValidationResult>>(
     `${AUTOMATIONS_BASE_PATH}/cron/validate`,
-    { expression, timezone }
+    { cronExpression: expression, timezone }
   );
 
   if (response.data.data) {

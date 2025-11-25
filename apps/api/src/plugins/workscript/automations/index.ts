@@ -43,15 +43,49 @@ automationsApp.get('/:id', authenticate, requirePermission(Permission.AUTOMATION
   try {
     const id = c.req.param('id')
     const automation = await automationRepository.findById(id)
-    
+
     if (!automation) {
       return c.json({ error: 'Automation not found' }, 404)
     }
-    
+
     return c.json(automation)
   } catch (error) {
     console.error('Error fetching automation:', error)
     return c.json({ error: 'Failed to fetch automation' }, 500)
+  }
+})
+
+// GET /automations/:id/stats - Get automation with execution statistics
+automationsApp.get('/:id/stats', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
+  try {
+    const id = c.req.param('id')
+    const automation = await automationRepository.findById(id)
+
+    if (!automation) {
+      return c.json({ error: 'Automation not found' }, 404)
+    }
+
+    // Get stats from repository
+    const baseStats = await automationRepository.getAutomationStats(id)
+
+    // Build stats object with all fields expected by frontend
+    const stats = {
+      totalRuns: automation.runCount,
+      successCount: automation.successCount,
+      failureCount: automation.failureCount,
+      successRate: baseStats.successRate,
+      averageDuration: baseStats.averageDuration,
+      lastRunAt: automation.lastRunAt,
+    }
+
+    // Return automation with stats
+    return c.json({
+      ...automation,
+      stats
+    })
+  } catch (error) {
+    console.error('Error fetching automation stats:', error)
+    return c.json({ error: 'Failed to fetch automation stats' }, 500)
   }
 })
 
@@ -92,7 +126,15 @@ automationsApp.post('/', authenticate, requirePermission(Permission.AUTOMATION_C
     // Schedule cron automation if enabled
     if (automation.triggerType === 'cron' && automation.enabled) {
       const cronScheduler = CronScheduler.getInstance()
-      await cronScheduler.scheduleAutomation(automation)
+      const triggerConfig = automation.triggerConfig as { cronExpression?: string; timezone?: string }
+      await cronScheduler.scheduleAutomation({
+        id: automation.id,
+        name: automation.name,
+        pluginId: automation.pluginId || 'workscript',
+        workflowId: automation.workflowId,
+        cronExpression: triggerConfig.cronExpression || '',
+        timezone: triggerConfig.timezone || 'UTC',
+      })
     }
 
     return c.json(automation, 201)
@@ -137,7 +179,14 @@ automationsApp.put('/:id', authenticate, requirePermission(Permission.AUTOMATION
     if (automation.triggerType === 'cron') {
       const cronScheduler = CronScheduler.getInstance()
       if (automation.enabled) {
-        await cronScheduler.rescheduleAutomation(id)
+        const triggerConfig = automation.triggerConfig as { cronExpression?: string; timezone?: string }
+        await cronScheduler.rescheduleAutomation(id, {
+          name: automation.name,
+          pluginId: automation.pluginId || 'workscript',
+          workflowId: automation.workflowId,
+          cronExpression: triggerConfig.cronExpression || '',
+          timezone: triggerConfig.timezone || 'UTC',
+        })
       } else {
         await cronScheduler.unscheduleAutomation(id)
       }
@@ -185,8 +234,8 @@ automationsApp.get('/:id/executions', authenticate, requirePermission(Permission
   }
 })
 
-// PUT /automations/:id/toggle - Toggle automation enabled status
-automationsApp.put('/:id/toggle', authenticate, requirePermission(Permission.AUTOMATION_UPDATE), async (c) => {
+// PATCH /automations/:id/toggle - Toggle automation enabled status
+automationsApp.patch('/:id/toggle', authenticate, requirePermission(Permission.AUTOMATION_UPDATE), async (c) => {
   try {
     const id = c.req.param('id')
     const body = await c.req.json()
@@ -201,7 +250,15 @@ automationsApp.put('/:id/toggle', authenticate, requirePermission(Permission.AUT
     if (automation.triggerType === 'cron') {
       const cronScheduler = CronScheduler.getInstance()
       if (automation.enabled) {
-        await cronScheduler.scheduleAutomation(automation)
+        const triggerConfig = automation.triggerConfig as { cronExpression?: string; timezone?: string }
+        await cronScheduler.scheduleAutomation({
+          id: automation.id,
+          name: automation.name,
+          pluginId: automation.pluginId || 'workscript',
+          workflowId: automation.workflowId,
+          cronExpression: triggerConfig.cronExpression || '',
+          timezone: triggerConfig.timezone || 'UTC',
+        })
       } else {
         await cronScheduler.unscheduleAutomation(id)
       }
@@ -331,7 +388,14 @@ automationsApp.post('/:id/reschedule', authenticate, requirePermission(Permissio
     }
 
     const cronScheduler = CronScheduler.getInstance()
-    await cronScheduler.rescheduleAutomation(id)
+    const triggerConfig = automation.triggerConfig as { cronExpression?: string; timezone?: string }
+    await cronScheduler.rescheduleAutomation(id, {
+      name: automation.name,
+      pluginId: automation.pluginId || 'workscript',
+      workflowId: automation.workflowId,
+      cronExpression: triggerConfig.cronExpression || '',
+      timezone: triggerConfig.timezone || 'UTC',
+    })
 
     const updatedAutomation = await automationRepository.findById(id)
 

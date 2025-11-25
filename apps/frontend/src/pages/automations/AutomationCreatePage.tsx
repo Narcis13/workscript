@@ -166,14 +166,36 @@ export default function AutomationCreatePage() {
 
       try {
         // Prepare payload for API
+        // API expects triggerType and triggerConfig as separate fields
+        // Transform triggerConfig to match API expected format
+        let apiTriggerConfig: Record<string, any> = {};
+
+        if (data.triggerType === 'cron' && data.triggerConfig) {
+          // API expects cronExpression, frontend sends expression
+          const cronConfig = data.triggerConfig as { expression?: string; timezone?: string };
+          apiTriggerConfig = {
+            cronExpression: cronConfig.expression,
+            timezone: cronConfig.timezone || data.timezone || 'UTC',
+          };
+        } else if (data.triggerType === 'webhook' && data.triggerConfig) {
+          // API expects webhookUrl, frontend sends path
+          const webhookConfig = data.triggerConfig as { path?: string; method?: string };
+          apiTriggerConfig = {
+            webhookUrl: webhookConfig.path || data.webhookPath,
+            method: webhookConfig.method || 'POST',
+          };
+        } else if (data.triggerType === 'immediate') {
+          apiTriggerConfig = {
+            enabled: true,
+          };
+        }
+
         const payload = {
           name: data.name,
           description: data.description || undefined,
           workflowId: data.workflowId,
-          trigger: {
-            type: data.triggerType,
-            ...data.triggerConfig,
-          },
+          triggerType: data.triggerType,
+          triggerConfig: apiTriggerConfig,
           enabled: data.enabled ?? true, // Default to enabled
         };
 

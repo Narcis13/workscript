@@ -80,6 +80,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { Permission } from '@/types/auth';
 import { TriggerType as TriggerTypeEnum } from '@/types/automation.types';
 import { formatDate, formatDistanceToNow } from 'date-fns';
+import { config } from '@/lib/config';
 
 /**
  * AutomationDetailPage Component
@@ -175,11 +176,10 @@ export default function AutomationDetailPage(): React.ReactElement {
   const handleCopyWebhookUrl = useCallback(() => {
     if (!automation) return;
 
-    const config = (automation as any).triggerConfig;
-    if (!config || config.type !== TriggerTypeEnum.WEBHOOK) return;
+    const automationTrigger = (automation as any).trigger;
+    if (!automationTrigger || automationTrigger.type !== TriggerTypeEnum.WEBHOOK) return;
 
-    const baseUrl = window.location.origin;
-    const webhookUrl = `${baseUrl}/api/webhooks${config.path}`;
+    const webhookUrl = `${config.apiUrl}/workscript/automations/webhook/${automationTrigger.path}`;
 
     navigator.clipboard.writeText(webhookUrl).then(() => {
       toast.success('Webhook URL copied to clipboard');
@@ -265,12 +265,12 @@ export default function AutomationDetailPage(): React.ReactElement {
     );
   }
 
-  // Extract trigger config (cast automation to any to access triggerConfig)
+  // Extract trigger config from the transformed automation object
   const automationAny = automation as any;
-  const triggerConfig = automationAny?.triggerConfig;
-  const isCronTrigger = triggerConfig?.type === TriggerTypeEnum.CRON;
-  const isWebhookTrigger = triggerConfig?.type === TriggerTypeEnum.WEBHOOK;
-  const isImmediateTrigger = triggerConfig?.type === TriggerTypeEnum.IMMEDIATE;
+  const trigger = automationAny?.trigger;
+  const isCronTrigger = trigger?.type === TriggerTypeEnum.CRON;
+  const isWebhookTrigger = trigger?.type === TriggerTypeEnum.WEBHOOK;
+  const isImmediateTrigger = trigger?.type === TriggerTypeEnum.IMMEDIATE;
 
   // Check for recent failures
   const hasRecentFailures = (automationWithStats?.stats?.failureCount || 0) > 0;
@@ -378,22 +378,22 @@ export default function AutomationDetailPage(): React.ReactElement {
 
               {/* Trigger Type */}
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Trigger Type</p>
-                <p className="mt-1">
+                <div className="text-sm font-medium text-muted-foreground">Trigger Type</div>
+                <div className="mt-1">
                   <Badge variant="outline">
-                    {triggerConfig?.type || 'Unknown'}
+                    {trigger?.type || 'Unknown'}
                   </Badge>
-                </p>
+                </div>
               </div>
 
               {/* Enabled Status */}
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <p className="mt-1">
+                <div className="text-sm font-medium text-muted-foreground">Status</div>
+                <div className="mt-1">
                   <Badge variant={automationAny.enabled ? 'default' : 'secondary'}>
                     {automationAny.enabled ? 'Enabled' : 'Disabled'}
                   </Badge>
-                </p>
+                </div>
               </div>
 
               {/* Created/Updated Dates */}
@@ -433,7 +433,7 @@ export default function AutomationDetailPage(): React.ReactElement {
         <Separator />
 
         {/* Trigger-Specific Details */}
-        {isCronTrigger && (
+        {isCronTrigger && trigger && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Cron Schedule</CardTitle>
@@ -441,33 +441,33 @@ export default function AutomationDetailPage(): React.ReactElement {
             <CardContent className="space-y-4">
               {/* Cron Expression */}
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Expression</p>
-                <p className="mt-2 font-mono text-sm">{triggerConfig.expression}</p>
+                <div className="text-sm font-medium text-muted-foreground">Expression</div>
+                <div className="mt-2 font-mono text-sm">{trigger.expression}</div>
               </div>
 
               {/* Timezone */}
-              {triggerConfig.timezone && (
+              {trigger.timezone && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Timezone</p>
-                  <p className="mt-1 text-sm">{triggerConfig.timezone}</p>
+                  <div className="text-sm font-medium text-muted-foreground">Timezone</div>
+                  <div className="mt-1 text-sm">{trigger.timezone}</div>
                 </div>
               )}
 
               {/* Next Run Times Preview */}
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-3">
+                <div className="text-sm font-medium text-muted-foreground mb-3">
                   Next 5 Scheduled Runs
-                </p>
+                </div>
                 <CronValidator
-                  cronExpression={triggerConfig.expression}
-                  timezone={triggerConfig.timezone || 'UTC'}
+                  cronExpression={trigger.expression}
+                  timezone={trigger.timezone || 'UTC'}
                 />
               </div>
             </CardContent>
           </Card>
         )}
 
-        {isWebhookTrigger && (
+        {isWebhookTrigger && trigger && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Webhook Configuration</CardTitle>
@@ -475,12 +475,12 @@ export default function AutomationDetailPage(): React.ReactElement {
             <CardContent className="space-y-4">
               {/* Webhook URL */}
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">
+                <div className="text-sm font-medium text-muted-foreground mb-2">
                   Webhook URL
-                </p>
+                </div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 rounded bg-slate-100 px-3 py-2 font-mono text-sm dark:bg-slate-900">
-                    {`${window.location.origin}/api/webhooks${triggerConfig.path}`}
+                    {`${config.apiUrl}/workscript/automations/webhook/${trigger.path}`}
                   </code>
                   <Button
                     size="icon"
@@ -495,11 +495,11 @@ export default function AutomationDetailPage(): React.ReactElement {
 
               {/* Example Curl Command */}
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">
+                <div className="text-sm font-medium text-muted-foreground mb-2">
                   Example Request
-                </p>
+                </div>
                 <code className="block rounded bg-slate-100 p-3 font-mono text-xs overflow-x-auto dark:bg-slate-900">
-                  {`curl -X ${triggerConfig.method || 'POST'} \\\n  "${window.location.origin}/api/webhooks${triggerConfig.path}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"data": "example"}'`}
+                  {`curl -X ${trigger.method || 'POST'} \\\n  "${config.apiUrl}/workscript/automations/webhook/${trigger.path}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"data": "example"}'`}
                 </code>
               </div>
             </CardContent>

@@ -58,7 +58,7 @@ app.use(
     },
     credentials: true, // Allow cookies and authorization headers
     allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     exposeHeaders: ['X-RateLimit-Remaining', 'X-RateLimit-Reset'],
     maxAge: 3600, // Cache preflight requests for 1 hour
   })

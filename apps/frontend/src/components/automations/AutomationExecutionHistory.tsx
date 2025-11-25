@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { useAutomationExecutions } from '@/hooks/api/useAutomations';
 import useWebSocket from '@/hooks/api/useWebSocket';
 import type { AutomationExecution } from '@/types/automation.types';
+import { ExecutionStatus } from '@/types/automation.types';
+import type { Status } from '@/components/shared/StatusBadge';
 import type { AnyEvent } from '@/services/websocket/events.types';
 import { toast } from 'sonner';
 
@@ -214,8 +216,9 @@ export function AutomationExecutionHistory({
     /**
      * Handler for workflow execution started event
      * Check if this execution belongs to the current automation
+     * Note: Currently not used directly but kept for potential future WebSocket subscription
      */
-    const handleExecutionStarted = (event: AnyEvent) => {
+    const _handleExecutionStarted = (event: AnyEvent) => {
       // Only process workflow:started events
       if (event.type !== 'workflow:started') {
         return;
@@ -239,7 +242,7 @@ export function AutomationExecutionHistory({
         startTime: event.timestamp || new Date(),
         endTime: null,
         duration: null,
-        status: 'running' as const,
+        status: ExecutionStatus.RUNNING,
         triggeredBy: 'cron' as const, // Default to cron, could be enhanced with event data
         result: null,
         error: null
@@ -307,7 +310,7 @@ export function AutomationExecutionHistory({
       startTime: mostRecentEvent.timestamp || new Date(),
       endTime: null,
       duration: null,
-      status: 'running' as const,
+      status: ExecutionStatus.RUNNING,
       triggeredBy: 'cron' as const,
       result: null,
       error: null
@@ -400,7 +403,7 @@ export function AutomationExecutionHistory({
         id: 'status',
         header: 'Status',
         accessorKey: 'status',
-        cell: (execution: AutomationExecution) => <StatusBadge status={execution.status} />,
+        cell: (execution: AutomationExecution) => <StatusBadge status={execution.status as Status} />,
         sortable: true,
       },
       {

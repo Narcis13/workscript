@@ -90,7 +90,7 @@ export function ResetPasswordForm() {
    *
    * @param data - Form data (email)
    */
-  const onSubmit = async (data: ResetPasswordFormData) => {
+  const onSubmit = async (_data: ResetPasswordFormData) => {
     setIsSubmitting(true);
 
     try {

@@ -24,8 +24,8 @@
  * @module components/automations/AutomationForm
  */
 
-import React, { useState, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useCallback, useRef } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import {
   Form,
   FormControl,
@@ -71,6 +71,7 @@ import { TriggerType, type TriggerConfig, type CronTriggerConfig, type WebhookTr
 import { useWorkflows } from '@/hooks/api/useWorkflows';
 import { CronBuilder } from '@/components/automations/CronBuilder';
 import { CronValidator } from '@/components/automations/CronValidator';
+import { config } from '@/lib/config';
 
 /**
  * Step identifiers in the form
@@ -214,7 +215,7 @@ const STEPS: { id: AutomationFormStep; label: string; title: string; description
  * Validate semantic version format (e.g., 1.0.0, 2.1.3)
  * Currently not used but kept for potential future use
  */
-const isValidSemanticVersion = (version: string): boolean => {
+const _isValidSemanticVersion = (version: string): boolean => {
   const semanticVersionRegex = /^(\d+)\.(\d+)\.(\d+)$/;
   return semanticVersionRegex.test(version);
 };
@@ -292,19 +293,88 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
   /**
    * Initialize react-hook-form with default values and validation rules
    */
+  // Determine initial trigger config based on trigger type
+  const getDefaultTriggerConfig = (): TriggerConfig => {
+    if (initialData?.triggerConfig) {
+      return initialData.triggerConfig;
+    }
+    const triggerType = initialData?.triggerType || TriggerType.CRON;
+    switch (triggerType) {
+      case TriggerType.CRON:
+        return {
+          type: TriggerType.CRON,
+          expression: '0 9 * * *',
+          timezone: initialData?.timezone || 'UTC',
+        } as CronTriggerConfig;
+      case TriggerType.WEBHOOK:
+        return {
+          type: TriggerType.WEBHOOK,
+          path: initialData?.webhookPath || 'automation',
+          method: 'POST',
+        } as WebhookTriggerConfig;
+      case TriggerType.IMMEDIATE:
+        return {
+          type: TriggerType.IMMEDIATE,
+          enabled: true,
+        } as ImmediateTriggerConfig;
+      default:
+        return {
+          type: TriggerType.CRON,
+          expression: '0 9 * * *',
+          timezone: 'UTC',
+        } as CronTriggerConfig;
+    }
+  };
+
   const form = useForm<AutomationFormData>({
     defaultValues: {
       name: initialData?.name || '',
       description: initialData?.description || '',
       workflowId: initialData?.workflowId || '',
       triggerType: initialData?.triggerType || TriggerType.CRON,
-      triggerConfig: initialData?.triggerConfig,
+      triggerConfig: getDefaultTriggerConfig(),
       timezone: initialData?.timezone || 'UTC',
       webhookPath: initialData?.webhookPath || '',
       enabled: initialData?.enabled !== false, // Default to enabled
     },
     mode: 'onChange', // Validate on change for better UX
   });
+
+  // Use a single useWatch to minimize subscriptions and re-renders
+  // Watching all fields that need reactive updates in JSX
+  const watchedValues = useWatch({
+    control: form.control,
+  });
+
+  // Destructure for convenience
+  const watchedTriggerType = watchedValues.triggerType;
+  const watchedTriggerConfig = watchedValues.triggerConfig;
+  const watchedTimezone = watchedValues.timezone;
+  const watchedWebhookPath = watchedValues.webhookPath;
+  const watchedName = watchedValues.name;
+  const watchedWorkflowId = watchedValues.workflowId;
+  const watchedDescription = watchedValues.description;
+  const watchedEnabled = watchedValues.enabled;
+
+  // Store form in a ref so callbacks don't need it as a dependency
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  // Memoize the CronBuilder onChange to prevent unnecessary re-renders
+  // Using ref pattern to avoid form as dependency
+  const handleCronBuilderChange = useCallback((expression: string) => {
+    const currentTimezone = formRef.current.getValues('timezone') || 'UTC';
+    const currentConfig = formRef.current.getValues('triggerConfig') as CronTriggerConfig;
+
+    // Only update if the expression actually changed
+    if (currentConfig?.expression === expression) return;
+
+    formRef.current.setValue('triggerConfig', {
+      type: TriggerType.CRON,
+      expression,
+      timezone: currentTimezone,
+    } as CronTriggerConfig);
+  }, []);
 
   /**
    * Get current step configuration
@@ -376,8 +446,9 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
   /**
    * Validate current step's fields before proceeding
    * This function maps step to the fields that need validation
+   * Note: Kept for potential future use in step validation
    */
-  const getFieldsForStep = (step: AutomationFormStep): (keyof AutomationFormData)[] => {
+  const _getFieldsForStep = (step: AutomationFormStep): (keyof AutomationFormData)[] => {
     switch (step) {
       case 'basicInfo':
         return ['name'];
@@ -659,10 +730,10 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
               />
 
               {/* Selected Workflow Details Display */}
-              {form.watch('workflowId') && (
+              {watchedWorkflowId && (
                 <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
                   {(() => {
-                    const selected = workflows.find((w) => w.id === form.watch('workflowId'));
+                    const selected = workflows.find((w) => w.id === watchedWorkflowId);
                     return selected ? (
                       <div className="space-y-2">
                         <div>
@@ -702,18 +773,24 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                       <RadioGroup
                         value={field.value || TriggerType.CRON}
                         onValueChange={(value) => {
+                          // Only update if value actually changed
+                          if (value === field.value) return;
+
                           field.onChange(value as TriggerType);
                           // Reset trigger config when changing type
+                          // Use getValues() instead of watch() to avoid subscription loops
+                          const currentValues = form.getValues();
                           if (value === TriggerType.CRON) {
                             form.setValue('triggerConfig', {
                               type: TriggerType.CRON,
                               expression: '0 9 * * *',
-                              timezone: form.watch('timezone') || 'UTC',
+                              timezone: currentValues.timezone || 'UTC',
                             } as CronTriggerConfig);
                           } else if (value === TriggerType.WEBHOOK) {
+                            const webhookPath = currentValues.webhookPath || `${currentValues.name?.toLowerCase().replace(/\s+/g, '-') || 'automation'}`;
                             form.setValue('triggerConfig', {
                               type: TriggerType.WEBHOOK,
-                              path: form.watch('webhookPath') || `/webhooks/${form.watch('name')?.toLowerCase().replace(/\s+/g, '-') || 'automation'}`,
+                              path: webhookPath,
                               method: 'POST',
                             } as WebhookTriggerConfig);
                             setUseManualWebhookPath(false);
@@ -773,7 +850,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
               />
 
               {/* Cron Trigger Configuration */}
-              {form.watch('triggerType') === TriggerType.CRON && (
+              {watchedTriggerType === TriggerType.CRON && (
                 <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
                   {/* Timezone Selector */}
                   <FormField
@@ -816,15 +893,9 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                   <div className="space-y-2">
                     <FormLabel>Cron Expression</FormLabel>
                     <CronBuilder
-                      value={(form.watch('triggerConfig') as CronTriggerConfig)?.expression || '0 9 * * *'}
-                      onChange={(expression) => {
-                        form.setValue('triggerConfig', {
-                          type: TriggerType.CRON,
-                          expression,
-                          timezone: form.watch('timezone') || 'UTC',
-                        } as CronTriggerConfig);
-                      }}
-                      timezone={form.watch('timezone') || 'UTC'}
+                      value={(watchedTriggerConfig as CronTriggerConfig)?.expression || '0 9 * * *'}
+                      onChange={handleCronBuilderChange}
+                      timezone={watchedTimezone || 'UTC'}
                     />
                     <FormDescription>
                       Use the visual builder or enter a custom cron expression
@@ -832,11 +903,11 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                   </div>
 
                   {/* Cron Validator */}
-                  {(form.watch('triggerConfig') as CronTriggerConfig)?.expression && (
+                  {(watchedTriggerConfig as CronTriggerConfig)?.expression && (
                     <div className="pt-2">
                       <CronValidator
-                        cronExpression={(form.watch('triggerConfig') as CronTriggerConfig).expression}
-                        timezone={form.watch('timezone') || 'UTC'}
+                        cronExpression={(watchedTriggerConfig as CronTriggerConfig).expression}
+                        timezone={watchedTimezone || 'UTC'}
                       />
                     </div>
                   )}
@@ -844,7 +915,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
               )}
 
               {/* Webhook Trigger Configuration */}
-              {form.watch('triggerType') === TriggerType.WEBHOOK && (
+              {watchedTriggerType === TriggerType.WEBHOOK && (
                 <div className="space-y-4 p-4 border rounded-lg bg-purple-50 dark:bg-purple-950">
                   <FormField
                     control={form.control}
@@ -859,7 +930,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                             {!useManualWebhookPath ? (
                               <div className="flex gap-2">
                                 <Input
-                                  value={`/webhooks/${form.watch('name')?.toLowerCase().replace(/\s+/g, '-') || 'automation'}`}
+                                  value={`${watchedName?.toLowerCase().replace(/\s+/g, '-') || 'automation'}`}
                                   disabled={true}
                                   placeholder="Auto-generated webhook path"
                                   className="bg-muted"
@@ -877,7 +948,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                               <div className="flex gap-2">
                                 <Input
                                   {...field}
-                                  placeholder="/webhooks/my-automation"
+                                  placeholder="my-automation"
                                   disabled={loading}
                                 />
                                 <Button
@@ -885,7 +956,8 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                                   variant="outline"
                                   onClick={() => {
                                     setUseManualWebhookPath(false);
-                                    field.onChange(`/webhooks/${form.watch('name')?.toLowerCase().replace(/\s+/g, '-') || 'automation'}`);
+                                    const currentName = form.getValues('name');
+                                    field.onChange(`${currentName?.toLowerCase().replace(/\s+/g, '-') || 'automation'}`);
                                   }}
                                   disabled={loading}
                                 >
@@ -907,14 +979,14 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                   <div className="p-3 bg-white dark:bg-slate-900 rounded border">
                     <p className="text-sm font-medium mb-2">Full Webhook URL:</p>
                     <p className="text-sm text-muted-foreground font-mono break-all">
-                      {`POST ${window.location.origin}/api/webhooks${form.watch('webhookPath') || '/automation'}`}
+                      {`POST ${config.apiUrl}/workscript/automations/webhook/${watchedWebhookPath || 'automation'}`}
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Immediate Trigger Configuration */}
-              {form.watch('triggerType') === TriggerType.IMMEDIATE && (
+              {watchedTriggerType === TriggerType.IMMEDIATE && (
                 <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950">
                   <div className="space-y-2">
                     <p className="font-medium text-green-900 dark:text-green-100">
@@ -940,12 +1012,12 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                   <div className="space-y-2">
                     <div>
                       <p className="text-xs font-medium text-muted-foreground">Name</p>
-                      <p className="text-base font-medium">{form.watch('name') || '(Not set)'}</p>
+                      <p className="text-base font-medium">{watchedName || '(Not set)'}</p>
                     </div>
-                    {form.watch('description') && (
+                    {watchedDescription && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Description</p>
-                        <p className="text-sm text-foreground">{form.watch('description')}</p>
+                        <p className="text-sm text-foreground">{watchedDescription}</p>
                       </div>
                     )}
                   </div>
@@ -959,7 +1031,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                   </h3>
                   <div className="space-y-2">
                     {(() => {
-                      const selectedWorkflow = workflows.find((w) => w.id === form.watch('workflowId'));
+                      const selectedWorkflow = workflows.find((w) => w.id === watchedWorkflowId);
                       return selectedWorkflow ? (
                         <>
                           <div>
@@ -987,20 +1059,20 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                 {/* Trigger Configuration Section */}
                 <div
                   className={`p-4 border rounded-lg ${
-                    form.watch('triggerType') === TriggerType.CRON
+                    watchedTriggerType === TriggerType.CRON
                       ? 'bg-orange-50 dark:bg-orange-950/50'
-                      : form.watch('triggerType') === TriggerType.WEBHOOK
+                      : watchedTriggerType === TriggerType.WEBHOOK
                         ? 'bg-purple-50 dark:bg-purple-950/50'
                         : 'bg-green-50 dark:bg-green-950/50'
                   }`}
                 >
                   <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                    {form.watch('triggerType') === TriggerType.CRON ? (
+                    {watchedTriggerType === TriggerType.CRON ? (
                       <>
                         <Calendar className="w-4 h-4" />
                         Cron Schedule
                       </>
-                    ) : form.watch('triggerType') === TriggerType.WEBHOOK ? (
+                    ) : watchedTriggerType === TriggerType.WEBHOOK ? (
                       <>
                         <Globe className="w-4 h-4" />
                         Webhook
@@ -1016,26 +1088,26 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                     <div>
                       <p className="text-xs font-medium text-muted-foreground">Trigger Type</p>
                       <p className="text-base font-medium capitalize">
-                        {form.watch('triggerType')?.replace('-', ' ') || '(Not set)'}
+                        {watchedTriggerType?.replace('-', ' ') || '(Not set)'}
                       </p>
                     </div>
 
                     {/* Cron Trigger Details */}
-                    {form.watch('triggerType') === TriggerType.CRON && (
+                    {watchedTriggerType === TriggerType.CRON && (
                       <>
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">Cron Expression</p>
                           <p className="text-sm font-mono bg-background p-2 rounded border">
-                            {(form.watch('triggerConfig') as CronTriggerConfig)?.expression || '(Not set)'}
+                            {(watchedTriggerConfig as CronTriggerConfig)?.expression || '(Not set)'}
                           </p>
                         </div>
                         <div>
                           <p className="text-xs font-medium text-muted-foreground">Timezone</p>
                           <p className="text-sm text-foreground">
-                            {form.watch('timezone') || 'UTC'}
+                            {watchedTimezone || 'UTC'}
                           </p>
                         </div>
-                        {(form.watch('triggerConfig') as CronTriggerConfig)?.expression && (
+                        {(watchedTriggerConfig as CronTriggerConfig)?.expression && (
                           <div className="mt-3 p-2 bg-background rounded border text-xs text-muted-foreground">
                             <p className="font-medium mb-1">Next 5 runs will be displayed during creation</p>
                           </div>
@@ -1044,21 +1116,21 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                     )}
 
                     {/* Webhook Trigger Details */}
-                    {form.watch('triggerType') === TriggerType.WEBHOOK && (
+                    {watchedTriggerType === TriggerType.WEBHOOK && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground">Webhook Path</p>
                         <p className="text-sm font-mono bg-background p-2 rounded border break-all">
-                          {form.watch('webhookPath') || '(Not set)'}
+                          {watchedWebhookPath || '(Not set)'}
                         </p>
                         <p className="text-xs text-muted-foreground mt-2">
-                          Full URL: POST {window.location.origin}/api/webhooks
-                          {form.watch('webhookPath') || '/automation'}
+                          Full URL: POST {config.apiUrl}/workscript/automations/webhook/
+                          {watchedWebhookPath || 'automation'}
                         </p>
                       </div>
                     )}
 
                     {/* Immediate Trigger Details */}
-                    {form.watch('triggerType') === TriggerType.IMMEDIATE && (
+                    {watchedTriggerType === TriggerType.IMMEDIATE && (
                       <p className="text-sm text-foreground">
                         This automation will only run when manually triggered through the UI or API.
                       </p>
@@ -1092,7 +1164,7 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                     )}
                   />
                   <p className="text-xs text-muted-foreground mt-3 p-2 bg-background rounded">
-                    {form.watch('enabled')
+                    {watchedEnabled
                       ? 'This automation is enabled and will be executed according to the trigger configuration.'
                       : 'This automation is disabled. It will not execute until enabled.'}
                   </p>
