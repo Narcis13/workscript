@@ -114,7 +114,7 @@ export default function AutomationEditPage() {
     throw new Error('AutomationEditPage must be used within AuthProvider');
   }
 
-  const { user } = authContext;
+  const { user, hasPermission } = authContext;
 
   // ============================================
   // PERMISSION CHECK
@@ -123,8 +123,9 @@ export default function AutomationEditPage() {
   /**
    * Check if user has AUTOMATION_UPDATE permission
    * If not, save button will be disabled and user sees warning
+   * Uses hasPermission from AuthContext which handles role-based permissions
    */
-  const hasUpdatePermission = user?.permissions.includes(Permission.AUTOMATION_UPDATE) ?? false;
+  const hasUpdatePermission = hasPermission(Permission.AUTOMATION_UPDATE);
 
   // ============================================
   // QUERIES & MUTATIONS

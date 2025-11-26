@@ -145,16 +145,13 @@ export function useWebSocket(): UseWebSocketReturn {
 
   /**
    * Initialize WebSocket client and set up event listeners
+   *
+   * IMPORTANT: Event handlers are registered on the singleton WebSocketClient,
+   * so we must check if they're already registered to prevent duplicates
+   * when multiple components use this hook.
    */
   const initializeWebSocket = useCallback(() => {
-    if (wsClientRef.current || isInitializedRef.current) {
-      return;
-    }
-
-    // Mark as initialized to prevent multiple initializations
-    isInitializedRef.current = true;
-
-    // Get singleton instance
+    // Get singleton instance first
     const wsClient = WebSocketClient.getInstance({
       debug: import.meta.env.DEV,
       reconnection: {
@@ -165,35 +162,47 @@ export function useWebSocket(): UseWebSocketReturn {
 
     wsClientRef.current = wsClient;
 
+    // Check if store handlers are already registered on the singleton
+    // This prevents duplicate handlers when multiple components use this hook
+    if (wsClient.areStoreHandlersRegistered()) {
+      isInitializedRef.current = true;
+      return;
+    }
+
+    // Mark as initialized in both places
+    isInitializedRef.current = true;
+    wsClient.markStoreHandlersRegistered();
+
     // Connection status changed
     wsClient.on('connection:status-changed', (event: any) => {
-      setConnectionStatus(event.status);
+      useWebSocketStore.getState().setConnectionStatus(event.status);
 
       // Update timestamps
       const state = wsClient.getState();
       if (state.connectedAt) {
-        setConnectedAt(state.connectedAt);
+        useWebSocketStore.getState().setConnectedAt(state.connectedAt);
       }
       if (state.disconnectedAt) {
-        setDisconnectedAt(state.disconnectedAt);
+        useWebSocketStore.getState().setDisconnectedAt(state.disconnectedAt);
       }
     });
 
     // Connection failed
-    wsClient.on('connection:failed', (event: any) => {
-      setError('Max reconnection attempts reached');
+    wsClient.on('connection:failed', () => {
+      useWebSocketStore.getState().setError('Max reconnection attempts reached');
     });
 
     // Workflow started
     wsClient.on('workflow:started', (event: WorkflowEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       // Initialize execution tracking
       if (event.executionId && event.workflowId) {
-        addExecution({
+        store.addExecution({
           executionId: event.executionId,
           workflowId: event.workflowId,
           workflowName: event.workflowName || '',
@@ -215,13 +224,14 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Workflow progress
     wsClient.on('workflow:progress', (event: WorkflowEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       if (event.executionId && event.data) {
-        updateExecution(event.executionId, {
+        store.updateExecution(event.executionId, {
           currentNode: event.data.currentNode,
           progress: {
             completed: event.data.completedNodes || 0,
@@ -236,13 +246,14 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Node started
     wsClient.on('node:started', (event: NodeEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       if (event.executionId) {
-        updateExecution(event.executionId, {
+        store.updateExecution(event.executionId, {
           currentNode: event.nodeId
         });
       }
@@ -250,16 +261,17 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Node completed
     wsClient.on('node:completed', (event: NodeEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       if (event.executionId) {
-        const execution = useWebSocketStore.getState().getExecution(event.executionId);
+        const execution = store.getExecution(event.executionId);
         if (execution) {
           const completedNodes = [...execution.completedNodes, event.nodeId];
-          updateExecution(event.executionId, {
+          store.updateExecution(event.executionId, {
             completedNodes,
             progress: {
               ...execution.progress,
@@ -276,16 +288,17 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Node failed
     wsClient.on('node:failed', (event: NodeEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       if (event.executionId) {
-        const execution = useWebSocketStore.getState().getExecution(event.executionId);
+        const execution = store.getExecution(event.executionId);
         if (execution) {
           const failedNodes = [...execution.failedNodes, event.nodeId];
-          updateExecution(event.executionId, {
+          store.updateExecution(event.executionId, {
             failedNodes,
             status: 'failed'
           });
@@ -295,13 +308,14 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Workflow completed
     wsClient.on('workflow:completed', (event: WorkflowEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       if (event.executionId) {
-        updateExecution(event.executionId, {
+        store.updateExecution(event.executionId, {
           status: 'completed',
           endTime: event.timestamp || new Date(),
           elapsedTime: event.data?.duration || 0
@@ -311,13 +325,14 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // Workflow failed
     wsClient.on('workflow:failed', (event: WorkflowEvent) => {
-      addEvent({
+      const store = useWebSocketStore.getState();
+      store.addEvent({
         ...event,
         timestamp: event.timestamp || new Date()
       });
 
       if (event.executionId) {
-        updateExecution(event.executionId, {
+        store.updateExecution(event.executionId, {
           status: 'failed',
           endTime: event.timestamp || new Date(),
           elapsedTime: event.data?.duration || 0
@@ -327,17 +342,9 @@ export function useWebSocket(): UseWebSocketReturn {
 
     // System errors
     wsClient.on('system:error', (event: any) => {
-      setError(event.error || 'WebSocket error occurred');
+      useWebSocketStore.getState().setError(event.error || 'WebSocket error occurred');
     });
-  }, [
-    addEvent,
-    addExecution,
-    updateExecution,
-    setConnectionStatus,
-    setError,
-    setConnectedAt,
-    setDisconnectedAt
-  ]);
+  }, []);
 
   /**
    * Connect to WebSocket server

@@ -109,6 +109,9 @@ export class WebSocketClient {
   /** Event log for debugging */
   private eventLog: WebSocketEventLogEntry[] = [];
 
+  /** Flag to track if store handlers have been registered */
+  private storeHandlersRegistered = false;
+
   /** Statistics */
   private stats: WebSocketStatistics = {
     messagesSent: 0,
@@ -522,6 +525,25 @@ export class WebSocketClient {
       errors: 0
     };
     this.debug('Statistics reset');
+  }
+
+  /**
+   * Check if store handlers have been registered
+   * This prevents duplicate handler registration across multiple hook instances
+   *
+   * @returns True if handlers are already registered
+   */
+  public areStoreHandlersRegistered(): boolean {
+    return this.storeHandlersRegistered;
+  }
+
+  /**
+   * Mark store handlers as registered
+   * Should be called after registering handlers in useWebSocket hook
+   */
+  public markStoreHandlersRegistered(): void {
+    this.storeHandlersRegistered = true;
+    this.debug('Store handlers marked as registered');
   }
 
   // ============================================================================

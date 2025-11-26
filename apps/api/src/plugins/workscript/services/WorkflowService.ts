@@ -1,7 +1,7 @@
 import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManager } from '@workscript/engine';
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@workscript/engine';
 import { ALL_NODES } from '@workscript/nodes';
-import { WebSocketManager } from '../../../shared-services/websocket';
+import { BunWebSocketManager } from '../../../shared-services/websocket';
 
 /**
  * Workscript Plugin - Workflow Service
@@ -21,7 +21,7 @@ export class WorkflowService {
   private executionEngine: ExecutionEngine;
   private hookManager: HookManager;
   private parser: WorkflowParser;
-  private webSocketManager: WebSocketManager;
+  private webSocketManager: BunWebSocketManager;
   private initialized: boolean = false;
 
   private constructor() {
@@ -30,7 +30,7 @@ export class WorkflowService {
     this.hookManager = new HookManager();
     this.executionEngine = new ExecutionEngine(this.registry, this.stateManager, this.hookManager);
     this.parser = new WorkflowParser(this.registry);
-    this.webSocketManager = WebSocketManager.getInstance();
+    this.webSocketManager = BunWebSocketManager.getInstance();
   }
 
   /**

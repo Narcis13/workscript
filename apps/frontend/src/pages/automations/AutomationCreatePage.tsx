@@ -76,7 +76,7 @@ export default function AutomationCreatePage() {
     throw new Error('AutomationCreatePage must be used within AuthProvider');
   }
 
-  const { user } = authContext;
+  const { user, hasPermission } = authContext;
 
   // ============================================
   // PERMISSION CHECK
@@ -85,8 +85,9 @@ export default function AutomationCreatePage() {
   /**
    * Check if user has AUTOMATION_CREATE permission
    * If not, save button will be disabled and user sees warning
+   * Uses hasPermission from AuthContext which handles role-based permissions
    */
-  const hasCreatePermission = user?.permissions.includes(Permission.AUTOMATION_CREATE) ?? false;
+  const hasCreatePermission = hasPermission(Permission.AUTOMATION_CREATE);
 
   // ============================================
   // STATE

@@ -51,12 +51,13 @@ export default function AutomationsPage() {
 
   // ============================================
   // PERMISSION CHECKS
+  // Uses hasPermission from AuthContext which handles role-based permissions
   // ============================================
 
-  const hasCreatePermission = authContext?.user?.permissions.includes(Permission.AUTOMATION_CREATE) ?? false;
-  const hasUpdatePermission = authContext?.user?.permissions.includes(Permission.AUTOMATION_UPDATE) ?? false;
-  const hasDeletePermission = authContext?.user?.permissions.includes(Permission.AUTOMATION_DELETE) ?? false;
-  const hasExecutePermission = authContext?.user?.permissions.includes(Permission.AUTOMATION_EXECUTE) ?? false;
+  const hasCreatePermission = authContext?.hasPermission(Permission.AUTOMATION_CREATE) ?? false;
+  const hasUpdatePermission = authContext?.hasPermission(Permission.AUTOMATION_UPDATE) ?? false;
+  const hasDeletePermission = authContext?.hasPermission(Permission.AUTOMATION_DELETE) ?? false;
+  const hasExecutePermission = authContext?.hasPermission(Permission.AUTOMATION_EXECUTE) ?? false;
 
   // ============================================
   // FILTER STATE

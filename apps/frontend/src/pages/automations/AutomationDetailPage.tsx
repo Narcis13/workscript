@@ -27,7 +27,7 @@
  * @module pages/automations/AutomationDetailPage
  */
 
-import { useContext, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   useAutomation,
@@ -79,7 +79,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { AuthContext } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Permission } from '@/types/auth';
 import { TriggerType as TriggerTypeEnum } from '@/types/automation.types';
 import { formatDate, formatDistanceToNow } from 'date-fns';
@@ -105,8 +105,7 @@ export default function AutomationDetailPage(): React.ReactElement {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const authContext = useContext(AuthContext);
-  const user = authContext?.user;
+  const { hasPermission } = useAuth();
 
   // State
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -134,11 +133,11 @@ export default function AutomationDetailPage(): React.ReactElement {
   const { mutate: deleteAutomation, isPending: deleteLoading } = useDeleteAutomation();
   const { mutate: rescheduleAutomation, isPending: rescheduleLoading } = useRescheduleAutomation();
 
-  // Permission checks
-  const canRead = user?.permissions?.includes(Permission.AUTOMATION_READ) ?? false;
-  const canUpdate = user?.permissions?.includes(Permission.AUTOMATION_UPDATE) ?? false;
-  const canDelete = user?.permissions?.includes(Permission.AUTOMATION_DELETE) ?? false;
-  const canExecute = user?.permissions?.includes(Permission.AUTOMATION_EXECUTE) ?? false;
+  // Permission checks - use hasPermission which handles role-based permissions
+  const canRead = hasPermission(Permission.AUTOMATION_READ);
+  const canUpdate = hasPermission(Permission.AUTOMATION_UPDATE);
+  const canDelete = hasPermission(Permission.AUTOMATION_DELETE);
+  const canExecute = hasPermission(Permission.AUTOMATION_EXECUTE);
 
   // Handlers
   const handleExecuteNow = useCallback(() => {
