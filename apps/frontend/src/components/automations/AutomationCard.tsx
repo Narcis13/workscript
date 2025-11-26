@@ -266,6 +266,9 @@ export const AutomationCard: React.FC<AutomationCardProps> = ({
    */
   const handleExecute = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!automation.enabled) {
+      return; // Don't execute disabled automations
+    }
     if (onExecute) {
       onExecute(automation.id);
     }
@@ -388,9 +391,13 @@ export const AutomationCard: React.FC<AutomationCardProps> = ({
               )}
 
               {canExecute && (
-                <DropdownMenuItem onClick={handleExecute}>
+                <DropdownMenuItem
+                  onClick={handleExecute}
+                  disabled={!automation.enabled}
+                  title={!automation.enabled ? 'Enable the automation to execute it' : undefined}
+                >
                   <Play className="mr-2 h-4 w-4" />
-                  Execute Now
+                  {automation.enabled ? 'Execute Now' : 'Disabled'}
                 </DropdownMenuItem>
               )}
 

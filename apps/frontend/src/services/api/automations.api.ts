@@ -852,3 +852,45 @@ export function getExecutionStatusColor(
       return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
   }
 }
+
+// ============================================
+// SERVER TIME
+// ============================================
+
+/**
+ * Server time response type
+ */
+export interface ServerTimeResponse {
+  currentTime: string;
+  timezone: string;
+  localTime: string;
+  utcOffset: number;
+}
+
+/**
+ * Fetch current server time and timezone
+ *
+ * Returns the server's current time and timezone information,
+ * useful for comparing with cron automation schedules.
+ *
+ * @returns Promise resolving to server time information
+ * @throws Error if request fails
+ *
+ * @example
+ * ```typescript
+ * const serverTime = await fetchServerTime();
+ * console.log(`Server time: ${serverTime.localTime}`);
+ * console.log(`Server timezone: ${serverTime.timezone}`);
+ * ```
+ */
+export async function fetchServerTime(): Promise<ServerTimeResponse> {
+  const response = await apiClient.get<ApiResponse<ServerTimeResponse>>(
+    `${AUTOMATIONS_BASE_PATH}/server-time`
+  );
+
+  if (response.data.data) {
+    return response.data.data;
+  }
+
+  return response.data as unknown as ServerTimeResponse;
+}

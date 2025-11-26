@@ -24,7 +24,7 @@
  * @module components/automations/AutomationForm
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import {
   Form,
@@ -69,6 +69,7 @@ import { Check, ChevronsUpDown, Calendar, Globe, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TriggerType, type TriggerConfig, type CronTriggerConfig, type WebhookTriggerConfig, type ImmediateTriggerConfig } from '@/types/automation.types';
 import { useWorkflows } from '@/hooks/api/useWorkflows';
+import { useServerTime } from '@/hooks/api/useAutomations';
 import { CronBuilder } from '@/components/automations/CronBuilder';
 import { CronValidator } from '@/components/automations/CronValidator';
 import { config } from '@/lib/config';
@@ -281,14 +282,27 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
 
   /**
    * Track whether to use manual webhook path entry (vs auto-generated)
+   * In edit mode with webhook trigger, start in manual mode to show the stored path
    */
-  const [useManualWebhookPath, setUseManualWebhookPath] = useState(false);
+  const [useManualWebhookPath, setUseManualWebhookPath] = useState(
+    mode === 'edit' && initialData?.triggerType === TriggerType.WEBHOOK
+  );
 
   /**
    * Fetch all active workflows for selection
    * Using React Query to handle caching and refetching
    */
   const { data: workflows = [], isLoading: workflowsLoading, isError: workflowsError } = useWorkflows();
+
+  /**
+   * Fetch server time to get default timezone
+   */
+  const { data: serverTime } = useServerTime();
+
+  /**
+   * Get the default timezone - prefer server timezone, fall back to UTC
+   */
+  const defaultTimezone = serverTime?.timezone || 'UTC';
 
   /**
    * Initialize react-hook-form with default values and validation rules
@@ -359,6 +373,41 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
   // Store form in a ref so callbacks don't need it as a dependency
   const formRef = useRef(form);
   formRef.current = form;
+
+  // Sync webhookPath to triggerConfig.path when in webhook mode
+  // This ensures the triggerConfig stays in sync when user edits the webhook path
+  useEffect(() => {
+    if (watchedTriggerType === TriggerType.WEBHOOK && watchedWebhookPath) {
+      const currentConfig = formRef.current.getValues('triggerConfig') as WebhookTriggerConfig;
+      // Only update if the path actually changed
+      if (currentConfig?.path !== watchedWebhookPath) {
+        formRef.current.setValue('triggerConfig', {
+          type: TriggerType.WEBHOOK,
+          path: watchedWebhookPath,
+          method: currentConfig?.method || 'POST',
+        } as WebhookTriggerConfig);
+      }
+    }
+  }, [watchedTriggerType, watchedWebhookPath]);
+
+  // Set the default timezone from server when it loads (only for new automations)
+  useEffect(() => {
+    if (serverTime?.timezone && mode === 'create') {
+      const currentTimezone = formRef.current.getValues('timezone');
+      // Only update if still on default UTC (user hasn't changed it)
+      if (currentTimezone === 'UTC') {
+        formRef.current.setValue('timezone', serverTime.timezone);
+        // Also update the triggerConfig if it's a cron trigger
+        const currentConfig = formRef.current.getValues('triggerConfig') as CronTriggerConfig;
+        if (currentConfig?.type === TriggerType.CRON) {
+          formRef.current.setValue('triggerConfig', {
+            ...currentConfig,
+            timezone: serverTime.timezone,
+          });
+        }
+      }
+    }
+  }, [serverTime?.timezone, mode]);
 
   // Memoize the CronBuilder onChange to prevent unnecessary re-renders
   // Using ref pattern to avoid form as dependency
@@ -860,29 +909,97 @@ export const AutomationForm: React.FC<AutomationFormProps> = ({
                       <FormItem>
                         <FormLabel>Timezone</FormLabel>
                         <FormControl>
-                          <Select value={field.value || 'UTC'} onValueChange={field.onChange} disabled={loading}>
+                          <Select value={field.value || defaultTimezone} onValueChange={field.onChange} disabled={loading}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select timezone" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="UTC">UTC</SelectItem>
-                              <SelectItem value="America/New_York">America/New_York (EST/EDT)</SelectItem>
-                              <SelectItem value="America/Chicago">America/Chicago (CST/CDT)</SelectItem>
-                              <SelectItem value="America/Denver">America/Denver (MST/MDT)</SelectItem>
-                              <SelectItem value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</SelectItem>
-                              <SelectItem value="Europe/London">Europe/London (GMT/BST)</SelectItem>
-                              <SelectItem value="Europe/Paris">Europe/Paris (CET/CEST)</SelectItem>
-                              <SelectItem value="Europe/Berlin">Europe/Berlin (CET/CEST)</SelectItem>
-                              <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST)</SelectItem>
-                              <SelectItem value="Asia/Shanghai">Asia/Shanghai (CST)</SelectItem>
-                              <SelectItem value="Asia/Singapore">Asia/Singapore (SGT)</SelectItem>
-                              <SelectItem value="Australia/Sydney">Australia/Sydney (AEDT/AEST)</SelectItem>
-                              <SelectItem value="Australia/Melbourne">Australia/Melbourne (AEDT/AEST)</SelectItem>
+                              {/* Show server timezone first if available */}
+                              {serverTime?.timezone && (
+                                <SelectItem value={serverTime.timezone}>
+                                  {serverTime.timezone} (Server Default)
+                                </SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'UTC' && (
+                                <SelectItem value="UTC">UTC</SelectItem>
+                              )}
+                              {/* Europe */}
+                              {serverTime?.timezone !== 'Europe/Bucharest' && (
+                                <SelectItem value="Europe/Bucharest">Europe/Bucharest (EET/EEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/London' && (
+                                <SelectItem value="Europe/London">Europe/London (GMT/BST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Paris' && (
+                                <SelectItem value="Europe/Paris">Europe/Paris (CET/CEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Berlin' && (
+                                <SelectItem value="Europe/Berlin">Europe/Berlin (CET/CEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Rome' && (
+                                <SelectItem value="Europe/Rome">Europe/Rome (CET/CEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Madrid' && (
+                                <SelectItem value="Europe/Madrid">Europe/Madrid (CET/CEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Amsterdam' && (
+                                <SelectItem value="Europe/Amsterdam">Europe/Amsterdam (CET/CEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Athens' && (
+                                <SelectItem value="Europe/Athens">Europe/Athens (EET/EEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Helsinki' && (
+                                <SelectItem value="Europe/Helsinki">Europe/Helsinki (EET/EEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Kiev' && (
+                                <SelectItem value="Europe/Kiev">Europe/Kiev (EET/EEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Europe/Moscow' && (
+                                <SelectItem value="Europe/Moscow">Europe/Moscow (MSK)</SelectItem>
+                              )}
+                              {/* Americas */}
+                              {serverTime?.timezone !== 'America/New_York' && (
+                                <SelectItem value="America/New_York">America/New_York (EST/EDT)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'America/Chicago' && (
+                                <SelectItem value="America/Chicago">America/Chicago (CST/CDT)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'America/Denver' && (
+                                <SelectItem value="America/Denver">America/Denver (MST/MDT)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'America/Los_Angeles' && (
+                                <SelectItem value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</SelectItem>
+                              )}
+                              {/* Asia */}
+                              {serverTime?.timezone !== 'Asia/Tokyo' && (
+                                <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Asia/Shanghai' && (
+                                <SelectItem value="Asia/Shanghai">Asia/Shanghai (CST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Asia/Singapore' && (
+                                <SelectItem value="Asia/Singapore">Asia/Singapore (SGT)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Asia/Dubai' && (
+                                <SelectItem value="Asia/Dubai">Asia/Dubai (GST)</SelectItem>
+                              )}
+                              {/* Australia */}
+                              {serverTime?.timezone !== 'Australia/Sydney' && (
+                                <SelectItem value="Australia/Sydney">Australia/Sydney (AEDT/AEST)</SelectItem>
+                              )}
+                              {serverTime?.timezone !== 'Australia/Melbourne' && (
+                                <SelectItem value="Australia/Melbourne">Australia/Melbourne (AEDT/AEST)</SelectItem>
+                              )}
                             </SelectContent>
                           </Select>
                         </FormControl>
                         <FormDescription>
-                          Select the timezone for cron expression calculation
+                          Select the timezone for cron expression calculation.
+                          {serverTime?.timezone && (
+                            <span className="block mt-1 text-blue-600 dark:text-blue-400">
+                              Server timezone: {serverTime.timezone}
+                            </span>
+                          )}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

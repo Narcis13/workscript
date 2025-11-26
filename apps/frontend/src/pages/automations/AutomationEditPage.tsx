@@ -231,12 +231,13 @@ export default function AutomationEditPage() {
             cronExpression: cronConfig.expression,
             timezone: cronConfig.timezone || data.timezone || 'UTC',
           };
-        } else if (data.triggerType === 'webhook' && data.triggerConfig) {
+        } else if (data.triggerType === 'webhook') {
           // API expects webhookUrl, frontend sends path
-          const webhookConfig = data.triggerConfig as { path?: string; method?: string };
+          // Prefer webhookPath (user's direct input) over triggerConfig.path
+          const webhookConfig = data.triggerConfig as { path?: string; method?: string } | undefined;
           apiTriggerConfig = {
-            webhookUrl: webhookConfig.path || data.webhookPath,
-            method: webhookConfig.method || 'POST',
+            webhookUrl: data.webhookPath || webhookConfig?.path || 'automation',
+            method: webhookConfig?.method || 'POST',
           };
         } else if (data.triggerType === 'immediate') {
           apiTriggerConfig = {

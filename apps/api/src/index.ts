@@ -13,6 +13,7 @@ import { pluginLoader, pluginRegistry } from './core/plugins';
 import authRoutes from './routes/auth';
 import apiKeyRoutes from './routes/apikeys';
 import passwordResetRoutes from './routes/password-reset';
+import { BunWebSocketManager, type WebSocketData } from './shared-services/websocket/BunWebSocketManager';
 
 // Global server reference for hot reload
 declare global {
@@ -203,6 +204,12 @@ async function startServer() {
       return c.json(pluginRegistry.toJSON());
     });
 
+    // WebSocket stats endpoint
+    app.get('/api/ws/stats', (c) => {
+      const wsManager = BunWebSocketManager.getInstance();
+      return c.json(wsManager.getStats());
+    });
+
     // 404 handler
     app.notFound((c) => {
       return c.json(
@@ -230,6 +237,9 @@ async function startServer() {
     // Start server with retry logic for port conflicts
     const port = parseInt(process.env.PORT || '3013', 10);
     console.log(`[Server] Starting server on port ${port}...`);
+
+    // Initialize WebSocket Manager
+    const wsManager = BunWebSocketManager.getInstance();
 
     // Helper function to kill processes using the port
     const killPort = async (portNum: number): Promise<boolean> => {
@@ -273,16 +283,44 @@ async function startServer() {
 
     while (retries > 0) {
       try {
-        server = Bun.serve({
+        server = Bun.serve<WebSocketData>({
           port,
-          fetch: app.fetch,
-          // Removed reusePort: true to avoid race conditions in watch mode
+          fetch(req, server) {
+            // Handle WebSocket upgrade requests
+            const url = new URL(req.url);
+            if (url.pathname === '/ws') {
+              const upgraded = server.upgrade(req, {
+                data: {
+                  clientId: '',
+                  connectedAt: Date.now(),
+                },
+              });
+              if (upgraded) {
+                return undefined;
+              }
+              return new Response('WebSocket upgrade failed', { status: 400 });
+            }
+            // Pass to Hono for all other requests
+            return app.fetch(req);
+          },
+          websocket: {
+            open(ws) {
+              wsManager.handleOpen(ws);
+            },
+            message(ws, message) {
+              wsManager.handleMessage(ws, message);
+            },
+            close(ws) {
+              wsManager.handleClose(ws);
+            },
+          },
         });
 
         // Store server reference globally for hot reload handling
         global.__server = server;
 
         console.log(`✓ Server running at http://localhost:${port}`);
+        console.log(`✓ WebSocket available at ws://localhost:${port}/ws`);
         console.log(`✓ Plugin system initialized with ${pluginRegistry.getPluginCount()} plugin(s)`);
         console.log(`✓ Health check available at http://localhost:${port}/health`);
         console.log(`✓ Plugin list available at http://localhost:${port}/api/plugins`);
@@ -314,6 +352,10 @@ async function startServer() {
     const shutdown = async (signal: string) => {
       console.log(`\n[Server] ${signal} received, shutting down gracefully...`);
       try {
+        // Close all WebSocket connections
+        wsManager.close();
+        console.log('[Server] WebSocket connections closed');
+
         await pluginLoader.unloadAll();
         server.stop();
         global.__server = undefined; // Clear global reference

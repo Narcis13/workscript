@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { AutomationRepository } from '../repositories/automationRepository'
 import { WorkflowRepository } from '../repositories/workflowRepository'
+import { WorkflowService } from '../services/WorkflowService'
 import { CronScheduler } from '../../../shared-services/scheduler/CronScheduler'
 import type { NewAutomation } from '../../../db/schema/automations.schema'
 import { createId } from '@paralleldrive/cuid2'
@@ -15,7 +16,7 @@ const automationsApp = new Hono<{ Variables: AuthContext }>()
 automationsApp.get('/', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
   try {
     const { agencyId, enabled, triggerType } = c.req.query()
-    
+
     let automations
     if (agencyId) {
       if (enabled === 'true') {
@@ -30,11 +31,39 @@ automationsApp.get('/', authenticate, requirePermission(Permission.AUTOMATION_RE
     } else {
       automations = await automationRepository.findAll()
     }
-    
+
     return c.json(automations)
   } catch (error) {
     console.error('Error fetching automations:', error)
     return c.json({ error: 'Failed to fetch automations' }, 500)
+  }
+})
+
+// GET /automations/server-time - Get current server time and timezone
+// NOTE: This route MUST be defined before /:id routes to avoid being caught by the param
+automationsApp.get('/server-time', authenticate, requirePermission(Permission.AUTOMATION_READ), async (c) => {
+  try {
+    const now = new Date()
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+    return c.json({
+      currentTime: now.toISOString(),
+      timezone: timezone,
+      localTime: now.toLocaleString('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }),
+      utcOffset: now.getTimezoneOffset()
+    })
+  } catch (error) {
+    console.error('Error getting server time:', error)
+    return c.json({ error: 'Failed to get server time' }, 500)
   }
 })
 
@@ -324,19 +353,9 @@ automationsApp.post('/:id/execute', authenticate, requirePermission(Permission.A
 
       //console.log('Final workflow definition for execution:', JSON.stringify(workflowDefinition, null, 2))
 
-      // Make POST request to /workflows/run
-      const workflowRunResponse = await fetch('http://localhost:3013/workflows/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workflowDefinition)
-      })
-
-      if (!workflowRunResponse.ok) {
-        const errorData = await workflowRunResponse.json().catch(() => ({})) as { error?: string }
-        throw new Error(errorData.error || `Workflow execution failed: ${workflowRunResponse.status}`)
-      }
-
-      const workflowResult = await workflowRunResponse.json()
+      // Execute workflow directly using WorkflowService
+      const workflowService = await WorkflowService.getInstance()
+      const workflowResult = await workflowService.executeWorkflow(workflowDefinition)
       //console.log('Workflow result:', workflowResult)
       // Mark as completed with workflow result
       await automationRepository.completeExecution(
@@ -364,6 +383,7 @@ automationsApp.post('/:id/execute', authenticate, requirePermission(Permission.A
     
     return c.json({
       message: 'Automation execution started',
+      id: executionId,
       executionId,
       automation
     })
@@ -474,19 +494,9 @@ automationsApp.post('/webhook/:webhookPath', async (c) => {
         workflowDefinition = workflow.definition
       }
 
-      // Make POST request to /workflows/run
-      const workflowRunResponse = await fetch('http://localhost:3013/workflows/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workflowDefinition)
-      })
-
-      if (!workflowRunResponse.ok) {
-        const errorData = await workflowRunResponse.json().catch(() => ({})) as { error?: string }
-        throw new Error(errorData.error || `Workflow execution failed: ${workflowRunResponse.status}`)
-      }
-
-      const workflowResult = await workflowRunResponse.json()
+      // Execute workflow directly using WorkflowService
+      const workflowService = await WorkflowService.getInstance()
+      const workflowResult = await workflowService.executeWorkflow(workflowDefinition)
 
       // Mark as completed with workflow result
       await automationRepository.completeExecution(
@@ -500,6 +510,7 @@ automationsApp.post('/webhook/:webhookPath', async (c) => {
 
       return c.json({
         message: 'Workflow execution started via webhook',
+        id: executionId,
         executionId,
         automationId: automation.id,
         automation: {

@@ -35,6 +35,7 @@ import {
   useExecuteAutomation,
   useDeleteAutomation,
   useRescheduleAutomation,
+  useServerTime,
 } from '@/hooks/api/useAutomations';
 import { useQueryClient } from '@tanstack/react-query';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
@@ -74,6 +75,8 @@ import {
   Trash2,
   AlertCircle,
   Link as LinkIcon,
+  Server,
+  Globe,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AuthContext } from '@/contexts/AuthContext';
@@ -123,6 +126,9 @@ export default function AutomationDetailPage(): React.ReactElement {
     isLoading: statsLoading,
   } = useAutomationWithStats(id || '', !!id);
 
+  // Fetch server time for cron automations
+  const { data: serverTime } = useServerTime();
+
   // Mutations
   const { mutate: executeAutomation, isPending: executeLoading } = useExecuteAutomation();
   const { mutate: deleteAutomation, isPending: deleteLoading } = useDeleteAutomation();
@@ -137,6 +143,13 @@ export default function AutomationDetailPage(): React.ReactElement {
   // Handlers
   const handleExecuteNow = useCallback(() => {
     if (!id) return;
+    if (!automation?.enabled) {
+      toast.error('Cannot execute disabled automation', {
+        description: 'Enable the automation first to execute it.',
+      });
+      setShowExecuteConfirm(false);
+      return;
+    }
     executeAutomation(
       { id },
       {
@@ -153,7 +166,7 @@ export default function AutomationDetailPage(): React.ReactElement {
         },
       }
     );
-  }, [id, executeAutomation, queryClient]);
+  }, [id, automation?.enabled, executeAutomation, queryClient]);
 
   const handleDelete = useCallback(() => {
     if (!id) return;
@@ -275,21 +288,25 @@ export default function AutomationDetailPage(): React.ReactElement {
   // Check for recent failures
   const hasRecentFailures = (automationWithStats?.stats?.failureCount || 0) > 0;
 
+  // Check if automation is disabled
+  const isAutomationDisabled = !automationAny.enabled;
+
   // Build action buttons
   const actionButtons = (
     <div className="flex flex-wrap items-center gap-2">
       {canExecute && (
         <Button
           onClick={() => setShowExecuteConfirm(true)}
-          disabled={executeLoading}
+          disabled={executeLoading || isAutomationDisabled}
           variant="default"
+          title={isAutomationDisabled ? 'Enable the automation to execute it' : undefined}
         >
           {executeLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <Play className="mr-2 h-4 w-4" />
           )}
-          Execute Now
+          {isAutomationDisabled ? 'Disabled' : 'Execute Now'}
         </Button>
       )}
 
@@ -439,17 +456,52 @@ export default function AutomationDetailPage(): React.ReactElement {
               <CardTitle className="text-lg">Cron Schedule</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Server Time Info */}
+              {serverTime && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Server className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Server Time Reference</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Current Time</span>
+                      </div>
+                      <div className="mt-1 font-mono text-sm text-blue-900 dark:text-blue-100">
+                        {serverTime.localTime}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Globe className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">Server Timezone</span>
+                      </div>
+                      <div className="mt-1 font-mono text-sm text-blue-900 dark:text-blue-100">
+                        {serverTime.timezone}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Cron Expression */}
               <div>
                 <div className="text-sm font-medium text-muted-foreground">Expression</div>
                 <div className="mt-2 font-mono text-sm">{trigger.expression}</div>
               </div>
 
-              {/* Timezone */}
+              {/* Automation Timezone */}
               {trigger.timezone && (
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground">Timezone</div>
+                  <div className="text-sm font-medium text-muted-foreground">Automation Timezone</div>
                   <div className="mt-1 text-sm">{trigger.timezone}</div>
+                  {serverTime && trigger.timezone !== serverTime.timezone && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      Note: Automation timezone differs from server timezone ({serverTime.timezone})
+                    </p>
+                  )}
                 </div>
               )}
 

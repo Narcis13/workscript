@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useWebSocket } from '@/hooks/api/useWebSocket';
 
 interface AppLayoutProps {
   children?: ReactNode;
@@ -82,6 +83,10 @@ interface AppLayoutProps {
  * - Accessibility: WCAG 2.1 AA compliance
  */
 export function AppLayout({ children }: AppLayoutProps) {
+  // Initialize WebSocket connection for all protected routes
+  // The hook auto-connects on mount and maintains connection
+  useWebSocket();
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Skip to content link for screen readers - accessible via keyboard */}

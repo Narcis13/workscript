@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Header } from './Header';
+import { useWebSocket } from '@/hooks/api/useWebSocket';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -16,10 +17,14 @@ interface DashboardLayoutProps {
  * - Full mobile responsiveness
  * - User dropdown menu with logout functionality
  * - Admin-only navigation items (conditional)
+ * - WebSocket connection management for real-time updates
  *
  * Requirements: 9, 17
  */
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  // Initialize WebSocket connection for all dashboard pages
+  // The hook auto-connects on mount and maintains connection
+  useWebSocket();
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Skip to content link for screen readers */}

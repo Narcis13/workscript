@@ -51,6 +51,8 @@ import {
   fetchAutomationExecution,
   fetchAutomationStats,
   fetchAutomationSummaryStats,
+  fetchServerTime,
+  type ServerTimeResponse,
 } from '../../services/api/automations.api';
 
 // ============================================
@@ -74,6 +76,7 @@ export const automationKeys = {
   execution: (automationId: string, executionId: string) =>
     [...automationKeys.executions(automationId), executionId] as const,
   summary: () => [...automationKeys.all, 'summary'] as const,
+  serverTime: () => [...automationKeys.all, 'server-time'] as const,
 };
 
 // ============================================
@@ -342,6 +345,45 @@ export function useAutomationSummaryStats(enabled: boolean = true) {
     queryFn: fetchAutomationSummaryStats,
     enabled,
     staleTime: 1000 * 60, // 1 minute
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Fetch current server time and timezone
+ *
+ * Returns the server's current time and timezone information.
+ * Useful for comparing with cron automation schedules to understand
+ * when automations will actually run.
+ *
+ * Auto-refreshes every 30 seconds to keep the time current.
+ *
+ * @param enabled - Whether to enable the query (default: true)
+ * @returns React Query result with server time information
+ *
+ * @example
+ * ```typescript
+ * function ServerTimeDisplay() {
+ *   const { data: serverTime, isLoading } = useServerTime();
+ *
+ *   if (isLoading) return <Spinner />;
+ *
+ *   return (
+ *     <div>
+ *       <p>Server Time: {serverTime?.localTime}</p>
+ *       <p>Timezone: {serverTime?.timezone}</p>
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export function useServerTime(enabled: boolean = true) {
+  return useQuery<ServerTimeResponse>({
+    queryKey: automationKeys.serverTime(),
+    queryFn: fetchServerTime,
+    enabled,
+    staleTime: 1000 * 10, // 10 seconds
+    refetchInterval: 1000 * 30, // Auto-refresh every 30 seconds
     refetchOnWindowFocus: true,
   });
 }
