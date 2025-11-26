@@ -27,6 +27,7 @@ import {
   ChevronUp,
   Calendar,
   Clock,
+  Copy,
   Zap,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';

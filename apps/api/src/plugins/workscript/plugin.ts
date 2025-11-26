@@ -207,21 +207,29 @@ const plugin: SaaSPlugin = {
             throw new Error(`Workflow ${ctx.workflowId} not found`);
           }
 
-          // Create execution record
+          // Capture initial state from workflow definition
+          const workflowDef = workflow.definition as any;
+          const capturedInitialState = workflowDef?.initialState || {};
+
+          // Create execution record with initial state
           await automationRepo.createExecution({
             id: ctx.executionId,
             automationId: ctx.automationId,
             status: 'running',
             startedAt: new Date(),
             triggerSource: ctx.triggeredBy,
-            triggerData: ctx.triggerData
+            triggerData: ctx.triggerData,
+            initialState: Object.keys(capturedInitialState).length > 0 ? capturedInitialState : null
           });
 
           // Execute workflow
           const result = await workflowService.executeWorkflow(workflow.definition as any);
 
-          // Mark as completed
-          await automationRepo.completeExecution(ctx.executionId, 'completed', result);
+          // Extract final state from result
+          const finalState = result?.finalState || null;
+
+          // Mark as completed with final state
+          await automationRepo.completeExecution(ctx.executionId, 'completed', result, undefined, finalState);
           await automationRepo.updateRunStats(ctx.automationId, true);
 
           return { success: true, result };

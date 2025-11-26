@@ -288,7 +288,8 @@ export class AutomationRepository {
     id: string,
     status: 'completed' | 'failed',
     result?: any,
-    error?: string
+    error?: string,
+    finalState?: any
   ): Promise<AutomationExecution | null> {
     const now = new Date();
     const execution = await this.findExecutionById(id);
@@ -300,6 +301,7 @@ export class AutomationRepository {
       status,
       result,
       error,
+      finalState,
       completedAt: now,
       duration
     });

@@ -75,6 +75,8 @@ export const automationExecutions = mysqlTable('automation_executions', {
   // Execution Details
   status: mysqlEnum('status', ['pending', 'running', 'completed', 'failed']).notNull().default('pending'),
   triggerData: json('trigger_data'), // Data that triggered this execution
+  initialState: json('initial_state'), // Initial state before workflow execution
+  finalState: json('final_state'), // Final state after workflow execution
   result: json('result'), // Execution result
   error: text('error'), // Error message if execution fails
 

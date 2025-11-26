@@ -6,6 +6,7 @@ import { writeFile, mkdir, readFile, readdir, stat } from 'fs/promises'
 import { join } from 'path'
 import { authenticate, optionalAuth, requirePermission } from '../../../shared-services/auth/middleware'
 import { Permission, type AuthContext } from '../../../shared-services/auth/types'
+import { createId } from '@paralleldrive/cuid2'
 
 const workflows = new Hono<{ Variables: AuthContext }>()
 
@@ -99,6 +100,9 @@ workflows.post('/validate', authenticate, requirePermission(Permission.WORKFLOW_
 
 // Workflow execution endpoint
 workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECUTE), async (c) => {
+  const workflowRepository = new WorkflowRepository()
+  let executionId: string | undefined
+
   try {
     const body = await c.req.json()
     const { definition, workflowId, initialState } = body
@@ -106,13 +110,14 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
 
     // Resolve workflow definition from either direct definition or workflowId
     let workflowDefinition: WorkflowDefinition | undefined
+    let resolvedWorkflowId: string | undefined = workflowId
 
     if (definition && typeof definition === 'object') {
       // Direct workflow definition provided
       workflowDefinition = definition
+      resolvedWorkflowId = definition.id || workflowId || `adhoc-${createId()}`
     } else if (workflowId && typeof workflowId === 'string') {
       // Fetch workflow from database by ID
-      const workflowRepository = new WorkflowRepository()
       const workflow = await workflowRepository.findById(workflowId)
       if (!workflow) {
         return c.json({
@@ -121,6 +126,7 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
         }, { status: 404 })
       }
       workflowDefinition = workflow.definition as WorkflowDefinition
+      resolvedWorkflowId = workflowId
     }
 
     if (!workflowDefinition) {
@@ -130,10 +136,42 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
       }, { status: 400 })
     }
 
+    // Capture initial state (from workflow definition + provided initialState)
+    const capturedInitialState = {
+      ...(workflowDefinition.initialState || {}),
+      ...(initialState || {})
+    }
+
+    // Create execution record before running
+    executionId = createId()
+    console.log(`[EXECUTION] Creating execution record: ${executionId} for workflow: ${resolvedWorkflowId}`)
+    await workflowRepository.createExecution({
+      id: executionId,
+      workflowId: resolvedWorkflowId!,
+      status: 'running',
+      triggeredBy: 'manual',
+      initialState: Object.keys(capturedInitialState).length > 0 ? capturedInitialState : null,
+      startedAt: new Date()
+    })
+    console.log(`[EXECUTION] Execution record created successfully`)
+
     // Execute workflow using singleton service with optional initial state
     const result = await workflowService.executeWorkflow(workflowDefinition, initialState)
 
-    return c.json(result, { status: 202 })
+    // Extract final state from result
+    const finalState = result?.finalState || null
+
+    // Update execution record with success
+    console.log(`[EXECUTION] Updating execution ${executionId} to completed`)
+    await workflowRepository.updateExecution(executionId, {
+      status: 'completed',
+      result: result,
+      finalState: finalState,
+      completedAt: new Date()
+    })
+    console.log(`[EXECUTION] Execution ${executionId} marked as completed`)
+
+    return c.json({ ...result, executionId }, { status: 202 })
   } catch (error) {
     console.error('[API] Workflow execution error:', error)
 
@@ -142,10 +180,20 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
       console.error('[API] Validation errors:', JSON.stringify((error as any).errors, null, 2))
     }
 
+    // Update execution record with failure if we created one
+    if (executionId) {
+      await workflowRepository.updateExecution(executionId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        completedAt: new Date()
+      })
+    }
+
     return c.json({
       error: error instanceof Error ? error.message : 'Unknown error',
       details: error && typeof error === 'object' && 'errors' in error ? (error as any).errors : undefined,
-      status: 'failed'
+      status: 'failed',
+      executionId
     }, { status: 400 })
   }
 })
@@ -219,9 +267,12 @@ workflows.post('/store', authenticate, requirePermission(Permission.WORKFLOW_CRE
 
 // Run workflow by ID endpoint
 workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WORKFLOW_EXECUTE), async (c) => {
+  const workflowRepository = new WorkflowRepository()
+  let executionId: string | undefined
+
   try {
     const workflowId = c.req.param('workflowId')
-    
+
     if (!workflowId) {
       return c.json({
         error: 'Workflow ID is required',
@@ -231,7 +282,7 @@ workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WO
 
     // Find the workflow file
     const workflowData = await findWorkflowById(workflowId)
-    
+
     if (!workflowData) {
       return c.json({
         error: `Workflow with ID '${workflowId}' not found in workflows directory`,
@@ -245,7 +296,7 @@ workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WO
     // Validate the workflow before execution
     const workflowService = await WorkflowService.getInstance()
     const validationResult = workflowService.validateWorkflow(definition)
-    
+
     if (!validationResult.valid) {
       return c.json({
         error: 'Workflow validation failed',
@@ -256,22 +307,59 @@ workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WO
       }, { status: 400 })
     }
 
+    // Capture initial state from workflow definition
+    const capturedInitialState = definition.initialState || null
+
+    // Create execution record before running
+    executionId = createId()
+    await workflowRepository.createExecution({
+      id: executionId,
+      workflowId: definition.id || workflowId,
+      status: 'running',
+      triggeredBy: 'manual',
+      initialState: capturedInitialState,
+      startedAt: new Date()
+    })
+
     // Execute the workflow
     const result = await workflowService.executeWorkflow(definition)
 
+    // Extract final state from result
+    const finalState = result?.finalState || null
+
+    // Update execution record with success
+    await workflowRepository.updateExecution(executionId, {
+      status: 'completed',
+      result: result,
+      finalState: finalState,
+      completedAt: new Date()
+    })
+
     return c.json({
       ...result,
+      executionId,
       workflowId,
       workflowFile: filePath,
       subfolder,
       loadedFrom: `workflows/${filePath}`
     }, { status: 202 })
-    
+
   } catch (error) {
     console.error('Workflow execution error:', error)
+
+    // Update execution record with failure if we created one
+    if (executionId) {
+      await workflowRepository.updateExecution(executionId, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        completedAt: new Date()
+      })
+    }
+
     return c.json({
       error: error instanceof Error ? error.message : 'Unknown error',
-      status: 'failed'
+      status: 'failed',
+      executionId
     }, { status: 500 })
   }
 })

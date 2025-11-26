@@ -305,37 +305,38 @@ automationsApp.post('/:id/execute', authenticate, requirePermission(Permission.A
   try {
     const id = c.req.param('id')
     const automation = await automationRepository.findById(id)
-    
+
     if (!automation) {
       return c.json({ error: 'Automation not found' }, 404)
     }
-    
+
     if (!automation.enabled) {
       return c.json({ error: 'Automation is disabled' }, 400)
     }
-    
-    // Create execution record
+
+    // Get the workflow definition
+    const workflow = await workflowRepository.findById(automation.workflowId)
+    if (!workflow) {
+      return c.json({ error: 'Workflow not found' }, 404)
+    }
+
+    // Capture initial state from workflow definition
+    const workflowDef = workflow.definition as any
+    const capturedInitialState = workflowDef?.initialState || {}
+
+    // Create execution record with initial state
     const executionId = createId()
     await automationRepository.createExecution({
       id: executionId,
       automationId: id,
       status: 'running',
       startedAt: new Date(),
-      triggerSource: 'manual'
+      triggerSource: 'manual',
+      initialState: Object.keys(capturedInitialState).length > 0 ? capturedInitialState : null
     })
-    
+
     // Execute workflow via /workflows/run API
     try {
-      // Get the workflow definition
-      const workflow = await workflowRepository.findById(automation.workflowId)
-      if (!workflow) {
-        throw new Error('Workflow not found')
-      }
-
-     // console.log('Raw workflow from database:', JSON.stringify(workflow, null, 2))
-    //  console.log('Workflow definition type:', typeof workflow.definition)
-     // console.log('Workflow definition:', JSON.stringify(workflow.definition, null, 2))
-
       // Ensure workflow.definition is an object and add execution context
       let workflowDefinition
       if (typeof workflow.definition === 'object' && workflow.definition !== null) {
@@ -351,17 +352,20 @@ automationsApp.post('/:id/execute', authenticate, requirePermission(Permission.A
         workflowDefinition = workflow.definition
       }
 
-      //console.log('Final workflow definition for execution:', JSON.stringify(workflowDefinition, null, 2))
-
       // Execute workflow directly using WorkflowService
       const workflowService = await WorkflowService.getInstance()
       const workflowResult = await workflowService.executeWorkflow(workflowDefinition)
-      //console.log('Workflow result:', workflowResult)
-      // Mark as completed with workflow result
+
+      // Extract final state from result
+      const finalState = workflowResult?.finalState || null
+
+      // Mark as completed with workflow result and final state
       await automationRepository.completeExecution(
         executionId,
         'completed',
-        workflowResult
+        workflowResult,
+        undefined,
+        finalState
       )
 
       // Update automation run stats
@@ -380,7 +384,7 @@ automationsApp.post('/:id/execute', authenticate, requirePermission(Permission.A
       // Update automation run stats
       await automationRepository.updateRunStats(id, false, error instanceof Error ? error.message : 'Unknown error')
     }
-    
+
     return c.json({
       message: 'Automation execution started',
       id: executionId,
@@ -458,7 +462,7 @@ automationsApp.post('/webhook/:webhookPath', async (c) => {
       return c.json({ error: 'Automation is disabled' }, 400)
     }
 
-    // Create execution record
+    // Create execution record with initial state from webhook body
     const executionId = createId()
     await automationRepository.createExecution({
       id: executionId,
@@ -466,7 +470,8 @@ automationsApp.post('/webhook/:webhookPath', async (c) => {
       status: 'running',
       startedAt: new Date(),
       triggerSource: 'webhook',
-      triggerData: initialState
+      triggerData: initialState,
+      initialState: Object.keys(initialState).length > 0 ? initialState : null
     })
 
     // Execute workflow with initial state injection
@@ -498,11 +503,16 @@ automationsApp.post('/webhook/:webhookPath', async (c) => {
       const workflowService = await WorkflowService.getInstance()
       const workflowResult = await workflowService.executeWorkflow(workflowDefinition)
 
-      // Mark as completed with workflow result
+      // Extract final state from result
+      const finalState = workflowResult?.finalState || null
+
+      // Mark as completed with workflow result and final state
       await automationRepository.completeExecution(
         executionId,
         'completed',
-        workflowResult
+        workflowResult,
+        undefined,
+        finalState
       )
 
       // Update automation run stats

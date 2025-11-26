@@ -15,12 +15,11 @@
  * @module components/executions/StateDiffViewer
  */
 
-import React, { useEffect, useRef } from 'react';
-import Editor from '@monaco-editor/react';
+import React from 'react';
+import { DiffEditor } from '@monaco-editor/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
-import type { IStandaloneDiffEditor } from 'monaco-editor';
 
 /**
  * Props for the StateDiffViewer component
@@ -71,24 +70,16 @@ export const StateDiffViewer: React.FC<StateDiffViewerProps> = ({
   initialState,
   finalState,
 }) => {
-  const editorRef = useRef<IStandaloneDiffEditor | null>(null);
+  // Don't render anything if not open - prevents Monaco disposal issues
+  if (!open) return null;
 
   // Format JSON with proper indentation
   const originalContent = JSON.stringify(initialState || {}, null, 2);
   const modifiedContent = JSON.stringify(finalState || {}, null, 2);
 
-  const handleEditorMount = (editor: IStandaloneDiffEditor) => {
-    editorRef.current = editor;
-    // Optionally set options on the editor
-    if (editor.getModifiedEditor()) {
-      editor.getModifiedEditor().updateOptions({ readOnly: true });
-      editor.getOriginalEditor().updateOptions({ readOnly: true });
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full max-h-[90vh] flex flex-col gap-0 p-0 rounded-lg">
+      <DialogContent className="max-w-6xl w-full h-[80vh] flex flex-col gap-0 p-0 rounded-lg">
         {/* Header */}
         <DialogHeader className="border-b px-6 py-4 flex flex-row items-center justify-between">
           <div>
@@ -109,10 +100,10 @@ export const StateDiffViewer: React.FC<StateDiffViewerProps> = ({
         </DialogHeader>
 
         {/* Monaco Diff Editor */}
-        <div className="flex-1 overflow-hidden rounded-b-lg">
-          <Editor
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <DiffEditor
             height="100%"
-            defaultLanguage="json"
+            language="json"
             original={originalContent}
             modified={modifiedContent}
             theme="vs-dark"
@@ -145,7 +136,6 @@ export const StateDiffViewer: React.FC<StateDiffViewerProps> = ({
                 horizontalSliderSize: 8,
               },
             }}
-            onMount={handleEditorMount}
           />
         </div>
 

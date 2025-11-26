@@ -27,8 +27,14 @@ export const workflowExecutions = mysqlTable('workflow_executions', {
   id: varchar('id', { length: 128 }).primaryKey().$defaultFn(() => createId()),
   workflowId: varchar('workflow_id', { length: 128 }).notNull(),
   status: varchar('status', { length: 50 }).notNull().default('pending'), // pending, running, completed, failed
+  triggeredBy: varchar('triggered_by', { length: 50 }).notNull().default('manual'), // manual, automation, webhook, api
+  initialState: json('initial_state'), // Store initial state before execution
+  finalState: json('final_state'), // Store final state after execution
   result: json('result'), // Store execution result
   error: text('error'), // Store error message if execution fails
+  stackTrace: text('stack_trace'), // Store error stack trace if execution fails
+  failedNodeId: varchar('failed_node_id', { length: 128 }), // Node that failed
+  nodeLogs: json('node_logs'), // Store node execution logs
   startedAt: timestamp('started_at').notNull().defaultNow(),
   completedAt: timestamp('completed_at'),
 });

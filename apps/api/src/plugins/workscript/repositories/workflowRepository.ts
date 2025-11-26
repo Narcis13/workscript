@@ -103,15 +103,66 @@ export class WorkflowRepository {
   }
 
   /**
-   * Find an execution by ID
+   * Find an execution by ID with full details including workflow name
    * @param id - Execution ID
-   * @returns Execution or null if not found
+   * @returns Execution with enriched data or null if not found
    */
-  async findExecutionById(id: string): Promise<WorkflowExecution | null> {
-    const [execution] = await db.select()
+  async findExecutionById(id: string): Promise<Record<string, any> | null> {
+    const [result] = await db.select({
+      id: workflowExecutions.id,
+      workflowId: workflowExecutions.workflowId,
+      workflowName: workflows.name,
+      workflowVersion: workflows.version,
+      status: workflowExecutions.status,
+      triggeredBy: workflowExecutions.triggeredBy,
+      initialState: workflowExecutions.initialState,
+      finalState: workflowExecutions.finalState,
+      result: workflowExecutions.result,
+      error: workflowExecutions.error,
+      stackTrace: workflowExecutions.stackTrace,
+      failedNodeId: workflowExecutions.failedNodeId,
+      nodeLogs: workflowExecutions.nodeLogs,
+      startedAt: workflowExecutions.startedAt,
+      completedAt: workflowExecutions.completedAt,
+    })
       .from(workflowExecutions)
+      .leftJoin(workflows, eq(workflowExecutions.workflowId, workflows.id))
       .where(eq(workflowExecutions.id, id));
-    return execution || null;
+
+    if (!result) return null;
+
+    // Parse result JSON for additional data (fallback for older executions)
+    const resultData = result.result as Record<string, any> | null;
+
+    // Calculate duration if both timestamps exist
+    const duration = result.startedAt && result.completedAt
+      ? new Date(result.completedAt).getTime() - new Date(result.startedAt).getTime()
+      : null;
+
+    // Extract initial/final state from stored columns or from result JSON (fallback)
+    const initialState = result.initialState || resultData?.initialState || null;
+    const finalState = result.finalState || resultData?.finalState || null;
+
+    // Map to frontend expected field names
+    return {
+      id: result.id,
+      workflowId: result.workflowId,
+      workflowName: result.workflowName || 'Unknown',
+      workflowVersion: result.workflowVersion || '1.0.0',
+      status: result.status,
+      triggeredBy: result.triggeredBy || 'manual',
+      initialState,
+      finalState,
+      result: result.result,
+      error: result.error,
+      stackTrace: result.stackTrace,
+      failedNodeId: result.failedNodeId,
+      nodeLogs: result.nodeLogs,
+      startTime: result.startedAt,
+      endTime: result.completedAt,
+      duration,
+      createdAt: result.startedAt,
+    };
   }
 
   /**

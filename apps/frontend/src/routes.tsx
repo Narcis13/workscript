@@ -103,7 +103,7 @@ const MonitoringPage = lazy(() => import('@/pages/monitoring/MonitoringPage'));
  * /automations/:id/edit       → Edit automation
  *
  * /executions                 → Execution history
- * /executions/:id             → Execution detail
+ * /executions/:executionId    → Execution detail
  *
  * /monitoring                 → Real-time monitoring
  *
@@ -304,7 +304,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'executions/:id',
+        path: 'executions/:executionId',
         element: (
           <RouteErrorBoundary fallbackPath="/executions">
             <ExecutionDetailPage />
