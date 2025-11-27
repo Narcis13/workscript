@@ -68,6 +68,10 @@ const ExecutionDetailPage = lazy(() => import('@/pages/executions/ExecutionDetai
 // Monitoring Pages (Protected)
 const MonitoringPage = lazy(() => import('@/pages/monitoring/MonitoringPage'));
 
+// Integration Pages (Protected)
+const IntegrationsPage = lazy(() => import('@/pages/integrations/IntegrationsPage'));
+const OAuthCallbackPage = lazy(() => import('@/pages/integrations/OAuthCallbackPage'));
+
 // ============================================
 // ROUTER CONFIGURATION
 // ============================================
@@ -106,6 +110,9 @@ const MonitoringPage = lazy(() => import('@/pages/monitoring/MonitoringPage'));
  * /executions/:executionId    → Execution detail
  *
  * /monitoring                 → Real-time monitoring
+ *
+ * /integrations               → OAuth integrations management
+ * /integrations/oauth/callback → OAuth callback handler (outside AppLayout)
  *
  * /*                          → 404 Not Found
  * ```
@@ -323,7 +330,33 @@ export const router = createBrowserRouter([
           </RouteErrorBoundary>
         ),
       },
+
+      // ----------------------------------------
+      // INTEGRATION ROUTES
+      // ----------------------------------------
+      {
+        path: 'integrations',
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <IntegrationsPage />
+          </RouteErrorBoundary>
+        ),
+      },
     ],
+  },
+
+  // ============================================
+  // OAUTH CALLBACK ROUTE (Outside AppLayout - minimal page)
+  // ============================================
+  {
+    path: '/integrations/oauth/callback',
+    element: (
+      <ProtectedRoute>
+        <RouteErrorBoundary fallbackPath="/integrations">
+          <OAuthCallbackPage />
+        </RouteErrorBoundary>
+      </ProtectedRoute>
+    ),
   },
 
   // ============================================

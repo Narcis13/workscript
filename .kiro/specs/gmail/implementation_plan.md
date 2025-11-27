@@ -1547,65 +1547,65 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 9.1 Manual Testing
 
-- [ ] **Task 9.1.1: Start the API server**
+- [x] **Task 9.1.1: Start the API server**
   - Run `cd apps/api && bun run dev`
   - Verify server starts without errors
   - Verify provider registration message in logs
   - _Requirements: All_
 
-- [ ] **Task 9.1.2: Test provider discovery**
+- [x] **Task 9.1.2: Test provider discovery**
   - Call `GET http://localhost:3013/integrations/oauth/providers`
   - Verify Google provider is listed
   - Verify response includes id, name, scopes
   - _Requirements: 12_
 
-- [ ] **Task 9.1.3: Test OAuth initiation**
+- [x] **Task 9.1.3: Test OAuth initiation**
   - Call `GET http://localhost:3013/integrations/oauth/google/auth`
   - Verify redirect to Google consent screen
   - Verify state is created in database
   - _Requirements: 9_
 
-- [ ] **Task 9.1.4: Test OAuth callback**
+- [x] **Task 9.1.4: Test OAuth callback**
   - Complete Google login and consent
   - Verify callback is handled successfully
   - Verify connection is created in database
   - Verify tokens are stored
   - _Requirements: 10_
 
-- [ ] **Task 9.1.5: Test connection listing**
+- [x] **Task 9.1.5: Test connection listing**
   - Call `GET http://localhost:3013/integrations/connections`
   - Verify connection appears in list
   - Verify tokens are NOT exposed
   - _Requirements: 11_
 
-- [ ] **Task 9.1.6: Test connection details**
+- [x] **Task 9.1.6: Test connection details**
   - Call `GET http://localhost:3013/integrations/connections/:id`
   - Verify full connection details returned
   - Verify tokens are NOT exposed
   - _Requirements: 11_
 
-- [ ] **Task 9.1.7: Test token retrieval**
+- [x] **Task 9.1.7: Test token retrieval**
   - Call `GET http://localhost:3013/integrations/connections/:id/token`
   - Verify access token is returned
   - _Requirements: 11_
 
-- [ ] **Task 9.1.8: Test connection test**
+- [x] **Task 9.1.8: Test connection test**
   - Call `POST http://localhost:3013/integrations/connections/:id/test`
   - Verify { valid: true } is returned
   - _Requirements: 11_
 
-- [ ] **Task 9.1.9: Test token refresh**
+- [x] **Task 9.1.9: Test token refresh**
   - Wait for token to expire or call refresh endpoint
   - Call `POST http://localhost:3013/integrations/oauth/google/:id/refresh`
   - Verify new expiration time
   - _Requirements: 13_
 
-- [ ] **Task 9.1.10: Test connection rename**
+- [x] **Task 9.1.10: Test connection rename**
   - Call `POST http://localhost:3013/integrations/connections/:id/rename` with new name
   - Verify name is updated
   - _Requirements: 11_
 
-- [ ] **Task 9.1.11: Test connection deletion**
+- [x] **Task 9.1.11: Test connection deletion**
   - Create a test connection
   - Call `DELETE http://localhost:3013/integrations/connections/:id`
   - Verify connection is removed

@@ -10,6 +10,7 @@ import {
   CalendarClock,
   History,
   Activity,
+  Plug,
   Menu,
   X,
 } from 'lucide-react';
@@ -62,6 +63,11 @@ const navigationLinks: NavLink[] = [
     href: '/monitoring',
     label: 'Monitoring',
     icon: Activity,
+  },
+  {
+    href: '/integrations',
+    label: 'Integrations',
+    icon: Plug,
   },
 ];
 

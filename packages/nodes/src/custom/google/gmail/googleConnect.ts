@@ -5,10 +5,12 @@ import type { ExecutionContext, EdgeMap, NodeMetadata } from '@workscript/engine
  * GoogleConnectNode - Connects to a Google account using OAuth integration
  *
  * This node supports two modes:
- * 1. **connectionId** (recommended): Uses the new integrations system with automatic token refresh
- * 2. **email** (legacy/deprecated): Uses the old API endpoint for backward compatibility
+ * 1. **connectionId**: Uses the connection ID directly from the integrations system
+ * 2. **email**: Looks up the connection by email address (resolves to connectionId internally)
  *
- * @example Using connectionId (recommended)
+ * Both approaches use the new integrations system with automatic token refresh.
+ *
+ * @example Using connectionId
  * ```json
  * {
  *   "googleConnect": {
@@ -18,7 +20,7 @@ import type { ExecutionContext, EdgeMap, NodeMetadata } from '@workscript/engine
  * }
  * ```
  *
- * @example Using email (legacy - deprecated)
+ * @example Using email (recommended for readability)
  * ```json
  * {
  *   "googleConnect": {
@@ -41,7 +43,7 @@ export class GoogleConnectNode extends WorkflowNode {
             when_to_use: 'When you need to authenticate with Google for sending/listing emails',
             expected_edges: ['success', 'error'],
             example_usage: '{"googleConnect": {"connectionId": "cm3x7abc123", "success?": "sendEmail"}}',
-            example_config: '{"connectionId": "connection-id-from-integrations"} or {"email": "user@gmail.com"} (deprecated)',
+            example_config: '{"connectionId": "connection-id"} or {"email": "user@gmail.com"} (resolves to connectionId)',
             get_from_state: [],
             post_to_state: ['google_token', 'gmail_profile', 'current_connection_id']
         }
@@ -64,9 +66,8 @@ export class GoogleConnectNode extends WorkflowNode {
             return this.connectWithConnectionId(context, connectionId);
         }
 
-        // Fall back to email-based approach (legacy/deprecated)
+        // Resolve email to connectionId via integrations API
         if (email) {
-            console.warn('[GoogleConnect] Using email-based lookup is deprecated. Please use connectionId instead.');
             return this.connectWithEmail(context, email);
         }
 
@@ -194,54 +195,88 @@ export class GoogleConnectNode extends WorkflowNode {
     }
 
     /**
-     * Connect using email-based lookup (legacy approach)
-     * @deprecated Use connectionId-based approach instead
+     * Connect using email-based lookup
+     * Resolves email to connectionId via the integrations API, then uses connectionId flow
      */
     private async connectWithEmail(context: ExecutionContext, email: string): Promise<EdgeMap> {
         const baseUrl = this.getApiBaseUrl();
-        const apiUrl = `${baseUrl}/api/auth/gmail/profile?email=${encodeURIComponent(email)}`;
 
         context.state.lastGmailConnectAttempt = {
             email,
-            method: 'email',
-            apiUrl,
+            method: 'email-to-connectionId',
             timestamp: Date.now()
         };
 
         try {
-            const response = await fetch(apiUrl);
+            // Fetch all Google connections from integrations API
+            const connectionsUrl = `${baseUrl}/integrations/connections?provider=google`;
+            const response = await fetch(connectionsUrl);
 
             if (!response.ok) {
                 context.state.lastGmailConnectError = { email, timestamp: Date.now() };
                 return {
                     error: () => ({
-                        message: 'Failed to fetch Gmail profile from the authentication service.',
-                        status: response.status,
-                        deprecationWarning: 'Email-based lookup is deprecated. Please migrate to connectionId-based approach.'
+                        message: 'Failed to fetch connections from integrations API',
+                        status: response.status
                     })
                 };
             }
 
-            const data = await response.json() as { profile: any; token: string };
-
-            // Store results in shared state
-            context.state.gmail_profile = data.profile;
-            context.state.google_token = data.token;
-
-            console.log(`[GoogleConnect] Successfully connected using email (deprecated). Account: ${data.profile.emailAddress}`);
-
-            return {
-                success: () => ({
-                    profile: data.profile,
-                    email: data.profile.emailAddress,
-                    deprecationWarning: 'Email-based lookup is deprecated. Please migrate to connectionId-based approach.'
-                })
+            const data = await response.json() as {
+                success: boolean;
+                count: number;
+                connections: Array<{
+                    id: string;
+                    name: string;
+                    provider: string;
+                    accountEmail: string;
+                    accountName?: string;
+                    isActive: boolean;
+                }>;
             };
+
+            // Find connection matching the email
+            const connection = data.connections.find(
+                (conn) => conn.accountEmail?.toLowerCase() === email.toLowerCase()
+            );
+
+            if (!connection) {
+                context.state.lastGmailConnectError = { email, timestamp: Date.now() };
+                return {
+                    error: () => ({
+                        message: `No Google connection found for email: ${email}`,
+                        hint: `Please connect your Google account first via: ${baseUrl}/integrations/oauth/google/auth`,
+                        availableEmails: data.connections.map(c => c.accountEmail)
+                    })
+                };
+            }
+
+            if (!connection.isActive) {
+                return {
+                    error: () => ({
+                        message: `Google connection for ${email} is inactive. Re-authentication required.`,
+                        connectionId: connection.id,
+                        requiresReauth: true,
+                        reauthUrl: `${baseUrl}/integrations/oauth/google/auth`
+                    })
+                };
+            }
+
+            console.log(`[GoogleConnect] Resolved email '${email}' to connectionId '${connection.id}'`);
+
+            // Delegate to connectionId-based flow
+            return this.connectWithConnectionId(context, connection.id);
+
         } catch (error) {
-            console.error('[GoogleConnect] Error connecting with email:', error);
+            console.error('[GoogleConnect] Error resolving email to connectionId:', error);
+            context.state.lastGmailConnectError = {
+                email,
+                timestamp: Date.now(),
+                error: error instanceof Error ? error.message : String(error)
+            };
             return {
                 error: () => ({
-                    message: 'Cannot connect to Google account',
+                    message: 'Failed to resolve email to connection',
                     details: error instanceof Error ? error.message : String(error)
                 })
             };

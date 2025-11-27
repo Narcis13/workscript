@@ -58,7 +58,7 @@ export class SendEmailNode extends WorkflowNode {
             emailLines.push(`Subject: ${config.subject || '(No Subject)'}`);
             emailLines.push('Content-Type: text/plain; charset=utf-8');
             emailLines.push('');
-            emailLines.push(config.body || '');
+            emailLines.push(this.serializeBody(config.body));
 
             // Convert to base64
             const message = emailLines.join('\r\n');
@@ -96,6 +96,27 @@ export class SendEmailNode extends WorkflowNode {
                 })
             };
         }
+    }
+
+    /**
+     * Serializes the email body to a string.
+     * If body is an object or array, formats it as readable JSON.
+     */
+    private serializeBody(body: unknown): string {
+        if (body === null || body === undefined) {
+            return '';
+        }
+
+        if (typeof body === 'string') {
+            return body;
+        }
+
+        if (typeof body === 'object') {
+            return JSON.stringify(body, null, 2);
+        }
+
+        // For numbers, booleans, etc.
+        return String(body);
     }
 }
 
