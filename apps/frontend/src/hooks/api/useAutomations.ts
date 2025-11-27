@@ -130,6 +130,7 @@ export function useAutomations(filters?: AutomationFilterOptions) {
     queryFn: () => fetchAutomations(filters),
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: true,
+    refetchOnMount: true, // Refetch on mount if data is stale (e.g., after invalidation)
   });
 }
 
@@ -346,6 +347,7 @@ export function useAutomationSummaryStats(enabled: boolean = true) {
     enabled,
     staleTime: 1000 * 60, // 1 minute
     refetchOnWindowFocus: true,
+    refetchOnMount: true, // Refetch on mount if data is stale (e.g., after creating automation)
   });
 }
 

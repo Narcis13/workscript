@@ -118,6 +118,7 @@ export function useExecutions(filters?: ExecutionFilterOptions) {
     queryFn: () => fetchExecutions(filters),
     staleTime: 1 * 60 * 1000, // 1 minute (executions change frequently)
     refetchOnWindowFocus: true, // Requirement 14: Auto-refetch on focus for real-time awareness
+    refetchOnMount: true, // Refetch on mount if data is stale (e.g., after new execution)
     retry: 3,
   });
 }
@@ -208,6 +209,7 @@ export function useExecutionsByWorkflow(
     enabled: !!workflowId,
     staleTime: 1 * 60 * 1000, // 1 minute
     refetchOnWindowFocus: true,
+    refetchOnMount: true, // Refetch on mount if data is stale
   });
 }
 
@@ -245,6 +247,7 @@ export function useExecutionsByAutomation(
     enabled: !!automationId,
     staleTime: 1 * 60 * 1000, // 1 minute
     refetchOnWindowFocus: true,
+    refetchOnMount: true, // Refetch on mount if data is stale
   });
 }
 

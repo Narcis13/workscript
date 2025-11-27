@@ -96,7 +96,11 @@ export const queryClient = new QueryClient({
       // Refetch queries when network reconnects (important for offline recovery)
       refetchOnReconnect: true,
 
-      // Don't refetch on component mount if data is still fresh
+      // IMPORTANT: Don't refetch on component mount even if data is stale.
+      // This reduces API load but requires explicit override in hooks where stale
+      // data should be refetched after mutations (e.g., list queries after create/update).
+      // When adding new list queries, add `refetchOnMount: true` to ensure
+      // invalidated queries refetch when navigating back to list pages.
       refetchOnMount: false,
     },
     mutations: {

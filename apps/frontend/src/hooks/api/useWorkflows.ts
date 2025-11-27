@@ -104,6 +104,7 @@ export function useWorkflows(filters?: WorkflowFilterOptions) {
     queryFn: () => fetchWorkflows(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true, // Requirement 4: Auto-refetch on focus
+    refetchOnMount: true, // Refetch on mount if data is stale (e.g., after invalidation)
     retry: 3,
   });
 }
