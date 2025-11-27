@@ -13,7 +13,9 @@ import { pluginLoader, pluginRegistry } from './core/plugins';
 import authRoutes from './routes/auth';
 import apiKeyRoutes from './routes/apikeys';
 import passwordResetRoutes from './routes/password-reset';
+import integrationsRouter from './routes/integrations';
 import { BunWebSocketManager, type WebSocketData } from './shared-services/websocket/BunWebSocketManager';
+import { initializeProviders } from './shared-services/integrations/providers';
 
 // Global server reference for hot reload
 declare global {
@@ -87,6 +89,7 @@ app.get('/', (c) => {
       auth: '/auth',
       apiKeys: '/api/keys',
       passwordReset: '/password-reset',
+      integrations: '/integrations',
       plugins: '/api/plugins',
       pluginsHealth: '/api/health/plugins',
     },
@@ -97,6 +100,7 @@ app.get('/', (c) => {
 app.route('/auth', authRoutes);
 app.route('/api/keys', apiKeyRoutes);
 app.route('/password-reset', passwordResetRoutes);
+app.route('/integrations', integrationsRouter);
 
 /**
  * Initialize and start the server
@@ -104,6 +108,10 @@ app.route('/password-reset', passwordResetRoutes);
 async function startServer() {
   try {
     console.log('[Server] Starting Workscript API Server...');
+
+    // Initialize OAuth providers
+    console.log('[Server] Initializing OAuth providers...');
+    initializeProviders();
 
     // Set Hono app for plugin system
     pluginLoader.setApp(app);

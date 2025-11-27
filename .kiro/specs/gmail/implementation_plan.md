@@ -8,13 +8,13 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 1.1 Create Database Schema
 
-- [ ] **Task 1.1.1: Create integrations schema file**
+- [x] **Task 1.1.1: Create integrations schema file**
   - Create `/apps/api/src/db/schema/integrations.schema.ts`
   - Import required Drizzle types: `mysqlTable`, `varchar`, `text`, `timestamp`, `json`, `boolean`, `int`, `index`, `unique`
   - Import `createId` from `@paralleldrive/cuid2`
   - _Requirements: 1, 2_
 
-- [ ] **Task 1.1.2: Define oauth_connections table**
+- [x] **Task 1.1.2: Define oauth_connections table**
   - Add all columns as specified in requirements:
     - `id` - VARCHAR(128) PK with CUID2 default
     - `name` - VARCHAR(255) NOT NULL
@@ -42,7 +42,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
     - `updated_at` - TIMESTAMP default NOW() on update NOW() NOT NULL
   - _Requirements: 1_
 
-- [ ] **Task 1.1.3: Add indexes for oauth_connections**
+- [x] **Task 1.1.3: Add indexes for oauth_connections**
   - Add index on `provider` column
   - Add index on `created_by` column
   - Add index on `tenant_id` column
@@ -51,7 +51,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Add unique constraint on (`provider`, `account_id`, `tenant_id`)
   - _Requirements: 1_
 
-- [ ] **Task 1.1.4: Define oauth_states table**
+- [x] **Task 1.1.4: Define oauth_states table**
   - Add all columns:
     - `id` - VARCHAR(128) PK with CUID2 default
     - `state` - VARCHAR(128) NOT NULL
@@ -66,7 +66,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Add indexes on `state` and `expires_at` columns
   - _Requirements: 2_
 
-- [ ] **Task 1.1.5: Export TypeScript types**
+- [x] **Task 1.1.5: Export TypeScript types**
   - Export `OAuthConnection` type using `$inferSelect`
   - Export `NewOAuthConnection` type using `$inferInsert`
   - Export `OAuthState` type using `$inferSelect`
@@ -75,19 +75,19 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 1.2 Register Schema and Run Migrations
 
-- [ ] **Task 1.2.1: Export schema in schema index**
-  - Open `/apps/api/src/db/schema/index.ts`
-  - Add export for `integrations.schema.ts`
-  - Ensure all table exports are available
+- [x] **Task 1.2.1: Export schema in schema index**
+  - Updated `/apps/api/src/db/index.ts` (project uses db/index.ts instead of separate schema/index.ts)
+  - Added import and export for `integrations.schema.ts`
+  - All table exports are now available
   - _Requirements: 1, 2_
 
-- [ ] **Task 1.2.2: Generate database migrations**
+- [x] **Task 1.2.2: Generate database migrations**
   - Run `cd apps/api && bun run db:generate`
   - Verify migration file is created in migrations folder
   - Review generated SQL for accuracy
   - _Requirements: 1, 2_
 
-- [ ] **Task 1.2.3: Push schema to database**
+- [x] **Task 1.2.3: Push schema to database**
   - Run `cd apps/api && bun run db:push`
   - Verify tables are created in MySQL
   - Optionally run `bun run db:studio` to inspect tables
@@ -99,17 +99,17 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 2.1 Create Provider Types
 
-- [ ] **Task 2.1.1: Create types directory structure**
+- [x] **Task 2.1.1: Create types directory structure**
   - Create `/apps/api/src/shared-services/integrations/` directory
   - Create `/apps/api/src/shared-services/integrations/providers/` directory
   - _Requirements: 3_
 
-- [ ] **Task 2.1.2: Create types.ts file**
+- [x] **Task 2.1.2: Create types.ts file**
   - Create `/apps/api/src/shared-services/integrations/providers/types.ts`
   - Add comprehensive JSDoc documentation for all types
   - _Requirements: 3_
 
-- [ ] **Task 2.1.3: Define OAuthProviderConfig interface**
+- [x] **Task 2.1.3: Define OAuthProviderConfig interface**
   ```typescript
   export interface OAuthProviderConfig {
     clientId: string;
@@ -120,7 +120,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3_
 
-- [ ] **Task 2.1.4: Define OAuthTokens interface**
+- [x] **Task 2.1.4: Define OAuthTokens interface**
   ```typescript
   export interface OAuthTokens {
     accessToken: string;
@@ -134,7 +134,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3_
 
-- [ ] **Task 2.1.5: Define OAuthUserProfile interface**
+- [x] **Task 2.1.5: Define OAuthUserProfile interface**
   ```typescript
   export interface OAuthUserProfile {
     id: string;
@@ -146,7 +146,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3_
 
-- [ ] **Task 2.1.6: Define AuthUrlOptions interface**
+- [x] **Task 2.1.6: Define AuthUrlOptions interface**
   ```typescript
   export interface AuthUrlOptions {
     scopes?: string[];
@@ -159,7 +159,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3_
 
-- [ ] **Task 2.1.7: Define AuthUrlResult interface**
+- [x] **Task 2.1.7: Define AuthUrlResult interface**
   ```typescript
   export interface AuthUrlResult {
     url: string;
@@ -169,7 +169,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3_
 
-- [ ] **Task 2.1.8: Define OAuthProvider interface**
+- [x] **Task 2.1.8: Define OAuthProvider interface**
   ```typescript
   export interface OAuthProvider {
     readonly id: string;
@@ -189,7 +189,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3_
 
-- [ ] **Task 2.1.9: Define ConnectionSummary interface**
+- [x] **Task 2.1.9: Define ConnectionSummary interface**
   ```typescript
   export interface ConnectionSummary {
     id: string;
@@ -205,7 +205,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3, 8_
 
-- [ ] **Task 2.1.10: Define DecryptedConnection interface**
+- [x] **Task 2.1.10: Define DecryptedConnection interface**
   ```typescript
   export interface DecryptedConnection {
     id: string;
@@ -225,7 +225,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 3, 8_
 
-- [ ] **Task 2.1.11: Define error types**
+- [x] **Task 2.1.11: Define error types**
   ```typescript
   export class IntegrationError extends Error {
     constructor(
@@ -257,12 +257,12 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 3.1 Create Base Provider Class
 
-- [ ] **Task 3.1.1: Create base.ts file**
+- [x] **Task 3.1.1: Create base.ts file**
   - Create `/apps/api/src/shared-services/integrations/providers/base.ts`
   - Import types from `./types`
   - _Requirements: 3_
 
-- [ ] **Task 3.1.2: Implement OAuthProviderBase abstract class**
+- [x] **Task 3.1.2: Implement OAuthProviderBase abstract class**
   - Define abstract class with common implementation
   - Add protected config property for OAuthProviderConfig
   - Implement constructor that accepts config
@@ -270,25 +270,25 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Add abstract methods from OAuthProvider interface
   - _Requirements: 3_
 
-- [ ] **Task 3.1.3: Add PKCE generation helper**
+- [x] **Task 3.1.3: Add PKCE generation helper**
   - Add protected method `generatePKCE(): { codeVerifier: string; codeChallenge: string }`
   - Use crypto.randomBytes for code_verifier (32 bytes, base64url encoded)
   - Generate code_challenge using SHA256 hash of verifier (base64url encoded)
   - _Requirements: 3, 5_
 
-- [ ] **Task 3.1.4: Add state generation helper**
+- [x] **Task 3.1.4: Add state generation helper**
   - Add protected method `generateState(): string`
   - Use crypto.randomBytes (32 bytes, base64url encoded)
   - _Requirements: 3_
 
 ### 3.2 Create Provider Registry
 
-- [ ] **Task 3.2.1: Create registry.ts file**
+- [x] **Task 3.2.1: Create registry.ts file**
   - Create `/apps/api/src/shared-services/integrations/providers/registry.ts`
   - Import OAuthProvider type
   - _Requirements: 4_
 
-- [ ] **Task 3.2.2: Implement ProviderRegistry singleton**
+- [x] **Task 3.2.2: Implement ProviderRegistry singleton**
   ```typescript
   export class ProviderRegistry {
     private static instance: ProviderRegistry;
@@ -324,17 +324,17 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 3.3 Implement Google Provider
 
-- [ ] **Task 3.3.1: Create google provider directory**
+- [x] **Task 3.3.1: Create google provider directory**
   - Create `/apps/api/src/shared-services/integrations/providers/google/` directory
   - _Requirements: 5_
 
-- [ ] **Task 3.3.2: Create google/index.ts file**
+- [x] **Task 3.3.2: Create google/index.ts file**
   - Create `/apps/api/src/shared-services/integrations/providers/google/index.ts`
   - Import googleapis OAuth2 client
   - Import base class and types
   - _Requirements: 5_
 
-- [ ] **Task 3.3.3: Define Google scopes constant**
+- [x] **Task 3.3.3: Define Google scopes constant**
   ```typescript
   export const GOOGLE_SCOPES = {
     GMAIL_READONLY: 'https://www.googleapis.com/auth/gmail.readonly',
@@ -348,7 +348,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 5_
 
-- [ ] **Task 3.3.4: Implement GoogleProvider class**
+- [x] **Task 3.3.4: Implement GoogleProvider class**
   - Extend OAuthProviderBase
   - Set id = 'google', name = 'Google', version = '1.0.0'
   - Set defaultScopes with gmail.readonly, gmail.send, userinfo.email, userinfo.profile
@@ -356,7 +356,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Initialize googleapis OAuth2Client in constructor
   - _Requirements: 5_
 
-- [ ] **Task 3.3.5: Implement getAuthorizationUrl method**
+- [x] **Task 3.3.5: Implement getAuthorizationUrl method**
   - Create options object with access_type, scope, prompt
   - If usePKCE, generate and include code_challenge
   - Generate state token
@@ -364,7 +364,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Return AuthUrlResult with url, state, codeVerifier
   - _Requirements: 5, 9_
 
-- [ ] **Task 3.3.6: Implement exchangeCode method**
+- [x] **Task 3.3.6: Implement exchangeCode method**
   - Call oauth2Client.getToken(code) or with code_verifier for PKCE
   - Extract access_token, refresh_token, expiry_date, token_type, scope
   - Convert expiry_date to expiresAt Date
@@ -372,21 +372,21 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Return normalized OAuthTokens
   - _Requirements: 5, 10_
 
-- [ ] **Task 3.3.7: Implement refreshToken method**
+- [x] **Task 3.3.7: Implement refreshToken method**
   - Set credentials with refresh_token
   - Call oauth2Client.refreshAccessToken()
   - Preserve original refresh_token if not returned
   - Return normalized OAuthTokens
   - _Requirements: 5, 7_
 
-- [ ] **Task 3.3.8: Implement getUserProfile method**
+- [x] **Task 3.3.8: Implement getUserProfile method**
   - Set credentials with access_token
   - Initialize gmail API client
   - Call gmail.users.getProfile({ userId: 'me' })
   - Return normalized OAuthUserProfile with id=emailAddress, email=emailAddress
   - _Requirements: 5_
 
-- [ ] **Task 3.3.9: Create provider factory function**
+- [x] **Task 3.3.9: Create provider factory function**
   ```typescript
   export function createGoogleProvider(): GoogleProvider | null {
     const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -417,7 +417,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 3.4 Create Provider Exports
 
-- [ ] **Task 3.4.1: Create providers/index.ts**
+- [x] **Task 3.4.1: Create providers/index.ts**
   - Create `/apps/api/src/shared-services/integrations/providers/index.ts`
   - Export all types from `./types`
   - Export OAuthProviderBase from `./base`
@@ -425,7 +425,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   - Export GoogleProvider and createGoogleProvider from `./google`
   - _Requirements: 3, 4, 5_
 
-- [ ] **Task 3.4.2: Create provider initialization function**
+- [x] **Task 3.4.2: Create provider initialization function**
   ```typescript
   export function initializeProviders(): void {
     const registry = ProviderRegistry.getInstance();
@@ -447,18 +447,18 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 4.1 Create Connection Repository
 
-- [ ] **Task 4.1.1: Create repositories directory**
+- [x] **Task 4.1.1: Create repositories directory**
   - Create `/apps/api/src/shared-services/integrations/repositories/` directory
   - _Requirements: 6_
 
-- [ ] **Task 4.1.2: Create connectionRepository.ts**
+- [x] **Task 4.1.2: Create connectionRepository.ts**
   - Create `/apps/api/src/shared-services/integrations/repositories/connectionRepository.ts`
   - Import db from `/apps/api/src/db`
   - Import schema tables
   - Import drizzle query builder functions (eq, and, lt)
   - _Requirements: 6_
 
-- [ ] **Task 4.1.3: Implement create method**
+- [x] **Task 4.1.3: Implement create method**
   ```typescript
   async create(data: NewOAuthConnection): Promise<OAuthConnection> {
     const [result] = await db.insert(oauthConnections).values(data);
@@ -467,7 +467,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.4: Implement findById method**
+- [x] **Task 4.1.4: Implement findById method**
   ```typescript
   async findById(id: string): Promise<OAuthConnection | null> {
     const [result] = await db
@@ -480,7 +480,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.5: Implement findByProvider method**
+- [x] **Task 4.1.5: Implement findByProvider method**
   ```typescript
   async findByProvider(
     provider: string,
@@ -501,7 +501,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.6: Implement findByAccountEmail method**
+- [x] **Task 4.1.6: Implement findByAccountEmail method**
   ```typescript
   async findByAccountEmail(
     email: string,
@@ -519,7 +519,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.7: Implement findAll method**
+- [x] **Task 4.1.7: Implement findAll method**
   ```typescript
   async findAll(filters?: {
     provider?: string;
@@ -547,7 +547,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.8: Implement update method**
+- [x] **Task 4.1.8: Implement update method**
   ```typescript
   async update(
     id: string,
@@ -562,7 +562,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.9: Implement delete method**
+- [x] **Task 4.1.9: Implement delete method**
   ```typescript
   async delete(id: string): Promise<boolean> {
     const result = await db
@@ -573,7 +573,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.10: Implement updateLastUsed method**
+- [x] **Task 4.1.10: Implement updateLastUsed method**
   ```typescript
   async updateLastUsed(id: string): Promise<void> {
     await db
@@ -584,7 +584,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.11: Implement updateError method**
+- [x] **Task 4.1.11: Implement updateError method**
   ```typescript
   async updateError(id: string, error: string): Promise<void> {
     await db
@@ -599,7 +599,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.12: Implement state management methods**
+- [x] **Task 4.1.12: Implement state management methods**
   ```typescript
   async createState(data: NewOAuthState): Promise<OAuthState> {
     await db.insert(oauthStates).values(data);
@@ -630,7 +630,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 6_
 
-- [ ] **Task 4.1.13: Export ConnectionRepository class**
+- [x] **Task 4.1.13: Export ConnectionRepository class**
   - Export class and singleton instance getter
   - _Requirements: 6_
 
@@ -640,13 +640,13 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 5.1 Create Token Manager
 
-- [ ] **Task 5.1.1: Create TokenManager.ts**
+- [x] **Task 5.1.1: Create TokenManager.ts**
   - Create `/apps/api/src/shared-services/integrations/TokenManager.ts`
   - Import repository and provider registry
   - Import types
   - _Requirements: 7_
 
-- [ ] **Task 5.1.2: Implement TokenManager singleton**
+- [x] **Task 5.1.2: Implement TokenManager singleton**
   ```typescript
   export class TokenManager {
     private static instance: TokenManager;
@@ -668,7 +668,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 7_
 
-- [ ] **Task 5.1.3: Implement isTokenExpired helper**
+- [x] **Task 5.1.3: Implement isTokenExpired helper**
   ```typescript
   private isTokenExpired(expiresAt: Date | null): boolean {
     if (!expiresAt) return true;
@@ -679,7 +679,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 7_
 
-- [ ] **Task 5.1.4: Implement ensureValidToken method**
+- [x] **Task 5.1.4: Implement ensureValidToken method**
   ```typescript
   async ensureValidToken(connection: OAuthConnection): Promise<string> {
     // Check if token is still valid
@@ -704,7 +704,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 7_
 
-- [ ] **Task 5.1.5: Implement refreshToken method**
+- [x] **Task 5.1.5: Implement refreshToken method**
   ```typescript
   async refreshToken(connectionId: string): Promise<OAuthTokens> {
     const connection = await this.repository.findById(connectionId);
@@ -766,12 +766,12 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 5.2 Create Integration Manager
 
-- [ ] **Task 5.2.1: Create IntegrationManager.ts**
+- [x] **Task 5.2.1: Create IntegrationManager.ts**
   - Create `/apps/api/src/shared-services/integrations/IntegrationManager.ts`
   - Import all dependencies
   - _Requirements: 8_
 
-- [ ] **Task 5.2.2: Implement IntegrationManager singleton**
+- [x] **Task 5.2.2: Implement IntegrationManager singleton**
   ```typescript
   export class IntegrationManager {
     private static instance: IntegrationManager;
@@ -795,7 +795,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8_
 
-- [ ] **Task 5.2.3: Implement getConnections method**
+- [x] **Task 5.2.3: Implement getConnections method**
   ```typescript
   async getConnections(filters?: {
     provider?: string;
@@ -821,7 +821,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8_
 
-- [ ] **Task 5.2.4: Implement getConnection method**
+- [x] **Task 5.2.4: Implement getConnection method**
   ```typescript
   async getConnection(id: string): Promise<OAuthConnection | null> {
     return this.repository.findById(id);
@@ -829,7 +829,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8_
 
-- [ ] **Task 5.2.5: Implement deleteConnection method**
+- [x] **Task 5.2.5: Implement deleteConnection method**
   ```typescript
   async deleteConnection(id: string): Promise<boolean> {
     return this.repository.delete(id);
@@ -837,7 +837,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8_
 
-- [ ] **Task 5.2.6: Implement renameConnection method**
+- [x] **Task 5.2.6: Implement renameConnection method**
   ```typescript
   async renameConnection(id: string, name: string): Promise<OAuthConnection | null> {
     return this.repository.update(id, { name });
@@ -845,7 +845,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8_
 
-- [ ] **Task 5.2.7: Implement initiateOAuth method**
+- [x] **Task 5.2.7: Implement initiateOAuth method**
   ```typescript
   async initiateOAuth(
     providerId: string,
@@ -896,7 +896,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8, 9_
 
-- [ ] **Task 5.2.8: Implement handleCallback method**
+- [x] **Task 5.2.8: Implement handleCallback method**
   ```typescript
   async handleCallback(
     providerId: string,
@@ -1011,7 +1011,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8, 10_
 
-- [ ] **Task 5.2.9: Implement getValidToken method**
+- [x] **Task 5.2.9: Implement getValidToken method**
   ```typescript
   async getValidToken(connectionId: string): Promise<string> {
     const connection = await this.repository.findById(connectionId);
@@ -1035,7 +1035,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 8_
 
-- [ ] **Task 5.2.10: Implement testConnection method**
+- [x] **Task 5.2.10: Implement testConnection method**
   ```typescript
   async testConnection(connectionId: string): Promise<{
     valid: boolean;
@@ -1069,7 +1069,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 5.3 Create Service Exports
 
-- [ ] **Task 5.3.1: Create integrations/index.ts**
+- [x] **Task 5.3.1: Create integrations/index.ts**
   - Create `/apps/api/src/shared-services/integrations/index.ts`
   - Export IntegrationManager
   - Export TokenManager
@@ -1084,13 +1084,13 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 6.1 Create Integration Routes
 
-- [ ] **Task 6.1.1: Create routes/integrations.ts**
+- [x] **Task 6.1.1: Create routes/integrations.ts**
   - Create `/apps/api/src/routes/integrations.ts`
   - Import Hono and create router
   - Import IntegrationManager and ProviderRegistry
   - _Requirements: 9, 10, 11, 12, 13_
 
-- [ ] **Task 6.1.2: Implement GET /oauth/providers route**
+- [x] **Task 6.1.2: Implement GET /oauth/providers route**
   ```typescript
   router.get('/oauth/providers', async (c) => {
     const registry = ProviderRegistry.getInstance();
@@ -1111,7 +1111,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 12_
 
-- [ ] **Task 6.1.3: Implement GET /oauth/:provider route**
+- [x] **Task 6.1.3: Implement GET /oauth/:provider route**
   ```typescript
   router.get('/oauth/:provider', async (c) => {
     const providerId = c.req.param('provider');
@@ -1137,7 +1137,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 12_
 
-- [ ] **Task 6.1.4: Implement GET /oauth/:provider/auth route**
+- [x] **Task 6.1.4: Implement GET /oauth/:provider/auth route**
   ```typescript
   router.get('/oauth/:provider/auth', async (c) => {
     const providerId = c.req.param('provider');
@@ -1166,7 +1166,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 9_
 
-- [ ] **Task 6.1.5: Implement GET /oauth/:provider/callback route**
+- [x] **Task 6.1.5: Implement GET /oauth/:provider/callback route**
   ```typescript
   router.get('/oauth/:provider/callback', async (c) => {
     const providerId = c.req.param('provider');
@@ -1220,7 +1220,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 10_
 
-- [ ] **Task 6.1.6: Implement GET /connections route**
+- [x] **Task 6.1.6: Implement GET /connections route**
   ```typescript
   router.get('/connections', async (c) => {
     const provider = c.req.query('provider');
@@ -1241,7 +1241,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 11_
 
-- [ ] **Task 6.1.7: Implement GET /connections/:id route**
+- [x] **Task 6.1.7: Implement GET /connections/:id route**
   ```typescript
   router.get('/connections/:id', async (c) => {
     const id = c.req.param('id');
@@ -1274,7 +1274,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 11_
 
-- [ ] **Task 6.1.8: Implement POST /connections/:id/rename route**
+- [x] **Task 6.1.8: Implement POST /connections/:id/rename route**
   ```typescript
   router.post('/connections/:id/rename', async (c) => {
     const id = c.req.param('id');
@@ -1304,7 +1304,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 11_
 
-- [ ] **Task 6.1.9: Implement DELETE /connections/:id route**
+- [x] **Task 6.1.9: Implement DELETE /connections/:id route**
   ```typescript
   router.delete('/connections/:id', async (c) => {
     const id = c.req.param('id');
@@ -1320,7 +1320,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 11_
 
-- [ ] **Task 6.1.10: Implement POST /connections/:id/test route**
+- [x] **Task 6.1.10: Implement POST /connections/:id/test route**
   ```typescript
   router.post('/connections/:id/test', async (c) => {
     const id = c.req.param('id');
@@ -1335,7 +1335,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 11_
 
-- [ ] **Task 6.1.11: Implement GET /connections/:id/token route**
+- [x] **Task 6.1.11: Implement GET /connections/:id/token route**
   ```typescript
   router.get('/connections/:id/token', async (c) => {
     const id = c.req.param('id');
@@ -1364,7 +1364,7 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 11_
 
-- [ ] **Task 6.1.12: Implement POST /oauth/:provider/:id/refresh route**
+- [x] **Task 6.1.12: Implement POST /oauth/:provider/:id/refresh route**
   ```typescript
   router.post('/oauth/:provider/:id/refresh', async (c) => {
     const id = c.req.param('id');
@@ -1393,24 +1393,24 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 13_
 
-- [ ] **Task 6.1.13: Export integrations router**
+- [x] **Task 6.1.13: Export integrations router**
   - Export default router
   - _Requirements: 9, 10, 11, 12, 13_
 
 ### 6.2 Mount Routes in Main Application
 
-- [ ] **Task 6.2.1: Import integrations routes in index.ts**
+- [x] **Task 6.2.1: Import integrations routes in index.ts**
   - Open `/apps/api/src/index.ts`
   - Import integrations router from `./routes/integrations`
   - Import initializeProviders function
   - _Requirements: 9_
 
-- [ ] **Task 6.2.2: Initialize providers at startup**
+- [x] **Task 6.2.2: Initialize providers at startup**
   - Call `initializeProviders()` during server initialization
   - Log provider registration status
   - _Requirements: 4, 5_
 
-- [ ] **Task 6.2.3: Mount integrations routes**
+- [x] **Task 6.2.3: Mount integrations routes**
   - Mount router at `/integrations` path: `app.route('/integrations', integrationsRouter)`
   - _Requirements: 9_
 
@@ -1420,17 +1420,17 @@ This document provides a concrete, actionable implementation plan for the OAuth 
 
 ### 7.1 Update GoogleConnect Node
 
-- [ ] **Task 7.1.1: Open googleConnect.ts for editing**
+- [x] **Task 7.1.1: Open googleConnect.ts for editing**
   - Open `/packages/nodes/src/custom/google/gmail/googleConnect.ts`
   - Review current implementation
   - _Requirements: 14_
 
-- [ ] **Task 7.1.2: Add connectionId support to config**
+- [x] **Task 7.1.2: Add connectionId support to config**
   - Update metadata inputs to include 'connectionId'
   - Update ai_hints to document connectionId usage
   - _Requirements: 14_
 
-- [ ] **Task 7.1.3: Implement connectionId-based token retrieval**
+- [x] **Task 7.1.3: Implement connectionId-based token retrieval**
   ```typescript
   // In execute method
   const connectionId = config?.connectionId;
@@ -1482,38 +1482,38 @@ This document provides a concrete, actionable implementation plan for the OAuth 
   ```
   - _Requirements: 14_
 
-- [ ] **Task 7.1.4: Keep backward compatibility for email-based lookup**
+- [x] **Task 7.1.4: Keep backward compatibility for email-based lookup**
   - If connectionId is not provided but email is, use legacy API call
   - Document deprecation of email-based approach
   - _Requirements: 14_
 
 ### 7.2 Update SendEmail Node
 
-- [ ] **Task 7.2.1: Open sendEmail.ts for review**
+- [x] **Task 7.2.1: Open sendEmail.ts for review**
   - Open `/packages/nodes/src/custom/google/gmail/sendEmail.ts`
   - Verify it uses context.state.google_token
   - No changes needed if it already reads from state
   - _Requirements: 15_
 
-- [ ] **Task 7.2.2: Verify error handling for missing token**
+- [x] **Task 7.2.2: Verify error handling for missing token**
   - Confirm config_error edge is returned when google_token is missing
   - _Requirements: 15_
 
 ### 7.3 Update ListEmails Node
 
-- [ ] **Task 7.3.1: Open listEmails.ts for review**
+- [x] **Task 7.3.1: Open listEmails.ts for review**
   - Open `/packages/nodes/src/custom/google/gmail/listEmails.ts`
   - Verify it uses context.state.google_token
   - No changes needed if it already reads from state
   - _Requirements: 16_
 
-- [ ] **Task 7.3.2: Verify error handling for missing token**
+- [x] **Task 7.3.2: Verify error handling for missing token**
   - Confirm config_error edge is returned when google_token is missing
   - _Requirements: 16_
 
 ### 7.4 Build and Test Nodes
 
-- [ ] **Task 7.4.1: Rebuild nodes package**
+- [x] **Task 7.4.1: Rebuild nodes package**
   - Run `cd packages/nodes && bun run build`
   - Verify build succeeds without errors
   - _Requirements: 14, 15, 16_

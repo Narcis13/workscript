@@ -4,6 +4,7 @@ export default defineConfig({
   schema: [
     './src/db/schema/automations.schema.ts',
     './src/db/schema/auth.schema.ts',
+    './src/db/schema/integrations.schema.ts',
     './src/plugins/workscript/schema/workscript.schema.ts'
   ],
   out: './drizzle',
