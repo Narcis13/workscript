@@ -136,10 +136,15 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
       }, { status: 400 })
     }
 
-    // Capture initial state (from workflow definition + provided initialState)
+    // Extract JWT token from Authorization header
+    const authHeader = c.req.header('Authorization')
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+
+    // Capture initial state (from workflow definition + provided initialState + JWT token)
     const capturedInitialState = {
       ...(workflowDefinition.initialState || {}),
-      ...(initialState || {})
+      ...(initialState || {}),
+      ...(jwtToken ? { JWT_token: jwtToken } : {})
     }
 
     // Create execution record before running
@@ -155,8 +160,8 @@ workflows.post('/run', authenticate, requirePermission(Permission.WORKFLOW_EXECU
     })
     console.log(`[EXECUTION] Execution record created successfully`)
 
-    // Execute workflow using singleton service with optional initial state
-    const result = await workflowService.executeWorkflow(workflowDefinition, initialState)
+    // Execute workflow using singleton service with initial state (includes JWT token)
+    const result = await workflowService.executeWorkflow(workflowDefinition, capturedInitialState)
 
     // Extract final state from result
     const finalState = result?.finalState || null
@@ -307,8 +312,15 @@ workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WO
       }, { status: 400 })
     }
 
-    // Capture initial state from workflow definition
-    const capturedInitialState = definition.initialState || null
+    // Extract JWT token from Authorization header
+    const authHeader = c.req.header('Authorization')
+    const jwtToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+
+    // Capture initial state from workflow definition + JWT token
+    const capturedInitialState = {
+      ...(definition.initialState || {}),
+      ...(jwtToken ? { JWT_token: jwtToken } : {})
+    }
 
     // Create execution record before running
     executionId = createId()
@@ -317,12 +329,12 @@ workflows.post('/run/:workflowId', authenticate, requirePermission(Permission.WO
       workflowId: definition.id || workflowId,
       status: 'running',
       triggeredBy: 'manual',
-      initialState: capturedInitialState,
+      initialState: Object.keys(capturedInitialState).length > 0 ? capturedInitialState : null,
       startedAt: new Date()
     })
 
-    // Execute the workflow
-    const result = await workflowService.executeWorkflow(definition)
+    // Execute the workflow with initial state (includes JWT token)
+    const result = await workflowService.executeWorkflow(definition, capturedInitialState)
 
     // Extract final state from result
     const finalState = result?.finalState || null
