@@ -25,6 +25,11 @@ export { LogNode } from './LogNode.js';
 export { StateSetterNode } from './StateSetterNode.js';
 
 // ============================================================================
+// AI NODES - AI/LLM integration nodes
+// ============================================================================
+export { AskAINode } from './AskAINode.js';
+
+// ============================================================================
 // DATA MANIPULATION NODES - Advanced data processing
 // ============================================================================
 
@@ -98,6 +103,9 @@ import { EmptyNode } from './EmptyNode.js';
 import { LogNode } from './LogNode.js';
 import { StateSetterNode } from './StateSetterNode.js';
 
+// AI nodes
+import { AskAINode } from './AskAINode.js';
+
 // Data manipulation nodes
 import { SplitOutNode } from './data/SplitOutNode.js';
 import { AggregateNode } from './data/AggregateNode.js';
@@ -145,11 +153,12 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * This is the primary export used by the API server to register all workflow nodes.
  * The array includes all node types:
  * - Core nodes (6): Math, Logic, DataTransform, Empty, Log, StateSetter
+ * - AI nodes (1): AskAI
  * - Data manipulation nodes (20): Filter, Sort, Aggregate, Transform, etc.
  * - Server nodes (3): FileSystem, Database, Auth
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 35 nodes
+ * Total: 36 nodes
  *
  * @example
  * ```typescript
@@ -171,6 +180,11 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   EmptyNode,
   LogNode,
   StateSetterNode,
+
+  // ============================================================================
+  // AI NODES (1)
+  // ============================================================================
+  AskAINode,
 
   // ============================================================================
   // DATA MANIPULATION NODES (20)
@@ -249,6 +263,7 @@ export function getAllNodes(): Array<typeof WorkflowNode> {
 export function getNodeCount() {
   return {
     core: 6,
+    ai: 1,
     dataManipulation: 20,
     server: 3,
     customIntegrations: 6,
