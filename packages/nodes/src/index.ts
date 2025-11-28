@@ -30,6 +30,11 @@ export { StateSetterNode } from './StateSetterNode.js';
 export { AskAINode } from './AskAINode.js';
 
 // ============================================================================
+// WORKFLOW ORCHESTRATION NODES - Execute workflows from workflows
+// ============================================================================
+export { RunWorkflowNode } from './RunWorkflowNode.js';
+
+// ============================================================================
 // DATA MANIPULATION NODES - Advanced data processing
 // ============================================================================
 
@@ -106,6 +111,9 @@ import { StateSetterNode } from './StateSetterNode.js';
 // AI nodes
 import { AskAINode } from './AskAINode.js';
 
+// Workflow orchestration nodes
+import { RunWorkflowNode } from './RunWorkflowNode.js';
+
 // Data manipulation nodes
 import { SplitOutNode } from './data/SplitOutNode.js';
 import { AggregateNode } from './data/AggregateNode.js';
@@ -154,11 +162,12 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * The array includes all node types:
  * - Core nodes (6): Math, Logic, DataTransform, Empty, Log, StateSetter
  * - AI nodes (1): AskAI
+ * - Workflow orchestration nodes (1): RunWorkflow
  * - Data manipulation nodes (20): Filter, Sort, Aggregate, Transform, etc.
  * - Server nodes (3): FileSystem, Database, Auth
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 36 nodes
+ * Total: 37 nodes
  *
  * @example
  * ```typescript
@@ -185,6 +194,11 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   // AI NODES (1)
   // ============================================================================
   AskAINode,
+
+  // ============================================================================
+  // WORKFLOW ORCHESTRATION NODES (1)
+  // ============================================================================
+  RunWorkflowNode,
 
   // ============================================================================
   // DATA MANIPULATION NODES (20)
@@ -264,6 +278,7 @@ export function getNodeCount() {
   return {
     core: 6,
     ai: 1,
+    workflowOrchestration: 1,
     dataManipulation: 20,
     server: 3,
     customIntegrations: 6,
