@@ -14,6 +14,7 @@ import authRoutes from './routes/auth';
 import apiKeyRoutes from './routes/apikeys';
 import passwordResetRoutes from './routes/password-reset';
 import integrationsRouter from './routes/integrations';
+import aiRoutes from './routes/ai';
 import { BunWebSocketManager, type WebSocketData } from './shared-services/websocket/BunWebSocketManager';
 import { initializeProviders } from './shared-services/integrations/providers';
 
@@ -90,6 +91,7 @@ app.get('/', (c) => {
       apiKeys: '/api/keys',
       passwordReset: '/password-reset',
       integrations: '/integrations',
+      ai: '/ai',
       plugins: '/api/plugins',
       pluginsHealth: '/api/health/plugins',
     },
@@ -101,6 +103,7 @@ app.route('/auth', authRoutes);
 app.route('/api/keys', apiKeyRoutes);
 app.route('/password-reset', passwordResetRoutes);
 app.route('/integrations', integrationsRouter);
+app.route('/ai', aiRoutes);
 
 /**
  * Initialize and start the server
