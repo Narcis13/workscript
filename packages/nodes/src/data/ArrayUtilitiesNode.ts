@@ -259,6 +259,7 @@ export class ArrayUtilitiesNode extends WorkflowNode {
 
       // Store in state
       context.state.arrayUtilResult = {
+        [resultFieldName]: result,
         operation,
         field,
         resultField: resultFieldName,

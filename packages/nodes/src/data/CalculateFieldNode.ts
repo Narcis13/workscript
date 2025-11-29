@@ -12,7 +12,7 @@
  * @example
  * ```json
  * {
- *   "calculate-1": {
+ *   "calculateField": {
  *     "calculations": [
  *       {
  *         "outputField": "profit",
@@ -58,7 +58,7 @@ export class CalculateFieldNode extends WorkflowNode {
       purpose: 'Calculate new field values using mathematical expressions with field references',
       when_to_use: 'When you need to compute derived fields from existing data using formulas (e.g., profit = revenue - costs)',
       expected_edges: ['success', 'error'],
-      example_usage: '{"calculate-1": {"calculations": [{"outputField": "profit", "formula": "{revenue} - {costs}"}, {"outputField": "margin", "formula": "({profit} / {revenue}) * 100", "precision": 2}], "onError": "skip", "success?": "next-node"}}',
+      example_usage: '{"calculateField": {"calculations": [{"outputField": "profit", "formula": "{revenue} - {costs}"}, {"outputField": "margin", "formula": "({profit} / {revenue}) * 100", "precision": 2}], "onError": "skip", "success?": "next-node"}}',
       example_config: '{"calculations": "[{outputField: string, formula: string, precision?: number}, ...]", "onError?": "stop|skip|use_default", "defaultValue?": "any"}',
       get_from_state: [],
       post_to_state: ['calculationResult', 'calculatedFields', 'calculationErrors']

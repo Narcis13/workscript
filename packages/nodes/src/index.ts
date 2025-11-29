@@ -45,6 +45,8 @@ export { RemoveDuplicatesNode } from './data/RemoveDuplicatesNode.js';
 export { SortNode } from './data/SortNode.js';
 export { LimitNode } from './data/LimitNode.js';
 export { ArrayUtilitiesNode } from './data/ArrayUtilitiesNode.js';
+export { EveryArrayItemNode } from './data/EveryArrayItemNode.js';
+export { RangeNode } from './data/RangeNode.js';
 
 // Data transformation
 export { EditFieldsNode } from './data/EditFieldsNode.js';
@@ -121,6 +123,8 @@ import { RemoveDuplicatesNode } from './data/RemoveDuplicatesNode.js';
 import { SortNode } from './data/SortNode.js';
 import { LimitNode } from './data/LimitNode.js';
 import { ArrayUtilitiesNode } from './data/ArrayUtilitiesNode.js';
+import { EveryArrayItemNode } from './data/EveryArrayItemNode.js';
+import { RangeNode } from './data/RangeNode.js';
 import { EditFieldsNode } from './data/EditFieldsNode.js';
 import { SummarizeNode } from './data/SummarizeNode.js';
 import { TransformObjectNode } from './data/TransformObjectNode.js';
@@ -163,11 +167,11 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * - Core nodes (6): Math, Logic, DataTransform, Empty, Log, StateSetter
  * - AI nodes (1): AskAI
  * - Workflow orchestration nodes (1): RunWorkflow
- * - Data manipulation nodes (20): Filter, Sort, Aggregate, Transform, etc.
+ * - Data manipulation nodes (22): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, etc.
  * - Server nodes (3): FileSystem, Database, Auth
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 37 nodes
+ * Total: 39 nodes
  *
  * @example
  * ```typescript
@@ -201,7 +205,7 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   RunWorkflowNode,
 
   // ============================================================================
-  // DATA MANIPULATION NODES (20)
+  // DATA MANIPULATION NODES (22)
   // ============================================================================
 
   // Array operations
@@ -211,6 +215,8 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   SortNode,
   LimitNode,
   ArrayUtilitiesNode,
+  EveryArrayItemNode,
+  RangeNode,
 
   // Data transformation
   EditFieldsNode,
@@ -279,7 +285,7 @@ export function getNodeCount() {
     core: 6,
     ai: 1,
     workflowOrchestration: 1,
-    dataManipulation: 20,
+    dataManipulation: 22,
     server: 3,
     customIntegrations: 6,
     total: ALL_NODES.length,
