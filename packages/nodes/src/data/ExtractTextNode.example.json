@@ -13,104 +13,104 @@
   },
   "workflow": [
     {
-      "extract-all-emails": {
+      "extractText": {
         "method": "extractAll",
         "field": "emailText",
         "extractType": "email",
         "outputField": "allEmails",
-        "success?": "extract-first-email"
+        "success?": "log"
       }
     },
     {
-      "extract-first-email": {
+      "extractText": {
         "method": "extractSpecific",
         "field": "emailText",
         "extractType": "email",
         "occurrence": 0,
         "outputField": "primaryEmail",
-        "success?": "extract-urls"
+        "success?": "log"
       }
     },
     {
-      "extract-urls": {
+      "extractText": {
         "method": "extractAll",
         "field": "urlText",
         "extractType": "url",
         "outputField": "websiteUrls",
-        "success?": "extract-phones"
+        "success?": "log"
       }
     },
     {
-      "extract-phones": {
+      "extractText": {
         "method": "extractAll",
         "field": "phoneText",
         "extractType": "phone",
         "outputField": "phoneNumbers",
-        "success?": "extract-names-between"
+        "success?": "log"
       }
     },
     {
-      "extract-names-between": {
+      "extractText": {
         "method": "between",
         "field": "delimitedText",
         "startDelimiter": "Name: ",
         "endDelimiter": ",",
         "outputField": "names",
-        "success?": "extract-cities-between"
+        "success?": "log"
       }
     },
     {
-      "extract-cities-between": {
+      "extractText": {
         "method": "between",
         "field": "delimitedText",
         "startDelimiter": "City: ",
         "endDelimiter": " |",
         "outputField": "cities",
-        "success?": "extract-product-ids-regex"
+        "success?": "log"
       }
     },
     {
-      "extract-product-ids-regex": {
+      "extractText": {
         "method": "regex",
         "field": "productData",
         "pattern": "Product: ([A-Z0-9]+)",
         "flags": "g",
         "outputField": "productIds",
-        "success?": "extract-prices-regex"
+        "success?": "log"
       }
     },
     {
-      "extract-prices-regex": {
+      "extractText": {
         "method": "regex",
         "field": "productData",
         "pattern": "\\$([0-9.]+)",
         "flags": "g",
         "outputField": "prices",
-        "success?": "extract-errors-regex"
+        "success?": "log"
       }
     },
     {
-      "extract-errors-regex": {
+      "extractText": {
         "method": "regex",
         "field": "logData",
         "pattern": "ERROR: (.+)$",
         "flags": "gm",
         "outputField": "errorMessages",
-        "success?": "extract-second-url"
+        "success?": "log"
       }
     },
     {
-      "extract-second-url": {
+      "extractText": {
         "method": "extractSpecific",
         "field": "urlText",
         "extractType": "url",
         "occurrence": 1,
         "outputField": "blogUrl",
-        "success?": "log-results"
+        "success?": "log"
       }
     },
     {
-      "log-results": {
+      "log": {
         "message": "All text extractions completed successfully!",
         "allEmails": "$.allEmails",
         "primaryEmail": "$.primaryEmail",

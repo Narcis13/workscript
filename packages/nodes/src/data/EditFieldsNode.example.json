@@ -1,0 +1,282 @@
+{
+  "id": "editFields-examples",
+  "name": "EditFieldsNode Examples",
+  "version": "1.0.0",
+  "description": "Comprehensive examples demonstrating all EditFieldsNode capabilities including manual mapping with type conversions, expression evaluation, nested field creation, and JSON output mode",
+  "initialState": {
+    "user": {
+      "firstName": "John",
+      "lastName": "Doe",
+      "age": 28,
+      "email": "john.doe@example.com",
+      "isActive": true
+    },
+    "product": {
+      "name": "Laptop Pro",
+      "price": 1299.99,
+      "category": "Electronics",
+      "stock": 45,
+      "tags": ["tech", "portable", "premium"]
+    },
+    "order": {
+      "id": "ORD-12345",
+      "quantity": 2,
+      "unitPrice": 49.99,
+      "discount": 0.1,
+      "customer": {
+        "name": "Alice Smith",
+        "tier": "gold"
+      }
+    },
+    "rawData": "{\"key\": \"value\", \"nested\": {\"prop\": 123}}",
+    "csvValues": "apple,banana,cherry",
+    "numericString": "42"
+  },
+  "workflow": [
+    {
+      "log": {
+        "message": "=== EditFieldsNode Examples ===",
+        "success?": {
+          "log": {
+            "message": "--- Example 1: Manual Mapping - Basic Field Types ---",
+            "success?": {
+              "editFields": {
+                "mode": "manual_mapping",
+                "fieldsToSet": [
+                  { "name": "userName", "value": "$.user.firstName", "type": "string" },
+                  { "name": "userAge", "value": "$.user.age", "type": "number" },
+                  { "name": "isVerified", "value": "true", "type": "boolean" },
+                  { "name": "parsedData", "value": "$.rawData", "type": "object" },
+                  { "name": "tagList", "value": "$.csvValues", "type": "array" }
+                ],
+                "includeOtherFields": false,
+                "success?": {
+                  "log": {
+                    "message": "Basic types result - userName: $.editFieldsResult.userName, userAge: $.editFieldsResult.userAge, isVerified: $.editFieldsResult.isVerified",
+                    "success?": {
+                      "log": {
+                        "message": "--- Example 2: Expression Evaluation with {{}} Syntax ---",
+                        "success?": {
+                          "editFields": {
+                            "mode": "manual_mapping",
+                            "fieldsToSet": [
+                              { "name": "fullName", "value": "{{firstName}} {{lastName}}", "type": "expression" },
+                              { "name": "greeting", "value": "Hello, {{firstName}}! You are {{age}} years old.", "type": "expression" },
+                              { "name": "emailDomain", "value": "User email: {{email}}", "type": "expression" }
+                            ],
+                            "includeOtherFields": true,
+                            "success?": {
+                              "log": {
+                                "message": "Expression result - fullName: $.editFieldsResult.fullName, greeting: $.editFieldsResult.greeting",
+                                "success?": {
+                                  "log": {
+                                    "message": "--- Example 3: Nested Field Creation with Dot Notation ---",
+                                    "success?": {
+                                      "editFields": {
+                                        "mode": "manual_mapping",
+                                        "fieldsToSet": [
+                                          { "name": "profile.personal.name", "value": "{{firstName}} {{lastName}}", "type": "expression" },
+                                          { "name": "profile.personal.age", "value": "28", "type": "number" },
+                                          { "name": "profile.account.verified", "value": "true", "type": "boolean" },
+                                          { "name": "profile.account.tier", "value": "premium", "type": "string" },
+                                          { "name": "metadata.createdAt", "value": "2025-01-15", "type": "string" }
+                                        ],
+                                        "includeOtherFields": false,
+                                        "supportDotNotation": true,
+                                        "success?": {
+                                          "log": {
+                                            "message": "Nested structure created with fields: $.fieldsModified",
+                                            "success?": {
+                                              "log": {
+                                                "message": "--- Example 4: Include Other Fields (Merge Mode) ---",
+                                                "success?": {
+                                                  "editFields": {
+                                                    "mode": "manual_mapping",
+                                                    "fieldsToSet": [
+                                                      { "name": "status", "value": "processed", "type": "string" },
+                                                      { "name": "totalPrice", "value": "2599.98", "type": "number" }
+                                                    ],
+                                                    "includeOtherFields": true,
+                                                    "success?": {
+                                                      "log": {
+                                                        "message": "Merged result includes original fields plus new: status=$.editFieldsResult.status, totalPrice=$.editFieldsResult.totalPrice",
+                                                        "success?": {
+                                                          "log": {
+                                                            "message": "--- Example 5: JSON Output Mode - Template Transform ---",
+                                                            "success?": {
+                                                              "editFields": {
+                                                                "mode": "json_output",
+                                                                "jsonOutput": "{\"customer\": {\"fullName\": \"{{name}}\", \"memberTier\": \"{{tier}}\"}, \"orderSummary\": {\"orderId\": \"{{id}}\", \"items\": {{quantity}}, \"pricePerUnit\": {{unitPrice}}}}",
+                                                                "success?": {
+                                                                  "log": {
+                                                                    "message": "JSON output result: $.editFieldsResult",
+                                                                    "success?": {
+                                                                      "log": {
+                                                                        "message": "--- Example 6: Type Conversion - String to Number ---",
+                                                                        "success?": {
+                                                                          "editFields": {
+                                                                            "mode": "manual_mapping",
+                                                                            "fieldsToSet": [
+                                                                              { "name": "convertedNumber", "value": "$.numericString", "type": "number" },
+                                                                              { "name": "calculatedValue", "value": "100", "type": "number" },
+                                                                              { "name": "flagFromString", "value": "1", "type": "boolean" }
+                                                                            ],
+                                                                            "includeOtherFields": false,
+                                                                            "success?": {
+                                                                              "log": {
+                                                                                "message": "Type conversions - number: $.editFieldsResult.convertedNumber, boolean: $.editFieldsResult.flagFromString",
+                                                                                "success?": {
+                                                                                  "log": {
+                                                                                    "message": "--- Example 7: Disable Dot Notation (Literal Field Names) ---",
+                                                                                    "success?": {
+                                                                                      "editFields": {
+                                                                                        "mode": "manual_mapping",
+                                                                                        "fieldsToSet": [
+                                                                                          { "name": "field.with.dots", "value": "literal-key", "type": "string" },
+                                                                                          { "name": "another.dotted.name", "value": "42", "type": "number" }
+                                                                                        ],
+                                                                                        "includeOtherFields": false,
+                                                                                        "supportDotNotation": false,
+                                                                                        "success?": {
+                                                                                          "log": {
+                                                                                            "message": "Literal field names (dots preserved): $.fieldsModified",
+                                                                                            "success?": {
+                                                                                              "log": {
+                                                                                                "message": "--- Example 8: Ignore Type Errors Mode ---",
+                                                                                                "success?": {
+                                                                                                  "editFields": {
+                                                                                                    "mode": "manual_mapping",
+                                                                                                    "fieldsToSet": [
+                                                                                                      { "name": "validField", "value": "success", "type": "string" },
+                                                                                                      { "name": "invalidNumber", "value": "not-a-number", "type": "number" },
+                                                                                                      { "name": "anotherValid", "value": "123", "type": "number" }
+                                                                                                    ],
+                                                                                                    "includeOtherFields": false,
+                                                                                                    "ignoreTypeErrors": true,
+                                                                                                    "success?": {
+                                                                                                      "log": {
+                                                                                                        "message": "With ignoreTypeErrors=true, processing continues. Valid fields: $.fieldsModified",
+                                                                                                        "success?": {
+                                                                                                          "log": {
+                                                                                                            "message": "--- Example 9: Complex JSON Output with Nested Objects ---",
+                                                                                                            "success?": {
+                                                                                                              "editFields": {
+                                                                                                                "mode": "json_output",
+                                                                                                                "jsonOutput": "{\"product\": {\"name\": \"{{name}}\", \"pricing\": {\"basePrice\": {{price}}, \"currency\": \"USD\"}, \"inventory\": {\"available\": {{stock}}, \"category\": \"{{category}}\"}}, \"tags\": {{tags}}}",
+                                                                                                                "success?": {
+                                                                                                                  "log": {
+                                                                                                                    "message": "Complex JSON output: $.editFieldsResult",
+                                                                                                                    "success?": {
+                                                                                                                      "log": {
+                                                                                                                        "message": "--- Example 10: Array Type Conversion ---",
+                                                                                                                        "success?": {
+                                                                                                                          "editFields": {
+                                                                                                                            "mode": "manual_mapping",
+                                                                                                                            "fieldsToSet": [
+                                                                                                                              { "name": "fromCsv", "value": "red,green,blue", "type": "array" },
+                                                                                                                              { "name": "fromJson", "value": "[1, 2, 3]", "type": "array" },
+                                                                                                                              { "name": "singleWrapped", "value": "solo-item", "type": "array" }
+                                                                                                                            ],
+                                                                                                                            "includeOtherFields": false,
+                                                                                                                            "success?": {
+                                                                                                                              "log": {
+                                                                                                                                "message": "Array conversions complete. Fields modified: $.fieldsModified",
+                                                                                                                                "success?": {
+                                                                                                                                  "log": {
+                                                                                                                                    "message": "=== All EditFieldsNode Examples Completed Successfully ==="
+                                                                                                                                  }
+                                                                                                                                }
+                                                                                                                              }
+                                                                                                                            },
+                                                                                                                            "error?": {
+                                                                                                                              "log": { "message": "Example 10 failed: $.error" }
+                                                                                                                            }
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                },
+                                                                                                                "error?": {
+                                                                                                                  "log": { "message": "Example 9 JSON output failed: $.error" }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    },
+                                                                                                    "error?": {
+                                                                                                      "log": { "message": "Example 8 failed (unexpected with ignoreTypeErrors): $.error" }
+                                                                                                    }
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                          }
+                                                                                        },
+                                                                                        "error?": {
+                                                                                          "log": { "message": "Example 7 failed: $.error" }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            },
+                                                                            "error?": {
+                                                                              "log": { "message": "Example 6 type conversion failed: $.error" }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                },
+                                                                "error?": {
+                                                                  "log": { "message": "Example 5 JSON output failed: $.error" }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    },
+                                                    "error?": {
+                                                      "log": { "message": "Example 4 merge mode failed: $.error" }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "error?": {
+                                          "log": { "message": "Example 3 nested field creation failed: $.error" }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "error?": {
+                              "log": { "message": "Example 2 expression evaluation failed: $.error" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "error?": {
+                  "log": { "message": "Example 1 basic types failed: $.error" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

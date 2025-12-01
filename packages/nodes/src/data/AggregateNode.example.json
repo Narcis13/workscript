@@ -1,0 +1,145 @@
+{
+  "id": "aggregate-examples",
+  "name": "Aggregate Node Examples",
+  "version": "1.0.0",
+  "description": "Comprehensive examples demonstrating all AggregateNode capabilities: individual_fields mode, all_data mode, mergeLists, keepMissingValues, and edge handling",
+  "initialState": {
+    "users": [
+      { "id": 1, "name": "Alice", "email": "alice@example.com", "role": "admin", "tags": ["vip", "early-adopter"] },
+      { "id": 2, "name": "Bob", "email": "bob@example.com", "role": "user", "tags": ["beta"] },
+      { "id": 3, "name": "Charlie", "role": "user", "tags": ["new"] }
+    ],
+    "orders": [
+      { "orderId": "ORD-001", "customerId": 1, "total": 150.00, "items": ["laptop", "mouse"] },
+      { "orderId": "ORD-002", "customerId": 2, "total": 75.50, "items": ["keyboard"] },
+      { "orderId": "ORD-003", "customerId": 1, "total": 220.00, "items": ["monitor", "cable", "stand"] }
+    ],
+    "emptyItems": [],
+    "nestedData": [
+      { "department": "Engineering", "employees": { "count": 15, "lead": "Alice" } },
+      { "department": "Marketing", "employees": { "count": 8, "lead": "Bob" } },
+      { "department": "Sales", "employees": { "count": 12, "lead": "Charlie" } }
+    ]
+  },
+  "workflow": [
+    {
+      "aggregate": {
+        "mode": "all_data",
+        "outputField": "allUsers",
+        "success?": {
+          "log": { "message": "Example 1: all_data mode - collected $.itemCount users into single array" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "name", "outputFieldName": "names" },
+          { "inputFieldName": "email", "outputFieldName": "emails" }
+        ],
+        "success?": {
+          "log": { "message": "Example 2: individual_fields mode - extracted names and emails from $.itemCount items" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "email", "outputFieldName": "emailList" }
+        ],
+        "keepMissingValues": false,
+        "success?": {
+          "log": { "message": "Example 3: keepMissingValues=false - missing emails skipped" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "email", "outputFieldName": "emailListWithNulls" }
+        ],
+        "keepMissingValues": true,
+        "success?": {
+          "log": { "message": "Example 4: keepMissingValues=true - null placeholder for missing emails" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "tags", "outputFieldName": "allTags", "mergeLists": true }
+        ],
+        "success?": {
+          "log": { "message": "Example 5: mergeLists=true - flattened nested arrays into single array" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "tags", "outputFieldName": "tagArrays", "mergeLists": false }
+        ],
+        "success?": {
+          "log": { "message": "Example 6: mergeLists=false - preserved arrays as separate items" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "orderId" },
+          { "inputFieldName": "total", "outputFieldName": "totals" },
+          { "inputFieldName": "items", "outputFieldName": "allOrderItems", "mergeLists": true }
+        ],
+        "success?": {
+          "log": { "message": "Example 7: Multiple fields with different options - orderIds, totals, and merged items" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "individual_fields",
+        "fields": [
+          { "inputFieldName": "employees.count", "outputFieldName": "employeeCounts" },
+          { "inputFieldName": "employees.lead", "outputFieldName": "teamLeads" }
+        ],
+        "success?": {
+          "log": { "message": "Example 8: Nested field access with dot notation - extracted nested values" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "all_data",
+        "outputField": "emptyCollection",
+        "empty?": {
+          "log": { "message": "Example 9: empty edge - no items to aggregate" }
+        }
+      }
+    },
+    {
+      "aggregate": {
+        "mode": "invalid_mode",
+        "error?": {
+          "log": { "message": "Example 10: error edge - invalid mode triggers error" }
+        }
+      }
+    },
+    {
+      "log": {
+        "message": "All AggregateNode examples completed!",
+        "summary": {
+          "modesDemo": ["all_data", "individual_fields"],
+          "optionsDemo": ["keepMissingValues", "mergeLists", "outputField", "nested field access"],
+          "edgesDemo": ["success", "empty", "error"]
+        }
+      }
+    }
+  ]
+}

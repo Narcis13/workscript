@@ -58,6 +58,9 @@ export { JSONExtractNode } from './data/JSONExtractNode.js';
 export { StringOperationsNode } from './data/StringOperationsNode.js';
 export { ExtractTextNode } from './data/ExtractTextNode.js';
 
+// HTTP/API operations
+export { FetchApiNode } from './data/FetchApiNode.js';
+
 // Filtering and comparison
 export { FilterNode } from './data/FilterNode.js';
 export { CompareDatasetsNode } from './data/CompareDatasetsNode.js';
@@ -131,6 +134,7 @@ import { TransformObjectNode } from './data/TransformObjectNode.js';
 import { JSONExtractNode } from './data/JSONExtractNode.js';
 import { StringOperationsNode } from './data/StringOperationsNode.js';
 import { ExtractTextNode } from './data/ExtractTextNode.js';
+import { FetchApiNode } from './data/FetchApiNode.js';
 import { FilterNode } from './data/FilterNode.js';
 import { CompareDatasetsNode } from './data/CompareDatasetsNode.js';
 import { SwitchNode } from './data/SwitchNode.js';
@@ -167,11 +171,11 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * - Core nodes (6): Math, Logic, DataTransform, Empty, Log, StateSetter
  * - AI nodes (1): AskAI
  * - Workflow orchestration nodes (1): RunWorkflow
- * - Data manipulation nodes (22): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, etc.
+ * - Data manipulation nodes (23): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, FetchApi, etc.
  * - Server nodes (3): FileSystem, Database, Auth
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 39 nodes
+ * Total: 40 nodes
  *
  * @example
  * ```typescript
@@ -205,7 +209,7 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   RunWorkflowNode,
 
   // ============================================================================
-  // DATA MANIPULATION NODES (22)
+  // DATA MANIPULATION NODES (23)
   // ============================================================================
 
   // Array operations
@@ -227,6 +231,9 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   JSONExtractNode,
   StringOperationsNode,
   ExtractTextNode,
+
+  // HTTP/API operations
+  FetchApiNode,
 
   // Filtering and comparison
   FilterNode,
@@ -285,7 +292,7 @@ export function getNodeCount() {
     core: 6,
     ai: 1,
     workflowOrchestration: 1,
-    dataManipulation: 22,
+    dataManipulation: 23,
     server: 3,
     customIntegrations: 6,
     total: ALL_NODES.length,

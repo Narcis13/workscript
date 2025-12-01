@@ -1,0 +1,223 @@
+{
+  "id": "fetchApi-examples",
+  "name": "FetchApi Node Examples",
+  "version": "1.0.0",
+  "description": "Comprehensive examples demonstrating all FetchApiNode capabilities: HTTP methods (GET, POST, PUT, PATCH, DELETE), custom headers, request body, timeout, response types, and error handling edges",
+  "initialState": {
+    "apiBaseUrl": "https://api.example.com",
+    "apiToken": "sk-test-token-12345",
+    "userId": "user-123",
+    "newUser": {
+      "name": "Alice Johnson",
+      "email": "alice@example.com",
+      "role": "developer"
+    },
+    "updateData": {
+      "name": "Alice Smith",
+      "status": "active"
+    },
+    "searchQuery": "typescript",
+    "webhookPayload": {
+      "event": "user.created",
+      "timestamp": "2025-01-15T10:30:00Z",
+      "data": { "id": "user-456" }
+    }
+  },
+  "workflow": [
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/users",
+        "method": "GET",
+        "success?": {
+          "log": { "message": "Example 1: Basic GET - fetched users list, status: $.fetchStatus" }
+        },
+        "error?": {
+          "log": { "message": "Example 1: GET request failed" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/users/$.userId",
+        "method": "GET",
+        "headers": {
+          "Authorization": "Bearer $.apiToken",
+          "Accept": "application/json"
+        },
+        "success?": {
+          "log": { "message": "Example 2: GET with auth header - fetched user $.fetchResponse.name" }
+        },
+        "clientError?": {
+          "log": { "message": "Example 2: User not found (4xx)" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/users",
+        "method": "POST",
+        "body": "$.newUser",
+        "headers": {
+          "Authorization": "Bearer $.apiToken"
+        },
+        "success?": {
+          "log": { "message": "Example 3: POST - created user with id: $.fetchResponse.id" }
+        },
+        "clientError?": {
+          "log": { "message": "Example 3: Validation failed - $.fetchResponse.message" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/users/$.userId",
+        "method": "PUT",
+        "body": "$.updateData",
+        "headers": {
+          "Authorization": "Bearer $.apiToken"
+        },
+        "success?": {
+          "log": { "message": "Example 4: PUT - fully replaced user resource" }
+        },
+        "error?": {
+          "log": { "message": "Example 4: PUT request failed" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/users/$.userId",
+        "method": "PATCH",
+        "body": { "status": "inactive" },
+        "headers": {
+          "Authorization": "Bearer $.apiToken"
+        },
+        "success?": {
+          "log": { "message": "Example 5: PATCH - partially updated user status" }
+        },
+        "error?": {
+          "log": { "message": "Example 5: PATCH request failed" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/users/$.userId",
+        "method": "DELETE",
+        "headers": {
+          "Authorization": "Bearer $.apiToken"
+        },
+        "success?": {
+          "log": { "message": "Example 6: DELETE - removed user, status: $.fetchStatus" }
+        },
+        "clientError?": {
+          "log": { "message": "Example 6: Cannot delete - user not found" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/search?q=$.searchQuery",
+        "method": "GET",
+        "timeout": 5000,
+        "success?": {
+          "log": { "message": "Example 7: GET with timeout (5s) - search completed" }
+        },
+        "error?": {
+          "log": { "message": "Example 7: Search timed out after 5000ms" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/config",
+        "method": "GET",
+        "responseType": "text",
+        "success?": {
+          "log": { "message": "Example 8: responseType=text - raw text response received" }
+        },
+        "error?": {
+          "log": { "message": "Example 8: Failed to fetch config" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://webhook.example.com/events",
+        "method": "POST",
+        "body": "$.webhookPayload",
+        "headers": {
+          "Content-Type": "application/json",
+          "X-Webhook-Secret": "webhook-secret-key"
+        },
+        "success?": {
+          "log": { "message": "Example 9: Webhook POST with custom headers - delivered successfully" }
+        },
+        "serverError?": {
+          "log": { "message": "Example 9: Webhook server error (5xx) - $.fetchStatus" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/health",
+        "method": "HEAD",
+        "timeout": 2000,
+        "success?": {
+          "log": { "message": "Example 10: HEAD request - health check passed, headers: $.fetchHeaders" }
+        },
+        "error?": {
+          "log": { "message": "Example 10: Health check failed" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/protected",
+        "method": "GET",
+        "clientError?": {
+          "log": { "message": "Example 11: clientError edge (4xx) - unauthorized: $.fetchStatus $.fetchResponse.message" }
+        },
+        "success?": {
+          "log": { "message": "Example 11: Unexpectedly succeeded" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://api.example.com/internal-error",
+        "method": "GET",
+        "serverError?": {
+          "log": { "message": "Example 12: serverError edge (5xx) - server error: $.fetchStatus" }
+        },
+        "success?": {
+          "log": { "message": "Example 12: Server recovered" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "https://slow-api.example.com/data",
+        "method": "GET",
+        "timeout": 100,
+        "error?": {
+          "log": { "message": "Example 13: error edge - request timed out (100ms timeout)" }
+        },
+        "success?": {
+          "log": { "message": "Example 13: Fast response received" }
+        }
+      }
+    },
+    {
+      "log": {
+        "message": "All FetchApiNode examples completed!",
+        "summary": {
+          "methodsDemo": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
+          "featuresDemo": ["custom headers", "Authorization", "request body", "timeout", "responseType"],
+          "edgesDemo": ["success", "error", "clientError", "serverError"],
+          "stateOutput": ["fetchResponse", "fetchStatus", "fetchHeaders"]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,743 @@
+{
+  "id": "dateTime-examples",
+  "name": "Date & Time Operations Examples",
+  "version": "1.0.0",
+  "description": "Comprehensive examples demonstrating all DateTimeNode capabilities including formatting, parsing, arithmetic, comparison, extraction, timezone conversion, and validation",
+  "initialState": {
+    "orderDate": "2025-03-15T14:30:00.000Z",
+    "userBirthday": "1990-06-20",
+    "appointmentTime": "2025-04-01T09:00:00.000Z",
+    "invoiceDueDate": "04/30/2025",
+    "eventStartDate": "2025-06-15T10:00:00.000Z",
+    "eventEndDate": "2025-06-15T18:00:00.000Z",
+    "subscriptionStart": "2024-01-01T00:00:00.000Z",
+    "invalidDateString": "not-a-valid-date",
+    "timestampMs": 1710513000000,
+    "orders": [
+      {
+        "id": "ORD-001",
+        "createdAt": "2025-03-10T08:15:00.000Z",
+        "status": "completed"
+      },
+      {
+        "id": "ORD-002",
+        "createdAt": "2025-03-12T16:45:00.000Z",
+        "status": "pending"
+      },
+      {
+        "id": "ORD-003",
+        "createdAt": "2025-03-14T11:30:00.000Z",
+        "status": "shipped"
+      }
+    ],
+    "scheduledMeeting": "2025-03-20T15:00:00.000Z",
+    "pastEvent": "2024-12-25T00:00:00.000Z"
+  },
+  "workflow": [
+    {
+      "log": {
+        "message": "=== Starting DateTimeNode Examples ===",
+        "success?": {
+          "dateTime": {
+            "_comment": "Example 1: Get current date/time using 'now' operation",
+            "operation": "now",
+            "outputField": "currentTime",
+            "success?": {
+              "log": {
+                "message": "Current time: $.currentTime",
+                "success?": {
+                  "dateTime": {
+                    "_comment": "Example 2: Format date - ISO to human readable (MM/DD/YYYY)",
+                    "operation": "format",
+                    "field": "orderDate",
+                    "outputFormat": "MM/DD/YYYY",
+                    "outputField": "formattedOrderDate",
+                    "success?": {
+                      "log": {
+                        "message": "Formatted order date: $.formattedOrderDate",
+                        "success?": {
+                          "dateTime": {
+                            "_comment": "Example 3: Format date with time (YYYY-MM-DD HH:mm:ss)",
+                            "operation": "format",
+                            "field": "orderDate",
+                            "outputFormat": "YYYY-MM-DD HH:mm:ss",
+                            "outputField": "formattedWithTime",
+                            "success?": {
+                              "log": {
+                                "message": "Formatted with time: $.formattedWithTime",
+                                "success?": {
+                                  "dateTime": {
+                                    "_comment": "Example 4: Parse date with specific input format (MM/DD/YYYY)",
+                                    "operation": "parse",
+                                    "field": "invoiceDueDate",
+                                    "inputFormat": "MM/DD/YYYY",
+                                    "outputField": "parsedInvoiceDate",
+                                    "success?": {
+                                      "log": {
+                                        "message": "Parsed invoice date: $.parsedInvoiceDate",
+                                        "success?": {
+                                          "dateTime": {
+                                            "_comment": "Example 5: Convert to ISO string",
+                                            "operation": "to_iso",
+                                            "field": "userBirthday",
+                                            "outputField": "birthdayISO",
+                                            "success?": {
+                                              "log": {
+                                                "message": "Birthday in ISO: $.birthdayISO",
+                                                "success?": {
+                                                  "dateTime": {
+                                                    "_comment": "Example 6: Add 30 days to order date",
+                                                    "operation": "add",
+                                                    "field": "orderDate",
+                                                    "amount": 30,
+                                                    "unit": "days",
+                                                    "outputField": "deliveryDeadline",
+                                                    "success?": {
+                                                      "log": {
+                                                        "message": "Delivery deadline (order + 30 days): $.deliveryDeadline",
+                                                        "success?": {
+                                                          "dateTime": {
+                                                            "_comment": "Example 7: Add 2 weeks to appointment",
+                                                            "operation": "add",
+                                                            "field": "appointmentTime",
+                                                            "amount": 2,
+                                                            "unit": "weeks",
+                                                            "outputField": "followUpDate",
+                                                            "success?": {
+                                                              "log": {
+                                                                "message": "Follow-up date: $.followUpDate",
+                                                                "success?": {
+                                                                  "dateTime": {
+                                                                    "_comment": "Example 8: Add 6 months for subscription renewal",
+                                                                    "operation": "add",
+                                                                    "field": "subscriptionStart",
+                                                                    "amount": 6,
+                                                                    "unit": "months",
+                                                                    "outputField": "renewalDate",
+                                                                    "success?": {
+                                                                      "log": {
+                                                                        "message": "Subscription renewal: $.renewalDate",
+                                                                        "success?": {
+                                                                          "dateTime": {
+                                                                            "_comment": "Example 9: Subtract 7 days (reminder before event)",
+                                                                            "operation": "subtract",
+                                                                            "field": "eventStartDate",
+                                                                            "amount": 7,
+                                                                            "unit": "days",
+                                                                            "outputField": "reminderDate",
+                                                                            "success?": {
+                                                                              "log": {
+                                                                                "message": "Send reminder on: $.reminderDate",
+                                                                                "success?": {
+                                                                                  "dateTime": {
+                                                                                    "_comment": "Example 10: Subtract 1 hour (prep time)",
+                                                                                    "operation": "subtract",
+                                                                                    "field": "scheduledMeeting",
+                                                                                    "amount": 1,
+                                                                                    "unit": "hours",
+                                                                                    "outputField": "prepTime",
+                                                                                    "success?": {
+                                                                                      "log": {
+                                                                                        "message": "Start preparation at: $.prepTime",
+                                                                                        "success?": {
+                                                                                          "dateTime": {
+                                                                                            "_comment": "Example 11: Round to start of day",
+                                                                                            "operation": "round",
+                                                                                            "field": "orderDate",
+                                                                                            "roundTo": "start_of_day",
+                                                                                            "outputField": "orderDayStart",
+                                                                                            "success?": {
+                                                                                              "log": {
+                                                                                                "message": "Order day start: $.orderDayStart",
+                                                                                                "success?": {
+                                                                                                  "dateTime": {
+                                                                                                    "_comment": "Example 12: Round to end of day",
+                                                                                                    "operation": "round",
+                                                                                                    "field": "orderDate",
+                                                                                                    "roundTo": "end_of_day",
+                                                                                                    "outputField": "orderDayEnd",
+                                                                                                    "success?": {
+                                                                                                      "log": {
+                                                                                                        "message": "Order day end: $.orderDayEnd",
+                                                                                                        "success?": {
+                                                                                                          "dateTime": {
+                                                                                                            "_comment": "Example 13: Round to start of month",
+                                                                                                            "operation": "round",
+                                                                                                            "field": "orderDate",
+                                                                                                            "roundTo": "start_of_month",
+                                                                                                            "outputField": "monthStart",
+                                                                                                            "success?": {
+                                                                                                              "log": {
+                                                                                                                "message": "Month start: $.monthStart",
+                                                                                                                "success?": {
+                                                                                                                  "dateTime": {
+                                                                                                                    "_comment": "Example 14: Round to end of month",
+                                                                                                                    "operation": "round",
+                                                                                                                    "field": "orderDate",
+                                                                                                                    "roundTo": "end_of_month",
+                                                                                                                    "outputField": "monthEnd",
+                                                                                                                    "success?": {
+                                                                                                                      "log": {
+                                                                                                                        "message": "Month end: $.monthEnd",
+                                                                                                                        "success?": {
+                                                                                                                          "dateTime": {
+                                                                                                                            "_comment": "Example 15: Round to start of week",
+                                                                                                                            "operation": "round",
+                                                                                                                            "field": "orderDate",
+                                                                                                                            "roundTo": "start_of_week",
+                                                                                                                            "outputField": "weekStart",
+                                                                                                                            "success?": {
+                                                                                                                              "log": {
+                                                                                                                                "message": "Week start: $.weekStart",
+                                                                                                                                "success?": {
+                                                                                                                                  "dateTime": {
+                                                                                                                                    "_comment": "Example 16: Round to start of year",
+                                                                                                                                    "operation": "round",
+                                                                                                                                    "field": "orderDate",
+                                                                                                                                    "roundTo": "start_of_year",
+                                                                                                                                    "outputField": "yearStart",
+                                                                                                                                    "success?": {
+                                                                                                                                      "log": {
+                                                                                                                                        "message": "Year start: $.yearStart",
+                                                                                                                                        "success?": "extract-examples"
+                                                                                                                                      }
+                                                                                                                                    }
+                                                                                                                                  }
+                                                                                                                                }
+                                                                                                                              }
+                                                                                                                            }
+                                                                                                                          }
+                                                                                                                        }
+                                                                                                                      }
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "extract-examples": {
+        "log": {
+          "message": "=== Extract Component Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 17: Extract year",
+              "operation": "extract",
+              "field": "orderDate",
+              "extract": "year",
+              "outputField": "extractedYear",
+              "success?": {
+                "log": {
+                  "message": "Year: $.extractedYear",
+                  "success?": {
+                    "dateTime": {
+                      "_comment": "Example 18: Extract month (1-12)",
+                      "operation": "extract",
+                      "field": "orderDate",
+                      "extract": "month",
+                      "outputField": "extractedMonth",
+                      "success?": {
+                        "log": {
+                          "message": "Month: $.extractedMonth",
+                          "success?": {
+                            "dateTime": {
+                              "_comment": "Example 19: Extract day of month",
+                              "operation": "extract",
+                              "field": "orderDate",
+                              "extract": "day",
+                              "outputField": "extractedDay",
+                              "success?": {
+                                "log": {
+                                  "message": "Day: $.extractedDay",
+                                  "success?": {
+                                    "dateTime": {
+                                      "_comment": "Example 20: Extract hour (0-23)",
+                                      "operation": "extract",
+                                      "field": "orderDate",
+                                      "extract": "hour",
+                                      "outputField": "extractedHour",
+                                      "success?": {
+                                        "log": {
+                                          "message": "Hour: $.extractedHour",
+                                          "success?": {
+                                            "dateTime": {
+                                              "_comment": "Example 21: Extract day of week (0=Sunday, 6=Saturday)",
+                                              "operation": "extract",
+                                              "field": "orderDate",
+                                              "extract": "dayOfWeek",
+                                              "outputField": "extractedDayOfWeek",
+                                              "success?": {
+                                                "log": {
+                                                  "message": "Day of week: $.extractedDayOfWeek",
+                                                  "success?": {
+                                                    "dateTime": {
+                                                      "_comment": "Example 22: Extract day of year (1-366)",
+                                                      "operation": "extract",
+                                                      "field": "orderDate",
+                                                      "extract": "dayOfYear",
+                                                      "outputField": "extractedDayOfYear",
+                                                      "success?": {
+                                                        "log": {
+                                                          "message": "Day of year: $.extractedDayOfYear",
+                                                          "success?": {
+                                                            "dateTime": {
+                                                              "_comment": "Example 23: Extract week of year",
+                                                              "operation": "extract",
+                                                              "field": "orderDate",
+                                                              "extract": "weekOfYear",
+                                                              "outputField": "extractedWeekOfYear",
+                                                              "success?": {
+                                                                "log": {
+                                                                  "message": "Week of year: $.extractedWeekOfYear",
+                                                                  "success?": {
+                                                                    "dateTime": {
+                                                                      "_comment": "Example 24: Extract quarter (1-4)",
+                                                                      "operation": "extract",
+                                                                      "field": "orderDate",
+                                                                      "extract": "quarter",
+                                                                      "outputField": "extractedQuarter",
+                                                                      "success?": {
+                                                                        "log": {
+                                                                          "message": "Quarter: $.extractedQuarter",
+                                                                          "success?": {
+                                                                            "dateTime": {
+                                                                              "_comment": "Example 25: Extract timestamp (milliseconds since epoch)",
+                                                                              "operation": "extract",
+                                                                              "field": "orderDate",
+                                                                              "extract": "timestamp",
+                                                                              "outputField": "extractedTimestamp",
+                                                                              "success?": {
+                                                                                "log": {
+                                                                                  "message": "Timestamp: $.extractedTimestamp",
+                                                                                  "success?": "compare-examples"
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "compare-examples": {
+        "log": {
+          "message": "=== Compare Date Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 26: Check if order date is before appointment (should be true)",
+              "operation": "compare",
+              "field": "orderDate",
+              "compareWith": "$.appointmentTime",
+              "compareOperation": "is_before",
+              "is_before?": {
+                "log": {
+                  "message": "Order date IS BEFORE appointment - comparison result: $.dateTimeCompared",
+                  "success?": "compare-after-example"
+                }
+              },
+              "is_not_before?": {
+                "log": {
+                  "message": "Order date is NOT before appointment",
+                  "success?": "compare-after-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "compare-after-example": {
+        "dateTime": {
+          "_comment": "Example 27: Check if appointment is after order date (should be true)",
+          "operation": "compare",
+          "field": "appointmentTime",
+          "compareWith": "$.orderDate",
+          "compareOperation": "is_after",
+          "is_after?": {
+            "log": {
+              "message": "Appointment IS AFTER order date",
+              "success?": "compare-same-example"
+            }
+          },
+          "is_not_after?": {
+            "log": {
+              "message": "Appointment is NOT after order date",
+              "success?": "compare-same-example"
+            }
+          }
+        }
+      }
+    },
+    {
+      "compare-same-example": {
+        "dateTime": {
+          "_comment": "Example 28: Check if two dates are the same",
+          "operation": "compare",
+          "field": "eventStartDate",
+          "compareWith": "$.eventStartDate",
+          "compareOperation": "is_same",
+          "is_same?": {
+            "log": {
+              "message": "Dates ARE the same",
+              "success?": "diff-examples"
+            }
+          },
+          "is_not_same?": {
+            "log": {
+              "message": "Dates are NOT the same",
+              "success?": "diff-examples"
+            }
+          }
+        }
+      }
+    },
+    {
+      "diff-examples": {
+        "log": {
+          "message": "=== Date Difference Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 29: Calculate difference in days between order and appointment",
+              "operation": "diff",
+              "field": "orderDate",
+              "compareWith": "$.appointmentTime",
+              "diffUnit": "days",
+              "outputField": "daysDifference",
+              "success?": {
+                "log": {
+                  "message": "Days between order and appointment: $.daysDifference",
+                  "success?": {
+                    "dateTime": {
+                      "_comment": "Example 30: Calculate difference in hours (event duration)",
+                      "operation": "diff",
+                      "field": "eventStartDate",
+                      "compareWith": "$.eventEndDate",
+                      "diffUnit": "hours",
+                      "outputField": "eventDurationHours",
+                      "success?": {
+                        "log": {
+                          "message": "Event duration in hours: $.eventDurationHours",
+                          "success?": {
+                            "dateTime": {
+                              "_comment": "Example 31: Calculate difference in months (subscription age)",
+                              "operation": "diff",
+                              "field": "subscriptionStart",
+                              "compareWith": "$.orderDate",
+                              "diffUnit": "months",
+                              "outputField": "subscriptionAgeMonths",
+                              "success?": {
+                                "log": {
+                                  "message": "Subscription age in months: $.subscriptionAgeMonths",
+                                  "success?": {
+                                    "dateTime": {
+                                      "_comment": "Example 32: Calculate difference in weeks",
+                                      "operation": "diff",
+                                      "field": "orderDate",
+                                      "compareWith": "$.eventStartDate",
+                                      "diffUnit": "weeks",
+                                      "outputField": "weeksDifference",
+                                      "success?": {
+                                        "log": {
+                                          "message": "Weeks until event: $.weeksDifference",
+                                          "success?": "validation-examples"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "validation-examples": {
+        "log": {
+          "message": "=== Date Validation Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 33: Validate a valid date",
+              "operation": "is_valid",
+              "field": "orderDate",
+              "is_valid?": {
+                "log": {
+                  "message": "Order date is VALID",
+                  "success?": "validate-invalid-example"
+                }
+              },
+              "is_invalid?": {
+                "log": {
+                  "message": "Order date is INVALID (unexpected)",
+                  "success?": "validate-invalid-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "validate-invalid-example": {
+        "dateTime": {
+          "_comment": "Example 34: Validate an invalid date string",
+          "operation": "is_valid",
+          "field": "invalidDateString",
+          "is_valid?": {
+            "log": {
+              "message": "Invalid string was parsed as valid (unexpected)",
+              "success?": "timezone-examples"
+            }
+          },
+          "is_invalid?": {
+            "log": {
+              "message": "Invalid date string correctly identified as INVALID",
+              "success?": "timezone-examples"
+            }
+          }
+        }
+      }
+    },
+    {
+      "timezone-examples": {
+        "log": {
+          "message": "=== Timezone Conversion Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 35: Convert from UTC to EST",
+              "operation": "convert_timezone",
+              "field": "scheduledMeeting",
+              "fromTimezone": "UTC",
+              "toTimezone": "EST",
+              "outputField": "meetingEST",
+              "success?": {
+                "log": {
+                  "message": "Meeting time in EST: $.meetingEST",
+                  "success?": {
+                    "dateTime": {
+                      "_comment": "Example 36: Convert from UTC to PST",
+                      "operation": "convert_timezone",
+                      "field": "scheduledMeeting",
+                      "fromTimezone": "UTC",
+                      "toTimezone": "PST",
+                      "outputField": "meetingPST",
+                      "success?": {
+                        "log": {
+                          "message": "Meeting time in PST: $.meetingPST",
+                          "success?": "error-handling-examples"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "error-handling-examples": {
+        "log": {
+          "message": "=== Error Handling Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 37: Use default value on error",
+              "operation": "parse",
+              "field": "invalidDateString",
+              "onError": "use_default",
+              "defaultValue": "1970-01-01T00:00:00.000Z",
+              "outputField": "parsedWithDefault",
+              "success?": {
+                "log": {
+                  "message": "Parsed with default: $.parsedWithDefault",
+                  "success?": {
+                    "dateTime": {
+                      "_comment": "Example 38: Skip on error (continue workflow)",
+                      "operation": "format",
+                      "field": "nonExistentField",
+                      "outputFormat": "YYYY-MM-DD",
+                      "onError": "skip",
+                      "outputField": "skippedResult",
+                      "success?": {
+                        "log": {
+                          "message": "Skipped error - workflow continued",
+                          "success?": "timestamp-examples"
+                        }
+                      },
+                      "error?": {
+                        "log": {
+                          "message": "Error occurred (onError was not skip or use_default)",
+                          "success?": "timestamp-examples"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "error?": {
+                "log": {
+                  "message": "Error handling failed (should not reach here with use_default)",
+                  "success?": "timestamp-examples"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "timestamp-examples": {
+        "log": {
+          "message": "=== Timestamp Examples ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 39: Parse timestamp (milliseconds since epoch)",
+              "operation": "format",
+              "field": "timestampMs",
+              "outputFormat": "YYYY-MM-DD HH:mm:ss",
+              "outputField": "formattedFromTimestamp",
+              "success?": {
+                "log": {
+                  "message": "Formatted from timestamp: $.formattedFromTimestamp",
+                  "success?": "nested-field-example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "nested-field-example": {
+        "log": {
+          "message": "=== Nested Field Access Example ===",
+          "success?": {
+            "dateTime": {
+              "_comment": "Example 40: Access nested field (orders[0].createdAt)",
+              "operation": "format",
+              "field": "orders.0.createdAt",
+              "outputFormat": "MM/DD/YYYY",
+              "outputField": "firstOrderDate",
+              "success?": {
+                "log": {
+                  "message": "First order formatted date: $.firstOrderDate",
+                  "success?": "final-summary"
+                }
+              },
+              "error?": {
+                "log": {
+                  "message": "Could not access nested field",
+                  "success?": "final-summary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "final-summary": {
+        "log": {
+          "message": "=== DateTimeNode Examples Complete ===",
+          "success?": {
+            "log": {
+              "message": "Summary - Operations demonstrated: now, format, parse, add, subtract, round, compare, extract, convert_timezone, diff, is_valid, to_iso"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
