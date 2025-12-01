@@ -12,6 +12,7 @@ import StatCard from '@/components/dashboard/StatCard';
 import RecentExecutions from '@/components/dashboard/RecentExecutions';
 import AutomationStatusOverview from '@/components/dashboard/AutomationStatusOverview';
 import QuickActions from '@/components/dashboard/QuickActions';
+import AIManagement from '@/components/dashboard/AIManagement';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { AlertCircle, Zap, CheckCircle, Activity } from 'lucide-react';
 
@@ -227,7 +228,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Right Column - Quick Actions and System Health */}
+        {/* Right Column - Quick Actions, AI Management, and System Health */}
         <div className="space-y-6">
           {/* Quick Actions */}
           <Card>
@@ -239,6 +240,9 @@ export default function DashboardPage() {
               <QuickActions />
             </CardContent>
           </Card>
+
+          {/* AI Management */}
+          <AIManagement />
 
           {/* System Health */}
           <Card>

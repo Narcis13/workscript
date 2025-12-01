@@ -76,27 +76,40 @@ export interface PluginSchema {
 /**
  * AI manifest for LLM discoverability
  * Helps AI assistants understand plugin capabilities and usage
+ *
+ * This is a flexible schema that supports both simple and comprehensive documentation.
+ * LLMs can parse this to understand what the plugin can do and how to use it.
  */
 export interface AIManifest {
-  /** Plugin capabilities description */
+  /** Plugin capabilities description - list of what the plugin can do */
   capabilities: string[];
 
-  /** When to use this plugin */
+  /** When to use this plugin - guidance for LLMs on when to recommend this plugin */
   when_to_use: string;
 
-  /** Example use cases */
+  /** Example use cases - can be simple or detailed with steps, payloads, etc. */
   examples?: Array<{
     scenario: string;
-    workflow?: string;
+    workflow?: string | Record<string, any>;
     expected_outcome?: string;
+    /** Additional fields for complex examples */
+    [key: string]: any;
   }>;
 
-  /** Available API endpoints with descriptions */
+  /**
+   * Available API endpoints - supports both flat array and grouped object formats
+   * Flat format: Array<{ path, method, description, parameters? }>
+   * Grouped format: { category: { description, routes: [...] } }
+   */
   endpoints?: Array<{
     path: string;
     method: string;
     description: string;
     parameters?: Record<string, any>;
+  }> | Record<string, {
+    description?: string;
+    routes?: Array<Record<string, any>>;
+    [key: string]: any;
   }>;
 
   /** Available workflow nodes */
@@ -106,6 +119,28 @@ export interface AIManifest {
     inputs?: string[];
     outputs?: string[];
   }>;
+
+  /** WebSocket configuration for real-time events */
+  websocket?: {
+    endpoint?: string;
+    channel?: string;
+    description?: string;
+    events?: Array<{ type: string; payload?: string; description?: string }>;
+    [key: string]: any;
+  };
+
+  /** Database schema documentation */
+  schema?: Record<string, {
+    description?: string;
+    fields?: string[];
+    [key: string]: any;
+  }>;
+
+  /** Node categories for organization */
+  nodeCategories?: Record<string, string[]>;
+
+  /** Allow additional custom fields for plugin-specific documentation */
+  [key: string]: any;
 }
 
 /**

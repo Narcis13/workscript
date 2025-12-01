@@ -658,13 +658,8 @@ export class AskAIService {
       return this.usageTracker.getUsageByTenant(params.tenantId, params.dateRange);
     }
 
-    // No filter specified, return empty summary
-    return {
-      totalRequests: 0,
-      totalTokens: 0,
-      totalCost: 0,
-      byModel: {},
-    };
+    // No filter specified, return all usage (for admin dashboard)
+    return this.usageTracker.getAllUsage(params.dateRange);
   }
 
   // ==========================================================================

@@ -324,6 +324,31 @@ export class UsageTracker {
   }
 
   /**
+   * Gets aggregated usage statistics across all records.
+   *
+   * @param dateRange Optional date range filter
+   * @returns Aggregated usage summary
+   *
+   * @example
+   * ```typescript
+   * const tracker = UsageTracker.getInstance();
+   *
+   * // All-time usage
+   * const allTime = await tracker.getAllUsage();
+   *
+   * // Last 30 days
+   * const last30Days = await tracker.getAllUsage({
+   *   from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+   *   to: new Date()
+   * });
+   * ```
+   */
+  public async getAllUsage(dateRange?: DateRange): Promise<UsageSummary> {
+    const records = await this.queryUsage({}, dateRange);
+    return this.buildUsageSummary(records);
+  }
+
+  /**
    * Gets the total cost across all usage records.
    *
    * @param dateRange Optional date range filter

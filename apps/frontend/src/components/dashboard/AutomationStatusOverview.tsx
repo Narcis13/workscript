@@ -175,14 +175,14 @@ export const AutomationStatusOverview: React.FC<
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) =>
-                    `${name}: ${percentage}%`
+                  label={({ name, payload }) =>
+                    `${name}: ${payload?.percentage ?? 0}%`
                   }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {statusData.map((entry, index) => (
+                  {statusData.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={STATUS_COLORS[index]}
@@ -232,14 +232,14 @@ export const AutomationStatusOverview: React.FC<
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) =>
-                    `${name}: ${percentage}%`
+                  label={({ name, payload }) =>
+                    `${name}: ${payload?.percentage ?? 0}%`
                   }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {successData.map((entry, index) => (
+                  {successData.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={SUCCESS_COLORS[index]}
