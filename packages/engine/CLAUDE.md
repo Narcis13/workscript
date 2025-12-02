@@ -56,9 +56,15 @@ src/
 - Key locking for concurrent modification protection
 
 **StateResolver** (`src/state/StateResolver.ts`)
-- Resolves `$.key` syntax in configurations: `"$.developer"` → `state.developer`
-- Supports nested paths: `"$.user.profile.name"`
-- Configurable missing key handling: `undefined`, `preserve`, or `throw`
+- Resolves two types of state reference syntax:
+  1. **Full reference** (`$.key`): Direct state access with type preservation
+     - `"$.count"` → 42 (number), `"$.user"` → object
+  2. **Template interpolation** (`{{$.key}}`): String building with embedded values
+     - `"Hello {{$.user.name}}!"` → "Hello Alice!"
+     - Multiple templates: `"{{$.firstName}} {{$.lastName}}"`
+     - Missing keys become empty strings
+- Supports nested paths: `"$.user.profile.name"` or `"{{$.user.profile.name}}"`
+- Configurable missing key handling: `undefined`, `preserve`, or `throw` (for full references only)
 
 **NodeRegistry** (`src/registry/NodeRegistry.ts`)
 - Registers node classes and manages instantiation
@@ -99,10 +105,11 @@ interface ExecutionContext {
 {
   "id": "example",
   "name": "Example Workflow",
-  "initialState": { "counter": 0 },
+  "initialState": { "counter": 0, "user": { "name": "Alice" } },
   "workflow": [
     { "$.multiplier": 3 },
     { "math": { "operation": "add", "values": [1, 2], "success?": "next-node" } },
+    { "log": { "message": "Hello {{$.user.name}}, counter is {{$.counter}}" } },
     { "loop-node...": { "continue?": { "math": { "operation": "add", "values": ["$.counter", 1] } } } }
   ]
 }
@@ -111,7 +118,12 @@ interface ExecutionContext {
 - **State setters**: `{"$.path": value}` - sets `state.path` to value
 - **Edge routes**: Keys ending in `?` (e.g., `"success?"`) define routing
 - **Loop nodes**: NodeId ending in `...` creates a loop that re-executes
-- **State references**: `"$.key"` resolves to `state.key` at runtime
+- **State references**: Two types:
+  - **Full reference**: `"$.key"` - Resolves to raw value with type preservation (use for node inputs that need actual values)
+  - **Template interpolation**: `"{{$.key}}"` - Embeds values in strings (use for messages, URLs, dynamic text)
+    - Example: `"Hello {{$.user.name}}, score: {{$.score}}"` → `"Hello Alice, score: 100"`
+    - Multiple templates in one string are supported
+    - Missing keys become empty strings (silent)
 
 ## Testing Patterns
 

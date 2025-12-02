@@ -93,8 +93,17 @@ cd apps/api && bun run db:studio  # Open Drizzle Studio
 
 ### State Syntax
 ```
-$.key              → state.key
+# Full References (type preservation)
+$.key              → state.key (returns actual value: number, object, etc.)
 $.nested.path      → state.nested.path
+
+# Template Interpolation (string building)
+{{$.key}}          → Embeds state.key as string
+{{$.nested.path}}  → Embeds nested value as string
+"Hello {{$.name}}" → "Hello Alice" (string with embedded value)
+"{{$.a}} {{$.b}}"  → "value1 value2" (multiple templates)
+
+# State Setters
 { "$.path": val }  → Set state.path = val
 ```
 
@@ -139,7 +148,7 @@ null       → End execution / exit loop
             ],
             "success?": {
               "log": {
-                "message": "Processed $.filterStats.passedCount items"
+                "message": "Processed {{$.filterStats.passedCount}} items successfully"
               }
             }
           }
@@ -174,7 +183,7 @@ null       → End execution / exit loop
               { "name": "permissions", "value": "all", "type": "string" }
             ],
             "success?": {
-              "log": { "message": "Admin $.user.name granted full access" }
+              "log": { "message": "Admin {{$.user.name}} granted full access" }
             }
           }
         },
@@ -185,7 +194,7 @@ null       → End execution / exit loop
               { "name": "permissions", "value": "limited", "type": "string" }
             ],
             "success?": {
-              "log": { "message": "User $.user.name granted limited access" }
+              "log": { "message": "User {{$.user.name}} granted limited access" }
             }
           }
         }
@@ -211,14 +220,14 @@ null       → End execution / exit loop
         "operation": "less",
         "values": ["$.index", 3],
         "true?": [
-          { "log": { "message": "Processing item $.index" } },
+          { "log": { "message": "Processing item {{$.index}}" } },
           { "$.index": "$.index + 1" }
         ],
         "false?": null
       }
     },
     {
-      "log": { "message": "Loop complete. Processed $.index items." }
+      "log": { "message": "Loop complete. Processed {{$.index}} items." }
     }
   ]
 }
@@ -242,15 +251,15 @@ null       → End execution / exit loop
             "validationType": "required_fields",
             "requiredFields": ["email", "name"],
             "valid?": {
-              "log": { "message": "User $.dbRecord.name is valid" }
+              "log": { "message": "User {{$.dbRecord.name}} is valid" }
             },
             "invalid?": {
-              "log": { "message": "User data incomplete: $.validationErrors" }
+              "log": { "message": "User data incomplete: {{$.validationErrors}}" }
             }
           }
         },
         "not_found?": {
-          "log": { "message": "User $.userId not found" }
+          "log": { "message": "User {{$.userId}} not found" }
         }
       }
     }

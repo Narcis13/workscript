@@ -1,14 +1,27 @@
 /**
  * StateResolver - Resolves state references in node configurations
  *
- * Implements sugar syntax for accessing state values using $.{key} notation
- * Example: "$.developer" resolves to the value of state.developer
+ * Implements two types of state reference syntax:
+ *
+ * 1. **Full reference syntax**: `"$.key"` - Direct state access with type preservation
+ *    - Example: `"$.count"` → 42 (number), `"$.user"` → { name: "Alice" } (object)
+ *    - Preserves original types (numbers, booleans, objects, arrays)
+ *    - Use when you need the actual value, not a string
+ *
+ * 2. **Template interpolation syntax**: `"{{$.key}}"` - String building with embedded values
+ *    - Example: `"Hello {{$.user.name}}!"` → "Hello Alice!"
+ *    - Always returns a string (values are converted to strings)
+ *    - Use when building messages, URLs, or any text with dynamic values
+ *    - Supports multiple templates: `"{{$.firstName}} {{$.lastName}}"`
+ *    - Objects/arrays are JSON.stringify'd: `"User: {{$.user}}"` → `"User: {\"name\":\"Alice\"}"`
+ *    - Missing keys become empty strings: `"Value: {{$.missing}}"` → `"Value: "`
  *
  * Features:
  * - Deep recursive resolution of nested objects and arrays
- * - Type preservation for resolved values
+ * - Type preservation for full references (`$.key`)
  * - Graceful handling of missing state keys
- * - Support for nested key paths (e.g., "$.user.name")
+ * - Support for nested key paths (e.g., `"$.user.profile.email"`)
+ * - Multiple templates in a single string
  */
 
 export interface StateResolverOptions {
@@ -45,6 +58,7 @@ export class StateResolverError extends Error {
 export class StateResolver {
   private static readonly DEFAULT_PATTERN = /^\$\.([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)$/;
   private static readonly DEFAULT_MAX_DEPTH = 10;
+  private static readonly TEMPLATE_PATTERN = /\{\{\$\.([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\}\}/g;
 
   private readonly options: Required<StateResolverOptions>;
 
@@ -59,11 +73,29 @@ export class StateResolver {
   /**
    * Resolve state references in a configuration object
    *
+   * Processes both full references (`"$.key"`) and template interpolations (`"{{$.key}}"`)
+   * recursively through objects and arrays.
+   *
    * @param config - The configuration object to process
    * @param state - The current workflow state
    * @param path - Current path for error reporting (internal)
    * @param depth - Current recursion depth (internal)
    * @returns Resolved configuration with state values substituted
+   *
+   * @example
+   * // Full reference (type preserved)
+   * resolver.resolve("$.count", { count: 42 }) // => 42 (number)
+   *
+   * @example
+   * // Template interpolation (string result)
+   * resolver.resolve("Count: {{$.count}}", { count: 42 }) // => "Count: 42" (string)
+   *
+   * @example
+   * // Nested configuration
+   * resolver.resolve(
+   *   { message: "Hello {{$.user.name}}", value: "$.score" },
+   *   { user: { name: "Alice" }, score: 100 }
+   * ) // => { message: "Hello Alice", value: 100 }
    */
   resolve(
     config: any,
@@ -114,37 +146,49 @@ export class StateResolver {
 
   /**
    * Resolve a string value that might contain a state reference
+   *
+   * Supports two patterns:
+   * 1. Full reference: "$.path" - Returns the raw value with type preservation
+   * 2. Template interpolation: "Hello {{$.name}}" - Returns interpolated string
    */
   private resolveStringValue(
     value: string,
     state: Record<string, any>,
     path: string[]
   ): any {
-    const match = value.match(this.options.pattern);
+    // FIRST: Check for full state reference pattern (existing behavior)
+    // This preserves types (numbers, booleans, objects, arrays)
+    const fullMatch = value.match(this.options.pattern);
 
-    if (!match) {
-      // Not a state reference, return as-is
-      return value;
-    }
+    if (fullMatch) {
+      const keyPath = fullMatch[1];
 
-    const keyPath = match[1]; // Extract the key path (e.g., "developer" or "user.name")
-
-    if (!keyPath) {
-      // Malformed pattern, return original value
-      return value;
-    }
-
-    try {
-      const resolvedValue = this.getNestedValue(state, keyPath);
-
-      if (resolvedValue === undefined) {
-        return this.handleMissingKey(keyPath, value, path);
+      if (!keyPath) {
+        // Malformed pattern, return original value
+        return value;
       }
 
-      return resolvedValue;
-    } catch (error) {
-      return this.handleMissingKey(keyPath, value, path);
+      try {
+        const resolvedValue = this.getNestedValue(state, keyPath);
+
+        if (resolvedValue === undefined) {
+          return this.handleMissingKey(keyPath, value, path);
+        }
+
+        return resolvedValue;
+      } catch (error) {
+        return this.handleMissingKey(keyPath, value, path);
+      }
     }
+
+    // SECOND: Check for template interpolation patterns {{$.path}}
+    // This always returns a string (templates are for string building)
+    if (this.containsTemplatePattern(value)) {
+      return this.interpolateTemplate(value, state);
+    }
+
+    // No patterns found, return as-is
+    return value;
   }
 
   /**
@@ -193,6 +237,55 @@ export class StateResolver {
   }
 
   /**
+   * Check if a string contains template interpolation patterns {{$.path}}
+   */
+  private containsTemplatePattern(value: string): boolean {
+    // Reset lastIndex for global regex (critical for correctness!)
+    StateResolver.TEMPLATE_PATTERN.lastIndex = 0;
+    return StateResolver.TEMPLATE_PATTERN.test(value);
+  }
+
+  /**
+   * Interpolate template patterns {{$.path}} within a string
+   * Replaces each {{$.path}} with the resolved state value (as string)
+   * Missing keys are replaced with empty string (silent)
+   *
+   * @param template - String containing {{$.path}} patterns
+   * @param state - Current workflow state
+   * @returns Interpolated string with values substituted
+   */
+  private interpolateTemplate(
+    template: string,
+    state: Record<string, any>
+  ): string {
+    // Reset lastIndex for global regex
+    StateResolver.TEMPLATE_PATTERN.lastIndex = 0;
+
+    return template.replace(
+      StateResolver.TEMPLATE_PATTERN,
+      (match, keyPath) => {
+        const value = this.getNestedValue(state, keyPath);
+
+        // Missing keys become empty string (requirement: silent)
+        if (value === undefined || value === null) {
+          return '';
+        }
+
+        // Convert to string representation
+        if (typeof value === 'object') {
+          try {
+            return JSON.stringify(value);
+          } catch {
+            return '';
+          }
+        }
+
+        return String(value);
+      }
+    );
+  }
+
+  /**
    * Check if a string contains a state reference pattern
    */
   static isStateReference(value: string, pattern?: RegExp): boolean {
@@ -229,5 +322,32 @@ export class StateResolver {
    */
   static createPreserving(): StateResolver {
     return new StateResolver({ onMissingKey: 'preserve' });
+  }
+
+  /**
+   * Check if a string contains template patterns {{$.path}}
+   * Useful for tooling and validation
+   */
+  static containsTemplate(value: string): boolean {
+    StateResolver.TEMPLATE_PATTERN.lastIndex = 0;
+    return StateResolver.TEMPLATE_PATTERN.test(value);
+  }
+
+  /**
+   * Extract all template key paths from a string
+   * Example: "Hello {{$.user.name}}, score: {{$.score}}" => ["user.name", "score"]
+   */
+  static extractTemplatePaths(value: string): string[] {
+    const paths: string[] = [];
+    StateResolver.TEMPLATE_PATTERN.lastIndex = 0;
+    let match;
+
+    while ((match = StateResolver.TEMPLATE_PATTERN.exec(value)) !== null) {
+      if (match[1]) {
+        paths.push(match[1]);
+      }
+    }
+
+    return paths;
   }
 }

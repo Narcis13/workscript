@@ -476,4 +476,297 @@ describe('StateResolver Integration with ExecutionEngine', () => {
       });
     });
   });
+
+  describe('Template interpolation {{$.path}} integration', () => {
+    test('should resolve templates during workflow execution', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-test',
+        name: 'Template Test',
+        version: '1.0.0',
+        initialState: {
+          user: { name: 'Alice' },
+          score: 100
+        },
+        workflow: [
+          {
+            'test-log': {
+              message: 'Hello {{$.user.name}}, score: {{$.score}}!'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.loggedMessage).toBe('Hello Alice, score: 100!');
+      expect(result.finalState?.logExecuted).toBe(true);
+    });
+
+    test('should resolve templates with current state between nodes', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-state-change',
+        name: 'Template State Change Test',
+        version: '1.0.0',
+        initialState: {
+          counter: 10,
+          user: { name: 'Bob' }
+        },
+        workflow: [
+          // First node: log initial state with template
+          {
+            'test-log': {
+              message: 'Counter is {{$.counter}}, user is {{$.user.name}}'
+            }
+          },
+          // Second node: modify state
+          {
+            'test-math': {
+              operation: 'add',
+              values: ['$.counter', 5]
+            }
+          },
+          // Third node: log updated state with template - should see new values
+          {
+            'test-state-access': {
+              updatedMessage: 'Counter now {{$.mathResult}}, original was {{$.counter}}',
+              userName: 'User: {{$.user.name}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.loggedMessage).toBe('Counter is 10, user is Bob');
+      expect(result.finalState?.mathResult).toBe(15); // 10 + 5
+      expect(result.finalState?.receivedConfig).toEqual({
+        updatedMessage: 'Counter now 15, original was 10',
+        userName: 'User: Bob'
+      });
+    });
+
+    test('should handle templates with missing keys (silent empty string)', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-missing-keys',
+        name: 'Template Missing Keys Test',
+        version: '1.0.0',
+        initialState: {
+          existingKey: 'value'
+        },
+        workflow: [
+          {
+            'test-log': {
+              message: 'Exists: {{$.existingKey}}, Missing: {{$.nonExistent}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.loggedMessage).toBe('Exists: value, Missing: ');
+    });
+
+    test('should handle templates in nested configurations', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-nested-config',
+        name: 'Template Nested Config Test',
+        version: '1.0.0',
+        initialState: {
+          user: { name: 'Charlie', role: 'admin' },
+          system: { version: '2.0' }
+        },
+        workflow: [
+          {
+            'test-state-access': {
+              greeting: 'Hello {{$.user.name}}!',
+              nested: {
+                info: 'User {{$.user.name}} is {{$.user.role}}',
+                system: 'Version: {{$.system.version}}'
+              },
+              array: [
+                'First: {{$.user.name}}',
+                'Second: {{$.user.role}}'
+              ]
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.receivedConfig).toEqual({
+        greeting: 'Hello Charlie!',
+        nested: {
+          info: 'User Charlie is admin',
+          system: 'Version: 2.0'
+        },
+        array: [
+          'First: Charlie',
+          'Second: admin'
+        ]
+      });
+    });
+
+    test('should handle multiple templates in a single string', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-multiple',
+        name: 'Template Multiple Test',
+        version: '1.0.0',
+        initialState: {
+          firstName: 'Jane',
+          lastName: 'Doe',
+          age: 30,
+          city: 'New York'
+        },
+        workflow: [
+          {
+            'test-log': {
+              message: '{{$.firstName}} {{$.lastName}}, age {{$.age}}, lives in {{$.city}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.loggedMessage).toBe('Jane Doe, age 30, lives in New York');
+    });
+
+    test('should handle templates with complex values (objects and arrays)', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-complex-values',
+        name: 'Template Complex Values Test',
+        version: '1.0.0',
+        initialState: {
+          user: { name: 'Alice', role: 'admin' },
+          tags: ['javascript', 'typescript', 'bun']
+        },
+        workflow: [
+          {
+            'test-state-access': {
+              userObject: 'User data: {{$.user}}',
+              tagsArray: 'Tags: {{$.tags}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.receivedConfig?.userObject).toContain('"name"');
+      expect(result.finalState?.receivedConfig?.userObject).toContain('Alice');
+      expect(result.finalState?.receivedConfig?.tagsArray).toBe('Tags: ["javascript","typescript","bun"]');
+    });
+
+    test('should preserve type for full $.path references while interpolating templates', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-mixed-references',
+        name: 'Template Mixed References Test',
+        version: '1.0.0',
+        initialState: {
+          count: 42,
+          message: 'Hello',
+          active: true
+        },
+        workflow: [
+          {
+            'test-state-access': {
+              // Full reference - should preserve number type
+              numericValue: '$.count',
+              // Template - should return interpolated string
+              templateString: 'Count is {{$.count}}',
+              // Full reference - should preserve boolean type
+              boolValue: '$.active',
+              // Template with boolean - should convert to string
+              templateBool: 'Active: {{$.active}}',
+              // Mixed: full reference and template
+              fullRef: '$.message',
+              template: 'Message: {{$.message}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      const config = result.finalState?.receivedConfig;
+
+      // Verify type preservation for full references
+      expect(config?.numericValue).toBe(42);
+      expect(typeof config?.numericValue).toBe('number');
+      expect(config?.boolValue).toBe(true);
+      expect(typeof config?.boolValue).toBe('boolean');
+      expect(config?.fullRef).toBe('Hello');
+
+      // Verify template interpolation returns strings
+      expect(config?.templateString).toBe('Count is 42');
+      expect(typeof config?.templateString).toBe('string');
+      expect(config?.templateBool).toBe('Active: true');
+      expect(config?.template).toBe('Message: Hello');
+    });
+
+    test('should handle adjacent templates without spacing', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-adjacent',
+        name: 'Template Adjacent Test',
+        version: '1.0.0',
+        initialState: {
+          firstName: 'John',
+          lastName: 'Smith'
+        },
+        workflow: [
+          {
+            'test-log': {
+              message: '{{$.firstName}}{{$.lastName}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.loggedMessage).toBe('JohnSmith');
+    });
+
+    test('should handle same template appearing multiple times', async () => {
+      const workflow: WorkflowDefinition = {
+        id: 'template-duplicate',
+        name: 'Template Duplicate Test',
+        version: '1.0.0',
+        initialState: {
+          name: 'Alice'
+        },
+        workflow: [
+          {
+            'test-log': {
+              message: '{{$.name}} loves {{$.name}}'
+            }
+          }
+        ]
+      };
+
+      const parsedWorkflow = parser.parse(workflow);
+      const result = await engine.execute(parsedWorkflow);
+
+      expect(result.status).toBe('completed');
+      expect(result.finalState?.loggedMessage).toBe('Alice loves Alice');
+    });
+  });
 });

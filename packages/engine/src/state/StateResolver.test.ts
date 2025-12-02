@@ -321,4 +321,167 @@ describe('StateResolver', () => {
       });
     });
   });
+
+  describe('Template interpolation {{$.path}}', () => {
+    describe('Basic template tests', () => {
+      test('should interpolate single template in string', () => {
+        const config = 'Hello {{$.user.name}}!';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Hello Jane Smith!');
+      });
+
+      test('should interpolate multiple templates in string', () => {
+        const config = 'Hello {{$.user.name}}, your score is {{$.count}}!';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Hello Jane Smith, your score is 42!');
+      });
+
+      test('should handle deeply nested paths in templates', () => {
+        const config = 'Email: {{$.user.profile.email}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Email: jane@example.com');
+      });
+    });
+
+    describe('Missing key tests', () => {
+      test('should replace missing keys with empty string (silent)', () => {
+        const config = 'Value: {{$.nonexistent}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Value: ');
+      });
+
+      test('should handle null values as empty string', () => {
+        const config = 'Value: {{$.nullValue}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Value: ');
+      });
+
+      test('should handle undefined values as empty string', () => {
+        const config = 'Value: {{$.undefinedValue}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Value: ');
+      });
+    });
+
+    describe('Complex value tests', () => {
+      test('should stringify objects in templates', () => {
+        const config = 'User data: {{$.user}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toContain('"name"');
+        expect(result).toContain('Jane Smith');
+      });
+
+      test('should stringify arrays in templates', () => {
+        const config = 'Items: {{$.list}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Items: ["item1","item2","item3"]');
+      });
+    });
+
+    describe('Backward compatibility tests', () => {
+      test('should preserve full $.path pattern behavior - numbers', () => {
+        const numConfig = '$.count';
+        const numResult = resolver.resolve(numConfig, testState);
+        expect(numResult).toBe(42);
+        expect(typeof numResult).toBe('number');
+      });
+
+      test('should preserve full $.path pattern behavior - booleans', () => {
+        const boolConfig = '$.active';
+        const boolResult = resolver.resolve(boolConfig, testState);
+        expect(boolResult).toBe(true);
+        expect(typeof boolResult).toBe('boolean');
+      });
+
+      test('should preserve full $.path pattern behavior - objects', () => {
+        const objConfig = '$.user';
+        const objResult = resolver.resolve(objConfig, testState);
+        expect(typeof objResult).toBe('object');
+        expect(objResult.name).toBe('Jane Smith');
+      });
+    });
+
+    describe('Pattern validation tests', () => {
+      test('should NOT match template pattern without $. prefix', () => {
+        const config = 'Hello {{user.name}}!';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Hello {{user.name}}!'); // Unchanged
+      });
+
+      test('should NOT match JS template literal syntax', () => {
+        const config = 'Hello ${$.user.name}!';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Hello ${$.user.name}!'); // Unchanged
+      });
+    });
+
+    describe('Nested config tests', () => {
+      test('should work with templates in nested objects', () => {
+        const config = {
+          message: 'Hello {{$.user.name}}!',
+          nested: {
+            greeting: 'Welcome {{$.developer}}'
+          }
+        };
+        const result = resolver.resolve(config, testState);
+        expect(result).toEqual({
+          message: 'Hello Jane Smith!',
+          nested: {
+            greeting: 'Welcome John Doe'
+          }
+        });
+      });
+
+      test('should work with templates in arrays', () => {
+        const config = [
+          'Hello {{$.developer}}',
+          'Email: {{$.user.profile.email}}'
+        ];
+        const result = resolver.resolve(config, testState);
+        expect(result).toEqual([
+          'Hello John Doe',
+          'Email: jane@example.com'
+        ]);
+      });
+    });
+
+    describe('Static helper methods for templates', () => {
+      test('containsTemplate should detect template patterns', () => {
+        expect(StateResolver.containsTemplate('Hello {{$.name}}')).toBe(true);
+        expect(StateResolver.containsTemplate('No templates here')).toBe(false);
+        expect(StateResolver.containsTemplate('$.path')).toBe(false);
+        expect(StateResolver.containsTemplate('{{name}}')).toBe(false);
+      });
+
+      test('extractTemplatePaths should return all paths', () => {
+        const paths = StateResolver.extractTemplatePaths('{{$.user.name}} and {{$.score}}');
+        expect(paths).toEqual(['user.name', 'score']);
+      });
+
+      test('extractTemplatePaths should return empty array for no templates', () => {
+        const paths = StateResolver.extractTemplatePaths('No templates');
+        expect(paths).toEqual([]);
+      });
+    });
+
+    describe('Edge case tests', () => {
+      test('should handle adjacent templates', () => {
+        const config = '{{$.developer}}{{$.user.name}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('John DoeJane Smith');
+      });
+
+      test('should handle mixed content with multiple templates', () => {
+        const config = 'User {{$.user.name}} (count: {{$.count}}) - {{$.developer}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('User Jane Smith (count: 42) - John Doe');
+      });
+
+      test('should handle same template multiple times', () => {
+        const config = '{{$.user.name}} loves {{$.user.name}}';
+        const result = resolver.resolve(config, testState);
+        expect(result).toBe('Jane Smith loves Jane Smith');
+      });
+    });
+  });
 });
