@@ -4,11 +4,14 @@ import workflowRoutes from './workflows';
 import automationRoutes from './automations';
 import executionRoutes from './executions';
 import nodeRoutes from './nodes';
+import resourceRoutes from './resources';
 import { WorkflowService } from './services/WorkflowService';
 import { CronScheduler, type AutomationExecutionContext } from '../../shared-services/scheduler';
 import { AutomationRepository } from './repositories/automationRepository';
 import { WorkflowRepository } from './repositories/workflowRepository';
 import { workflows, workflowExecutions } from './schema/workscript.schema';
+import { resources, resourceOperations } from './schema/resources.schema';
+import { getStorageService } from '../../shared-services/storage';
 
 // Create main router for the plugin
 const router = new Hono();
@@ -21,7 +24,8 @@ router.get('/', (c) => c.json({
     '/workscript/workflows/*',
     '/workscript/automations/*',
     '/workscript/executions/*',
-    '/workscript/nodes/*'
+    '/workscript/nodes/*',
+    '/workscript/resources/*'
   ]
 }));
 
@@ -30,6 +34,7 @@ router.route('/workflows', workflowRoutes);
 router.route('/automations', automationRoutes);
 router.route('/executions', executionRoutes);
 router.route('/nodes', nodeRoutes);
+router.route('/resources', resourceRoutes);
 
 /**
  * Workscript Plugin Definition
@@ -55,7 +60,7 @@ const plugin: SaaSPlugin = {
 
   // Database schema
   schema: {
-    tables: [workflows, workflowExecutions]
+    tables: [workflows, workflowExecutions, resources, resourceOperations]
     // Note: automations and automationExecutions are in shared schema
   },
 
@@ -71,7 +76,11 @@ const plugin: SaaSPlugin = {
       'Real-time workflow monitoring via WebSocket events',
       'Comprehensive execution history with state tracking',
       'Execution timeline, node logs, and state change analysis',
-      'Comprehensive node library (35+ nodes for data, logic, AI, integrations)'
+      'Comprehensive node library (35+ nodes for data, logic, AI, integrations)',
+      'Store and manage files in sandboxed environment',
+      'Upload images, audio, and documents for multi-modal workflows',
+      'Create and interpolate AI prompt templates with {{$.var}} syntax',
+      'Track all file operations with audit logging'
     ],
     when_to_use: 'When you need to automate business processes, orchestrate complex workflows, execute repeatable task sequences, schedule recurring jobs, or integrate external services via webhooks',
 
@@ -436,6 +445,163 @@ const plugin: SaaSPlugin = {
             response: '{ success: boolean, nodeId: string, executionId: string, edges: object, finalState: object, metadata: { executedAt, duration } }'
           }
         ]
+      },
+
+      // ============= RESOURCES =============
+      resources: {
+        description: 'Resource management - sandboxed file storage and template interpolation for workflows',
+        routes: [
+          {
+            path: '/workscript/resources/create',
+            method: 'POST',
+            auth: 'Required (RESOURCE_CREATE permission)',
+            description: 'Create a new resource by providing content directly. Use for AI prompt templates, JSON configs, and text-based files.',
+            body: {
+              name: 'string (required) - Resource display name',
+              content: 'string (required) - File content (text)',
+              path: 'string (required) - Relative path within sandbox (e.g., "prompts/greeting.md")',
+              type: 'string (optional) - Resource type: "prompt"|"document"|"data" (auto-detected from extension)',
+              description: 'string (optional) - Resource description',
+              tags: 'string[] (optional) - Tags for filtering',
+              isPublic: 'boolean (optional, default: false) - Whether other tenants can access'
+            },
+            response: '{ success: boolean, resource: Resource }',
+            statusCodes: {
+              201: 'Resource created successfully',
+              400: 'Validation error (missing required fields)',
+              409: 'RESOURCE_EXISTS - File already exists at path'
+            }
+          },
+          {
+            path: '/workscript/resources/upload',
+            method: 'POST',
+            auth: 'Required (RESOURCE_CREATE permission)',
+            description: 'Upload a file via multipart form. Use for images, audio, PDFs, and binary files.',
+            body: {
+              file: 'File (required) - Multipart file upload',
+              name: 'string (optional) - Resource name (defaults to filename)',
+              description: 'string (optional) - Resource description',
+              tags: 'string (optional) - Comma-separated tags',
+              isPublic: 'boolean (optional, default: false)'
+            },
+            constraints: {
+              maxFileSize: '50MB',
+              allowedTypes: '.md, .txt, .json, .csv, .png, .jpg, .jpeg, .gif, .webp, .mp3, .wav, .pdf'
+            },
+            response: '{ success: boolean, resource: Resource }',
+            statusCodes: {
+              201: 'Resource uploaded successfully',
+              400: 'FILE_TOO_LARGE or INVALID_FILE_TYPE'
+            }
+          },
+          {
+            path: '/workscript/resources',
+            method: 'GET',
+            auth: 'Required (RESOURCE_READ permission)',
+            description: 'List resources with filtering and pagination. Returns resources for current tenant plus public resources.',
+            query: {
+              type: 'string (optional) - Filter by type: "prompt"|"image"|"audio"|"document"|"data"',
+              authorType: 'string (optional) - Filter by author: "user"|"workflow"|"automation"|"system"',
+              tags: 'string (optional) - Comma-separated tags to filter by (any match)',
+              search: 'string (optional) - Search in name and description',
+              limit: 'number (optional, default: 50, max: 100) - Results per page',
+              offset: 'number (optional, default: 0) - Skip N results for pagination',
+              sortBy: '"createdAt"|"name" (optional, default: "createdAt")'
+            },
+            response: '{ items: Resource[], count: number, pagination: { limit, offset } }'
+          },
+          {
+            path: '/workscript/resources/:id',
+            method: 'GET',
+            auth: 'Required (RESOURCE_READ permission)',
+            description: 'Get resource metadata by ID (does not return file content)',
+            params: { id: 'string - Resource ID (CUID2)' },
+            response: '{ success: boolean, resource: Resource }',
+            statusCodes: { 404: 'RESOURCE_NOT_FOUND' }
+          },
+          {
+            path: '/workscript/resources/:id/content',
+            method: 'GET',
+            auth: 'Required (RESOURCE_READ permission)',
+            description: 'Download raw file content. Sets appropriate Content-Type header.',
+            params: { id: 'string - Resource ID' },
+            response: 'Raw file content with Content-Type and Content-Disposition headers',
+            statusCodes: { 404: 'RESOURCE_NOT_FOUND' }
+          },
+          {
+            path: '/workscript/resources/:id',
+            method: 'PUT',
+            auth: 'Required (RESOURCE_UPDATE permission)',
+            description: 'Update resource metadata (name, description, tags, visibility). Does not change file content.',
+            params: { id: 'string - Resource ID' },
+            body: {
+              name: 'string (optional) - New name (must not be empty)',
+              description: 'string (optional) - New description',
+              tags: 'string[] (optional) - New tags (replaces existing)',
+              isPublic: 'boolean (optional) - Change visibility'
+            },
+            response: '{ success: boolean, resource: Resource }',
+            statusCodes: { 404: 'RESOURCE_NOT_FOUND' }
+          },
+          {
+            path: '/workscript/resources/:id/content',
+            method: 'PUT',
+            auth: 'Required (RESOURCE_UPDATE permission)',
+            description: 'Replace file content. Recomputes checksum and size. Path is immutable.',
+            params: { id: 'string - Resource ID' },
+            body: { content: 'string (required) - New file content' },
+            response: '{ success: boolean, resource: Resource, previousChecksum: string, newChecksum: string }',
+            statusCodes: { 404: 'RESOURCE_NOT_FOUND' }
+          },
+          {
+            path: '/workscript/resources/:id',
+            method: 'DELETE',
+            auth: 'Required (RESOURCE_DELETE permission)',
+            description: 'Soft delete a resource. Sets isActive=false but keeps file on disk.',
+            params: { id: 'string - Resource ID' },
+            response: '{ success: boolean, resourceId: string }',
+            statusCodes: { 404: 'RESOURCE_NOT_FOUND or already deleted' }
+          },
+          {
+            path: '/workscript/resources/:id/interpolate',
+            method: 'POST',
+            auth: 'Required (RESOURCE_READ permission)',
+            description: 'Interpolate template variables in resource content. Replaces {{$.key}} placeholders with state values. Does NOT modify the source file.',
+            params: { id: 'string - Resource ID' },
+            body: {
+              state: 'object (required) - State object for variable substitution',
+              workflowId: 'string (optional) - Workflow ID for audit logging',
+              executionId: 'string (optional) - Execution ID for audit logging',
+              nodeId: 'string (optional) - Node ID for audit logging'
+            },
+            templateSyntax: {
+              '{{$.key}}': 'Replaced with state.key value',
+              '{{$.nested.path}}': 'Replaced with state.nested.path value',
+              'Missing keys': 'Left as-is (not replaced)'
+            },
+            response: '{ success: boolean, content: string }',
+            statusCodes: {
+              400: 'INVALID_RESOURCE_TYPE - Resource is not a text file',
+              404: 'RESOURCE_NOT_FOUND'
+            }
+          },
+          {
+            path: '/workscript/resources/:id/copy',
+            method: 'POST',
+            auth: 'Required (RESOURCE_CREATE permission)',
+            description: 'Create a copy of an existing resource with new ID and optional new name/path.',
+            params: { id: 'string - Source resource ID' },
+            body: {
+              name: 'string (optional) - New name (defaults to "Copy of {original}")',
+              path: 'string (optional) - New path (auto-generated if not provided)'
+            },
+            response: '{ success: boolean, resource: Resource }',
+            statusCodes: {
+              404: 'Source RESOURCE_NOT_FOUND',
+              409: 'Target path already exists'
+            }
+          }
+        ]
       }
     },
 
@@ -471,6 +637,14 @@ const plugin: SaaSPlugin = {
       automationExecutions: {
         description: 'Execution history for automations',
         fields: ['id', 'automationId', 'pluginId', 'status', 'triggerSource', 'triggerData', 'initialState', 'finalState', 'result', 'error', 'duration', 'startedAt', 'completedAt']
+      },
+      resources: {
+        description: 'File metadata for sandboxed resource storage (prompt templates, images, audio, documents)',
+        fields: ['id (CUID2)', 'name', 'path', 'type (prompt|image|audio|document|data)', 'mimeType', 'size', 'checksum (SHA-256)', 'authorType', 'authorId', 'tenantId', 'pluginId', 'description', 'tags (JSON)', 'metadata (JSON)', 'isActive', 'isPublic', 'createdAt', 'updatedAt', 'deletedAt']
+      },
+      resourceOperations: {
+        description: 'Audit log for all resource operations (create, read, update, delete, interpolate, copy)',
+        fields: ['id (CUID2)', 'resourceId', 'operation', 'actorType', 'actorId', 'workflowId', 'executionId', 'nodeId', 'details (JSON)', 'previousChecksum', 'newChecksum', 'status', 'errorMessage', 'durationMs', 'createdAt']
       }
     },
 
@@ -538,6 +712,42 @@ const plugin: SaaSPlugin = {
           'GET /workscript/executions/:id/timeline for chronological event sequence'
         ],
         expected_outcome: 'Full visibility into execution failure with node-level granularity'
+      },
+      {
+        scenario: 'Create an AI Prompt Template',
+        request: 'POST /workscript/resources/create',
+        body: {
+          name: 'Customer Greeting',
+          content: 'Hello {{$.customerName}},\n\nThank you for your interest in {{$.productName}}.\n\nBest regards,\n{{$.agentName}}',
+          path: 'prompts/customer-greeting.md',
+          type: 'prompt',
+          description: 'Personalized customer greeting template',
+          tags: ['email', 'customer-service']
+        },
+        expected_outcome: 'Creates a prompt template file at prompts/customer-greeting.md with {{$.var}} placeholders'
+      },
+      {
+        scenario: 'Interpolate Template with State',
+        request: 'POST /workscript/resources/:id/interpolate',
+        body: {
+          state: {
+            customerName: 'Alice Johnson',
+            productName: 'Workscript Enterprise',
+            agentName: 'Support Team'
+          }
+        },
+        expected_outcome: 'Returns: "Hello Alice Johnson,\\n\\nThank you for your interest in Workscript Enterprise.\\n\\nBest regards,\\nSupport Team"'
+      },
+      {
+        scenario: 'Upload an Image for Multi-Modal Workflow',
+        request: 'POST /workscript/resources/upload (multipart form)',
+        formData: {
+          file: 'product-screenshot.png (binary)',
+          name: 'Product Screenshot',
+          description: 'Screenshot for AI vision analysis',
+          tags: 'product,screenshot,vision'
+        },
+        expected_outcome: 'Image stored in sandbox and available for ask-ai node with vision capabilities'
       }
     ],
 
@@ -559,6 +769,11 @@ const plugin: SaaSPlugin = {
     logger.info('🔧 Loading Workscript plugin...');
 
     try {
+      // Initialize StorageService (sandboxed file storage)
+      logger.info('   Initializing StorageService...');
+      const storageService = getStorageService();
+      logger.info('   ✅ StorageService initialized');
+
       // Initialize WorkflowService (discovers nodes)
       logger.info('   Initializing WorkflowService...');
       const workflowService = await WorkflowService.getInstance();
@@ -665,8 +880,13 @@ const plugin: SaaSPlugin = {
       // Check if WorkflowService is initialized and has nodes
       const workflowService = await WorkflowService.getInstance();
       const info = workflowService.getServiceInfo();
+      const workflowHealthy = info.initialized && info.totalNodes > 0;
 
-      return info.initialized && info.totalNodes > 0;
+      // Check if StorageService is initialized and sandbox exists
+      const storageService = getStorageService();
+      const storageHealthy = await storageService.isHealthy();
+
+      return workflowHealthy && storageHealthy;
     } catch {
       return false;
     }

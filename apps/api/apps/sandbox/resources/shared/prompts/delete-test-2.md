@@ -1,0 +1,1 @@
+Test content for delete endpoint 2.

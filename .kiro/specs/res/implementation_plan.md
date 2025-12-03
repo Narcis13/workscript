@@ -515,26 +515,26 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 4.2 Implement Create Endpoint
 
-- [ ] **Task 4.2.1: Implement POST /create route**
+- [x] **Task 4.2.1: Implement POST /create route**
   - Add authenticate middleware
   - Add requirePermission(Permission.RESOURCE_CREATE) middleware
   - Parse JSON body: { name, content, path, type?, description?, tags?, isPublic? }
   - _Requirements: 3.1, 15.5_
 
-- [ ] **Task 4.2.2: Add request validation**
+- [x] **Task 4.2.2: Add request validation**
   - Validate name is not empty
   - Validate content is provided
   - Validate path is provided
   - Return 400 with error details if invalid
   - _Requirements: 17.7_
 
-- [ ] **Task 4.2.3: Create resource via StorageService**
+- [x] **Task 4.2.3: Create resource via StorageService**
   - Get StorageService instance
   - Get user from context: c.get('user')
   - Call storageService.createResource()
   - _Requirements: 3.1-3.6_
 
-- [ ] **Task 4.2.4: Save to database**
+- [x] **Task 4.2.4: Save to database**
   - Create ResourceRepository instance
   - Build resource record with metadata
   - Set authorType='user', authorId=user.id
@@ -542,19 +542,19 @@ This document provides a concrete, actionable implementation plan for the Resour
   - Call repository.create()
   - _Requirements: 3.9_
 
-- [ ] **Task 4.2.5: Log operation**
+- [x] **Task 4.2.5: Log operation**
   - Call repository.logOperation with operation='create'
   - Include actorType='user', actorId=user.id
   - Include newChecksum
   - Set status='success'
   - _Requirements: 3.10_
 
-- [ ] **Task 4.2.6: Return success response**
+- [x] **Task 4.2.6: Return success response**
   - Return 201 status
   - Return { success: true, resource: createdResource }
   - _Requirements: 17.4_
 
-- [ ] **Task 4.2.7: Handle errors**
+- [x] **Task 4.2.7: Handle errors**
   - Catch RESOURCE_EXISTS error, return 409
   - Catch StorageError, map to appropriate status
   - Catch general errors, return 500
@@ -562,26 +562,26 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 4.3 Implement Upload Endpoint
 
-- [ ] **Task 4.3.1: Implement POST /upload route**
+- [x] **Task 4.3.1: Implement POST /upload route**
   - Add authenticate and RESOURCE_CREATE permission middleware
   - Parse multipart form data
   - Extract file from form
   - Extract optional metadata (name, description, tags, isPublic)
   - _Requirements: 4.1-4.2_
 
-- [ ] **Task 4.3.2: Validate upload**
+- [x] **Task 4.3.2: Validate upload**
   - Check file exists in form
   - Check file size against MAX_FILE_SIZE
   - Check file extension against ALLOWED_EXTENSIONS
   - Return 400 with FILE_TOO_LARGE or INVALID_FILE_TYPE errors
   - _Requirements: 4.3-4.6_
 
-- [ ] **Task 4.3.3: Upload via StorageService**
+- [x] **Task 4.3.3: Upload via StorageService**
   - Call storageService.uploadFile()
   - Handle upload errors
   - _Requirements: 4.7_
 
-- [ ] **Task 4.3.4: Save to database and log**
+- [x] **Task 4.3.4: Save to database and log**
   - Create resource record
   - Log operation as 'create'
   - Return 201 with created resource
@@ -589,7 +589,7 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 4.4 Implement Read Endpoints
 
-- [ ] **Task 4.4.1: Implement GET /:id route**
+- [x] **Task 4.4.1: Implement GET /:id route**
   - Add authenticate and RESOURCE_READ permission middleware
   - Get resourceId from params
   - Find resource by ID via repository
@@ -597,7 +597,7 @@ This document provides a concrete, actionable implementation plan for the Resour
   - Return { success: true, resource }
   - _Requirements: 5.1, 5.5-5.6_
 
-- [ ] **Task 4.4.2: Implement GET /:id/content route**
+- [x] **Task 4.4.2: Implement GET /:id/content route**
   - Add authenticate and RESOURCE_READ permission middleware
   - Get resourceId from params
   - Find resource by ID
@@ -608,7 +608,7 @@ This document provides a concrete, actionable implementation plan for the Resour
   - Stream content in response
   - _Requirements: 5.2-5.4, 5.9-5.10_
 
-- [ ] **Task 4.4.3: Log read operation**
+- [x] **Task 4.4.3: Log read operation**
   - Log operation='read' for content reads
   - Include actor context
   - Fire-and-forget (don't slow down response)
@@ -616,12 +616,12 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 4.5 Implement List Endpoint
 
-- [ ] **Task 4.5.1: Implement GET / route**
+- [x] **Task 4.5.1: Implement GET / route**
   - Add authenticate and RESOURCE_READ permission middleware
   - Extract query params: type, authorType, tags, search, limit, offset, sortBy
   - _Requirements: 6.1_
 
-- [ ] **Task 4.5.2: Apply filters**
+- [x] **Task 4.5.2: Apply filters**
   - Get tenantId from user context
   - Build filters object
   - Parse tags from comma-separated string
@@ -629,19 +629,19 @@ This document provides a concrete, actionable implementation plan for the Resour
   - Parse offset (default 0)
   - _Requirements: 6.2-6.8_
 
-- [ ] **Task 4.5.3: Query resources**
+- [x] **Task 4.5.3: Query resources**
   - Call repository.findAll(filters)
   - Call repository.count(filters) for total
   - _Requirements: 6.9-6.10_
 
-- [ ] **Task 4.5.4: Return paginated response**
+- [x] **Task 4.5.4: Return paginated response**
   - Return { items: resources, count: total, pagination: { limit, offset } }
   - Return empty array if no matches (not 404)
   - _Requirements: 6.11-6.13, 17.3_
 
 ### 4.6 Implement Update Endpoints
 
-- [ ] **Task 4.6.1: Implement PUT /:id route (metadata update)**
+- [x] **Task 4.6.1: Implement PUT /:id route (metadata update)**
   - Add authenticate and RESOURCE_UPDATE permission middleware
   - Get resourceId from params
   - Parse JSON body: { name?, description?, tags?, isPublic? }
@@ -649,41 +649,41 @@ This document provides a concrete, actionable implementation plan for the Resour
   - Return 404 if not found
   - _Requirements: 7.1-7.5_
 
-- [ ] **Task 4.6.2: Apply metadata updates**
+- [x] **Task 4.6.2: Apply metadata updates**
   - Validate name not empty if provided
   - Call repository.update(id, updates)
   - Log operation='update' with details
   - Return { success: true, resource: updated }
   - _Requirements: 7.6-7.9_
 
-- [ ] **Task 4.6.3: Implement PUT /:id/content route**
+- [x] **Task 4.6.3: Implement PUT /:id/content route**
   - Add authenticate and RESOURCE_UPDATE permission middleware
   - Get resourceId from params
   - Parse body for new content
   - Find existing resource
   - _Requirements: 8.1_
 
-- [ ] **Task 4.6.4: Update file content**
+- [x] **Task 4.6.4: Update file content**
   - Call storageService.updateResourceContent()
   - Get previousChecksum and newChecksum
   - Update database record (size, checksum, updatedAt)
   - _Requirements: 8.2-8.5_
 
-- [ ] **Task 4.6.5: Log content update**
+- [x] **Task 4.6.5: Log content update**
   - Log operation='update' with previousChecksum, newChecksum
   - Return { success: true, resource: updated }
   - _Requirements: 8.7_
 
 ### 4.7 Implement Delete Endpoint
 
-- [ ] **Task 4.7.1: Implement DELETE /:id route**
+- [x] **Task 4.7.1: Implement DELETE /:id route**
   - Add authenticate and RESOURCE_DELETE permission middleware
   - Get resourceId from params
   - Find existing resource
   - Return 404 if not found or already deleted
   - _Requirements: 9.1, 9.4-9.5_
 
-- [ ] **Task 4.7.2: Soft delete resource**
+- [x] **Task 4.7.2: Soft delete resource**
   - Call repository.softDelete(id)
   - Log operation='delete'
   - Return { success: true, resourceId }
@@ -691,34 +691,34 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 4.8 Implement Interpolate Endpoint
 
-- [ ] **Task 4.8.1: Implement POST /:id/interpolate route**
+- [x] **Task 4.8.1: Implement POST /:id/interpolate route**
   - Add authenticate and RESOURCE_READ permission middleware
   - Get resourceId from params
   - Parse JSON body: { state, workflowId?, executionId?, nodeId? }
   - Find existing resource
   - _Requirements: 10.1_
 
-- [ ] **Task 4.8.2: Validate and interpolate**
+- [x] **Task 4.8.2: Validate and interpolate**
   - Check resource is text type (prompt, document, data)
   - Return 400 INVALID_RESOURCE_TYPE if not
   - Call storageService.interpolateTemplate(path, state)
   - _Requirements: 10.7_
 
-- [ ] **Task 4.8.3: Return interpolated content**
+- [x] **Task 4.8.3: Return interpolated content**
   - Log operation='interpolate' with workflow context
   - Return { success: true, content: interpolatedContent }
   - _Requirements: 10.8-10.11_
 
 ### 4.9 Implement Copy Endpoint
 
-- [ ] **Task 4.9.1: Implement POST /:id/copy route**
+- [x] **Task 4.9.1: Implement POST /:id/copy route**
   - Add authenticate and RESOURCE_CREATE permission middleware
   - Get sourceId from params
   - Parse JSON body: { name?, path? }
   - Find source resource
   - _Requirements: 11.1, 11.10_
 
-- [ ] **Task 4.9.2: Copy resource**
+- [x] **Task 4.9.2: Copy resource**
   - Generate new name (default: "Copy of {original}")
   - Generate new path if not provided
   - Call storageService.copyResource()
@@ -726,14 +726,14 @@ This document provides a concrete, actionable implementation plan for the Resour
   - Set authorType='user', authorId=current user
   - _Requirements: 11.2-11.6_
 
-- [ ] **Task 4.9.3: Log and return**
+- [x] **Task 4.9.3: Log and return**
   - Log operation='copy' with sourceId in details
   - Return 201 with new resource
   - _Requirements: 11.7, 11.8-11.9_
 
 ### 4.10 Export Router
 
-- [ ] **Task 4.10.1: Export router as default**
+- [x] **Task 4.10.1: Export router as default**
   - Export default resourceRouter
   - _Requirements: 18.1_
 
@@ -743,82 +743,82 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 5.1 Update Plugin Configuration
 
-- [ ] **Task 5.1.1: Import resource routes in plugin.ts**
+- [x] **Task 5.1.1: Import resource routes in plugin.ts**
   - Open: `apps/api/src/plugins/workscript/plugin.ts`
   - Add: import resourceRoutes from './resources'
   - _Requirements: 18.1_
 
-- [ ] **Task 5.1.2: Import resource schema**
+- [x] **Task 5.1.2: Import resource schema**
   - Add: import { resources, resourceOperations } from './schema/resources.schema'
   - _Requirements: 18.2_
 
-- [ ] **Task 5.1.3: Mount resource routes**
+- [x] **Task 5.1.3: Mount resource routes**
   - Add: router.route('/resources', resourceRoutes)
   - _Requirements: 18.1_
 
-- [ ] **Task 5.1.4: Update schema.tables**
+- [x] **Task 5.1.4: Update schema.tables**
   - Add resources and resourceOperations to tables array
   - _Requirements: 18.2_
 
-- [ ] **Task 5.1.5: Update root endpoint**
+- [x] **Task 5.1.5: Update root endpoint**
   - Add '/workscript/resources/*' to endpoints list in root GET handler
   - _Requirements: 18.4_
 
 ### 5.2 Update AI Manifest
 
-- [ ] **Task 5.2.1: Add resources section to aiManifest.endpoints**
+- [x] **Task 5.2.1: Add resources section to aiManifest.endpoints**
   - Add description: 'Resource management - file storage and template interpolation'
   - _Requirements: 18.3_
 
-- [ ] **Task 5.2.2: Document create endpoint in aiManifest**
+- [x] **Task 5.2.2: Document create endpoint in aiManifest**
   - Path: POST /workscript/resources/create
   - Auth: Required (RESOURCE_CREATE permission)
   - Body: { name, content, path, type?, description?, tags?, isPublic? }
   - Response: { success, resource }
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.3: Document upload endpoint in aiManifest**
+- [x] **Task 5.2.3: Document upload endpoint in aiManifest**
   - Path: POST /workscript/resources/upload
   - Auth: Required (RESOURCE_CREATE permission)
   - Body: multipart form with file
   - Response: { success, resource }
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.4: Document list endpoint in aiManifest**
+- [x] **Task 5.2.4: Document list endpoint in aiManifest**
   - Path: GET /workscript/resources
   - Auth: Required (RESOURCE_READ permission)
   - Query: type, authorType, tags, search, limit, offset
   - Response: { items, count, pagination }
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.5: Document read endpoints in aiManifest**
+- [x] **Task 5.2.5: Document read endpoints in aiManifest**
   - Path: GET /workscript/resources/:id (metadata)
   - Path: GET /workscript/resources/:id/content (raw file)
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.6: Document update endpoints in aiManifest**
+- [x] **Task 5.2.6: Document update endpoints in aiManifest**
   - Path: PUT /workscript/resources/:id (metadata)
   - Path: PUT /workscript/resources/:id/content (file content)
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.7: Document delete endpoint in aiManifest**
+- [x] **Task 5.2.7: Document delete endpoint in aiManifest**
   - Path: DELETE /workscript/resources/:id
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.8: Document interpolate endpoint in aiManifest**
+- [x] **Task 5.2.8: Document interpolate endpoint in aiManifest**
   - Path: POST /workscript/resources/:id/interpolate
   - Body: { state }
   - Response: { success, content }
   - _Requirements: 18.8_
 
-- [ ] **Task 5.2.9: Add resource capabilities to capabilities array**
+- [x] **Task 5.2.9: Add resource capabilities to capabilities array**
   - Add: 'Store and manage files in sandboxed environment'
   - Add: 'Upload images, audio, and documents for multi-modal workflows'
   - Add: 'Create and interpolate AI prompt templates with {{$.var}} syntax'
   - Add: 'Track all file operations with audit logging'
   - _Requirements: 18.7_
 
-- [ ] **Task 5.2.10: Add resource examples to aiManifest**
+- [x] **Task 5.2.10: Add resource examples to aiManifest**
   - Add example: Create a prompt template
   - Add example: Interpolate template with state
   - Add example: Upload an image
@@ -826,13 +826,13 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 5.3 Update Plugin Lifecycle
 
-- [ ] **Task 5.3.1: Initialize StorageService in onLoad**
+- [x] **Task 5.3.1: Initialize StorageService in onLoad**
   - Import getStorageService from shared-services/storage
   - Call getStorageService() to initialize singleton
   - Log: 'StorageService initialized'
   - _Requirements: 18.5_
 
-- [ ] **Task 5.3.2: Update healthCheck to include storage**
+- [x] **Task 5.3.2: Update healthCheck to include storage**
   - Check StorageService is initialized
   - Check sandbox directory exists
   - Return false if storage check fails
@@ -844,20 +844,20 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 6.1 Create Directory Structure
 
-- [ ] **Task 6.1.1: Create sandbox resources directory**
+- [x] **Task 6.1.1: Create sandbox resources directory**
   - Run: mkdir -p apps/sandbox/resources
   - _Requirements: 1.1-1.2_
 
-- [ ] **Task 6.1.2: Create sandbox tmp directory**
+- [x] **Task 6.1.2: Create sandbox tmp directory**
   - Run: mkdir -p apps/sandbox/tmp
   - _Requirements: 1.3_
 
-- [ ] **Task 6.1.3: Create .gitkeep files**
+- [x] **Task 6.1.3: Create .gitkeep files**
   - Run: touch apps/sandbox/resources/.gitkeep
   - Run: touch apps/sandbox/tmp/.gitkeep
   - _Requirements: 1.7_
 
-- [ ] **Task 6.1.4: Update sandbox readme**
+- [x] **Task 6.1.4: Update sandbox readme**
   - Update: apps/sandbox/readme.md
   - Document sandbox purpose and structure
   - Document allowed file types
@@ -870,76 +870,87 @@ This document provides a concrete, actionable implementation plan for the Resour
 
 ### 7.1 Build Verification
 
-- [ ] **Task 7.1.1: Run TypeScript type check**
+- [x] **Task 7.1.1: Run TypeScript type check**
   - Run: bun run typecheck
   - Fix any TypeScript errors
   - _Requirements: Code Quality_
+  - **Note:** Created missing tsconfig.json for apps/api. Fixed async isHealthy() issue in StorageService. Resources feature has no TypeScript errors. Pre-existing frontend errors remain.
 
-- [ ] **Task 7.1.2: Run build**
+- [x] **Task 7.1.2: Run build**
   - Run: bun run build
   - Fix any build errors
   - _Requirements: Code Quality_
+  - **Note:** Engine, Nodes, and API build successfully. Frontend has pre-existing TypeScript errors unrelated to Resources feature.
 
 ### 7.2 API Testing
 
-- [ ] **Task 7.2.1: Start API server**
+- [x] **Task 7.2.1: Start API server**
   - Run: cd apps/api && bun run dev
   - Verify server starts without errors
   - Check logs for StorageService initialization
   - _Requirements: 18.5_
+  - **Note:** Server starts successfully with StorageService initialization confirmed.
 
-- [ ] **Task 7.2.2: Test create resource endpoint**
+- [x] **Task 7.2.2: Test create resource endpoint**
   - POST /workscript/resources/create with test content
   - Verify 201 response
   - Verify file created in sandbox
   - Verify database record created
   - _Requirements: 3_
+  - **Note:** Tested successfully. Resources created with proper checksums and metadata.
 
-- [ ] **Task 7.2.3: Test read resource endpoints**
+- [x] **Task 7.2.3: Test read resource endpoints**
   - GET /workscript/resources/:id
   - Verify metadata returned
   - GET /workscript/resources/:id/content
   - Verify file content returned
   - _Requirements: 5_
+  - **Note:** Both endpoints working correctly. Tenant isolation verified.
 
-- [ ] **Task 7.2.4: Test list resources endpoint**
+- [x] **Task 7.2.4: Test list resources endpoint**
   - GET /workscript/resources
   - Verify pagination works
   - Test type filter
   - Test search filter
   - _Requirements: 6_
+  - **Note:** Pagination, type filters, and search all working correctly.
 
-- [ ] **Task 7.2.5: Test update endpoints**
+- [x] **Task 7.2.5: Test update endpoints**
   - PUT /workscript/resources/:id with metadata changes
   - PUT /workscript/resources/:id/content with new content
   - Verify changes persisted
   - _Requirements: 7, 8_
+  - **Note:** Both metadata and content updates work. Checksums updated correctly.
 
-- [ ] **Task 7.2.6: Test delete endpoint**
+- [x] **Task 7.2.6: Test delete endpoint**
   - DELETE /workscript/resources/:id
   - Verify soft delete (isActive=false)
   - Verify resource no longer appears in list
   - Verify file still exists on disk
   - _Requirements: 9_
+  - **Note:** Fixed MySQL/Drizzle affectedRows inconsistency bug. Delete now works correctly with soft delete.
 
-- [ ] **Task 7.2.7: Test interpolation endpoint**
+- [x] **Task 7.2.7: Test interpolation endpoint**
   - Create prompt template with {{$.var}} placeholders
   - POST /workscript/resources/:id/interpolate with state
   - Verify placeholders replaced correctly
   - _Requirements: 10_
+  - **Note:** Interpolation working correctly with nested state paths.
 
-- [ ] **Task 7.2.8: Test upload endpoint**
+- [x] **Task 7.2.8: Test upload endpoint**
   - POST /workscript/resources/upload with test file
   - Verify file saved correctly
   - Test with invalid file type (expect 400)
   - Test with oversized file (expect 400)
   - _Requirements: 4_
+  - **Note:** Fixed tmp directory creation bug. Upload now works correctly with multipart forms.
 
-- [ ] **Task 7.2.9: Test copy endpoint**
+- [x] **Task 7.2.9: Test copy endpoint**
   - POST /workscript/resources/:id/copy
   - Verify new resource created
   - Verify content identical to source
   - _Requirements: 11_
+  - **Note:** Copy endpoint creates new resources with correct content and new checksums.
 
 ### 7.3 Security Testing
 
@@ -1049,11 +1060,14 @@ This document provides a concrete, actionable implementation plan for the Resour
 **Key Milestones:**
 - [x] Database tables created and migrated
 - [x] StorageService operational with path security
-- [ ] All CRUD endpoints functional
-- [ ] Template interpolation working
-- [ ] Audit logging complete
-- [ ] All tests passing
-- [ ] Plugin fully integrated
+- [x] All CRUD endpoints functional
+- [x] Template interpolation working
+- [x] Audit logging complete
+- [x] API testing complete (Phase 7.2)
+- [ ] Security testing (Phase 7.3)
+- [ ] Error handling testing (Phase 7.4)
+- [ ] Audit log verification (Phase 7.5)
+- [ ] Documentation & Cleanup (Phase 8)
 
 ---
 

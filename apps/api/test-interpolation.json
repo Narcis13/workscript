@@ -1,0 +1,7 @@
+{
+  "name": "interpolation-template",
+  "content": "Hello {{$.name}}, you have {{$.count}} messages!",
+  "path": "prompts/interpolation-test.md",
+  "type": "prompt",
+  "description": "Template for interpolation testing"
+}

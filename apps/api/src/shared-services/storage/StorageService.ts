@@ -157,6 +157,27 @@ export class StorageService {
   }
 
   /**
+   * Performs a health check on the storage service.
+   *
+   * Verifies that:
+   * 1. The service is initialized
+   * 2. The sandbox directory exists and is accessible
+   *
+   * @returns true if the service is healthy, false otherwise
+   */
+  public async isHealthy(): Promise<boolean> {
+    if (!this.initialized) {
+      return false;
+    }
+
+    try {
+      return await this.sandboxManager.checkSandboxExists();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Gets the SandboxManager instance.
    *
    * @returns The SandboxManager instance
@@ -532,6 +553,9 @@ export class StorageService {
       // Write to tmp first
       const tmpPath = `tmp/${Date.now()}-${originalFilename}`;
       const tmpAbsolutePath = this.sandboxManager.validatePath(tmpPath);
+
+      // Ensure tmp directory exists
+      await this.sandboxManager.ensureDirectory('tmp');
 
       try {
         await fs.writeFile(tmpAbsolutePath, contentBuffer);

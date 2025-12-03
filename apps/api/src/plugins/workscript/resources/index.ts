@@ -522,7 +522,9 @@ resourceRoutes.get(
       }
 
       // Check tenant access (own tenant or public)
-      if (resource.tenantId !== user.tenantId && !resource.isPublic) {
+      // Note: user.tenantId may be undefined, but resource uses 'shared' as fallback
+      const userTenantId = user.tenantId || 'shared';
+      if (resource.tenantId !== userTenantId && !resource.isPublic) {
         return c.json(
           { success: false, error: 'Resource not found', code: 'RESOURCE_NOT_FOUND' },
           404
@@ -578,7 +580,8 @@ resourceRoutes.get(
       }
 
       // Check tenant access
-      if (resource.tenantId !== user.tenantId && !resource.isPublic) {
+      const userTenantId = user.tenantId || 'shared';
+      if (resource.tenantId !== userTenantId && !resource.isPublic) {
         return c.json(
           { success: false, error: 'Resource not found', code: 'RESOURCE_NOT_FOUND' },
           404
@@ -675,7 +678,8 @@ resourceRoutes.put(
       }
 
       // Check tenant access (must be owner or admin)
-      if (resource.tenantId !== user.tenantId) {
+      const userTenantId = user.tenantId || 'shared';
+      if (resource.tenantId !== userTenantId) {
         return c.json(
           { success: false, error: 'Access denied', code: 'FORBIDDEN' },
           403
@@ -803,7 +807,8 @@ resourceRoutes.put(
       }
 
       // Check tenant access
-      if (resource.tenantId !== user.tenantId) {
+      const userTenantId = user.tenantId || 'shared';
+      if (resource.tenantId !== userTenantId) {
         return c.json(
           { success: false, error: 'Access denied', code: 'FORBIDDEN' },
           403
@@ -890,7 +895,8 @@ resourceRoutes.delete(
       }
 
       // Check tenant access
-      if (resource.tenantId !== user.tenantId) {
+      const userTenantId = user.tenantId || 'shared';
+      if (resource.tenantId !== userTenantId) {
         return c.json(
           { success: false, error: 'Access denied', code: 'FORBIDDEN' },
           403
@@ -901,6 +907,12 @@ resourceRoutes.delete(
       const deleted = await repository.softDelete(id);
 
       if (!deleted) {
+        // Double-check if it was actually deleted (MySQL/Drizzle may return 0 affected rows)
+        const checkResource = await repository.findById(id, true); // include inactive
+        if (!checkResource || checkResource.isActive === false) {
+          // Resource was actually deleted, report success
+          return c.json({ success: true, resourceId: id });
+        }
         return c.json(
           { success: false, error: 'Resource not found', code: 'RESOURCE_NOT_FOUND' },
           404
@@ -997,7 +1009,8 @@ resourceRoutes.post(
       }
 
       // Check tenant access
-      if (resource.tenantId !== user.tenantId && !resource.isPublic) {
+      const userTenantId = user.tenantId || 'shared';
+      if (resource.tenantId !== userTenantId && !resource.isPublic) {
         return c.json(
           { success: false, error: 'Resource not found', code: 'RESOURCE_NOT_FOUND' },
           404
@@ -1113,7 +1126,8 @@ resourceRoutes.post(
       }
 
       // Check tenant access for source (can copy own or public)
-      if (sourceResource.tenantId !== user.tenantId && !sourceResource.isPublic) {
+      const userTenantId = user.tenantId || 'shared';
+      if (sourceResource.tenantId !== userTenantId && !sourceResource.isPublic) {
         return c.json(
           { success: false, error: 'Source resource not found', code: 'RESOURCE_NOT_FOUND' },
           404
@@ -1122,7 +1136,7 @@ resourceRoutes.post(
 
       // Generate copy name and path if not provided
       const copyName = body.name || `Copy of ${sourceResource.name}`;
-      const tenantId = user.tenantId || 'shared';
+      const tenantId = userTenantId;
 
       let targetPath: string;
       if (body.path) {

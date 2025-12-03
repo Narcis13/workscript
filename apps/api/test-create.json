@@ -1,0 +1,8 @@
+{
+  "name": "greeting-prompt",
+  "content": "Hello, welcome to the platform!",
+  "path": "prompts/greeting.md",
+  "type": "prompt",
+  "description": "A greeting template",
+  "tags": ["greeting", "welcome"]
+}
