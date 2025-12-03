@@ -6,7 +6,8 @@ export default defineConfig({
     './src/db/schema/auth.schema.ts',
     './src/db/schema/integrations.schema.ts',
     './src/db/schema/ai.schema.ts',
-    './src/plugins/workscript/schema/workscript.schema.ts'
+    './src/plugins/workscript/schema/workscript.schema.ts',
+    './src/plugins/workscript/schema/resources.schema.ts',
   ],
   out: './drizzle',
   dialect: 'mysql',

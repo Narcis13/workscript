@@ -101,6 +101,12 @@ export enum Permission {
   EXECUTION_EXPORT = 'execution:export',
   EXECUTION_RERUN = 'execution:rerun',
 
+  // Resource permissions
+  RESOURCE_CREATE = 'resource:create',
+  RESOURCE_READ = 'resource:read',
+  RESOURCE_UPDATE = 'resource:update',
+  RESOURCE_DELETE = 'resource:delete',
+
   // User management permissions
   USER_READ = 'user:read',
   USER_UPDATE = 'user:update',

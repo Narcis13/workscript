@@ -252,6 +252,64 @@ export const refreshTokens = mysqlTable("refresh_tokens", {
 	}
 });
 
+export const resourceOperations = mysqlTable("resource_operations", {
+	id: varchar({ length: 128 }).notNull(),
+	resourceId: varchar("resource_id", { length: 128 }).notNull(),
+	operation: varchar({ length: 50 }).notNull(),
+	actorType: varchar("actor_type", { length: 50 }).notNull(),
+	actorId: varchar("actor_id", { length: 128 }),
+	workflowId: varchar("workflow_id", { length: 128 }),
+	executionId: varchar("execution_id", { length: 128 }),
+	nodeId: varchar("node_id", { length: 128 }),
+	details: json(),
+	previousChecksum: varchar("previous_checksum", { length: 64 }),
+	newChecksum: varchar("new_checksum", { length: 64 }),
+	status: varchar({ length: 50 }).notNull(),
+	errorMessage: text("error_message"),
+	durationMs: int("duration_ms"),
+	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`(now())`).notNull(),
+},
+(table) => {
+	return {
+		resourceOpsActorIdx: index("resource_ops_actor_idx").on(table.actorType, table.actorId),
+		resourceOpsCreatedAtIdx: index("resource_ops_created_at_idx").on(table.createdAt),
+		resourceOpsResourceIdx: index("resource_ops_resource_idx").on(table.resourceId),
+		resourceOpsWorkflowIdx: index("resource_ops_workflow_idx").on(table.workflowId),
+		resourceOperationsId: primaryKey({ columns: [table.id], name: "resource_operations_id"}),
+	}
+});
+
+export const resources = mysqlTable("resources", {
+	id: varchar({ length: 128 }).notNull(),
+	name: varchar({ length: 255 }).notNull(),
+	path: varchar({ length: 512 }).notNull(),
+	type: varchar({ length: 50 }).notNull(),
+	mimeType: varchar("mime_type", { length: 100 }).notNull(),
+	size: int().notNull(),
+	checksum: varchar({ length: 64 }),
+	authorType: varchar("author_type", { length: 50 }).notNull(),
+	authorId: varchar("author_id", { length: 128 }),
+	tenantId: varchar("tenant_id", { length: 128 }),
+	pluginId: varchar("plugin_id", { length: 128 }).default('workscript').notNull(),
+	description: text(),
+	tags: json().default([]),
+	metadata: json(),
+	isActive: tinyint("is_active").default(1).notNull(),
+	isPublic: tinyint("is_public").default(0).notNull(),
+	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`(now())`).notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).default(sql`(now())`).onUpdateNow().notNull(),
+	deletedAt: timestamp("deleted_at", { mode: 'string' }),
+},
+(table) => {
+	return {
+		authorIdx: index("resources_author_idx").on(table.authorType, table.authorId),
+		pathIdx: index("resources_path_idx").on(table.path),
+		pluginIdx: index("resources_plugin_idx").on(table.pluginId),
+		tenantTypeIdx: index("resources_tenant_type_idx").on(table.tenantId, table.type),
+		resourcesId: primaryKey({ columns: [table.id], name: "resources_id"}),
+	}
+});
+
 export const sessions = mysqlTable("sessions", {
 	id: varchar({ length: 128 }).notNull(),
 	userId: varchar("user_id", { length: 128 }).notNull(),

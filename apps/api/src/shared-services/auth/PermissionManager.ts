@@ -114,6 +114,12 @@ export class PermissionManager {
       Permission.EXECUTION_EXPORT,
       Permission.EXECUTION_RERUN,
 
+      // Resource permissions
+      Permission.RESOURCE_CREATE,
+      Permission.RESOURCE_READ,
+      Permission.RESOURCE_UPDATE,
+      Permission.RESOURCE_DELETE,
+
       // User profile
       Permission.USER_READ,
       Permission.USER_UPDATE,
@@ -135,8 +141,12 @@ export class PermissionManager {
       Permission.AUTOMATION_READ,
       Permission.AUTOMATION_EXECUTE,
 
-      // Read executions
+      // Execution permissions
       Permission.EXECUTION_READ,
+
+      // Resource permissions (read and create only)
+      Permission.RESOURCE_READ,
+      Permission.RESOURCE_CREATE,
     ],
   };
 
