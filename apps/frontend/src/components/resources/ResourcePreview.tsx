@@ -6,13 +6,16 @@
  * @module components/resources/ResourcePreview
  */
 
-import { useState } from 'react';
-import Markdown from 'react-markdown';
+import { useState, lazy, Suspense } from 'react';
+import rehypeSanitize from 'rehype-sanitize';
+import DOMPurify from 'dompurify';
 import { ZoomIn, ZoomOut, Download, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { Resource } from '@/types/resource.types';
+
+const Markdown = lazy(() => import('react-markdown'));
 
 interface ResourcePreviewProps {
   resource: Resource;
@@ -143,7 +146,7 @@ export function ResourcePreview({
             <tr>
               {headers.map((h, i) => (
                 <th key={i} className="px-3 py-2 text-left font-medium border-b">
-                  {h}
+                  {DOMPurify.sanitize(h, { ALLOWED_TAGS: [] })}
                 </th>
               ))}
             </tr>
@@ -153,7 +156,7 @@ export function ResourcePreview({
               <tr key={i} className="border-b hover:bg-muted/50">
                 {row.split(',').map((cell, j) => (
                   <td key={j} className="px-3 py-2">
-                    {cell}
+                    {DOMPurify.sanitize(cell, { ALLOWED_TAGS: [] })}
                   </td>
                 ))}
               </tr>
@@ -172,9 +175,17 @@ export function ResourcePreview({
   // Markdown/text preview (prompt, document)
   if (content !== undefined) {
     return (
-      <div className="border rounded-lg p-6 prose prose-sm dark:prose-invert max-w-none max-h-[600px] overflow-auto">
-        <Markdown>{content}</Markdown>
-      </div>
+      <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+        <div className="border rounded-lg p-6 prose prose-sm dark:prose-invert max-w-none max-h-[600px] overflow-auto">
+          <Markdown
+            rehypePlugins={[rehypeSanitize]}
+            disallowedElements={['script', 'iframe', 'object', 'embed']}
+            unwrapDisallowed={true}
+          >
+            {content}
+          </Markdown>
+        </div>
+      </Suspense>
     );
   }
 

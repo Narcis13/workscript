@@ -41,6 +41,7 @@
     "monorepo"
   ],
   "devDependencies": {
+    "@types/dompurify": "^3.2.0",
     "@types/ws": "^8.18.1",
     "bun-types": "latest",
     "concurrently": "^9.1.2"
@@ -49,6 +50,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "dompurify": "^3.3.0",
     "ws": "^8.18.3"
   }
 }

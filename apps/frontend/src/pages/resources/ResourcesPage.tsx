@@ -6,7 +6,7 @@
  * @module pages/resources/ResourcesPage
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, FolderOpen } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -17,8 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ResourceList } from '@/components/resources/ResourceList';
 import { ResourceFilterBar } from '@/components/resources/ResourceFilterBar';
 import { useResources, useDeleteResource } from '@/hooks/api/useResources';
-import { downloadResource } from '@/services/api/resources.api';
-import { usePagination } from '@/hooks/usePagination';
+import { downloadResourceFile } from '@/lib/resourceDownload';
 import type { Resource, ResourceFilters } from '@/types/resource.types';
 
 const PAGE_SIZE = 20;
@@ -55,49 +54,36 @@ export default function ResourcesPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
 
-  const pagination = usePagination({
-    totalItems: data?.total || 0,
-    initialPageSize: PAGE_SIZE,
-    initialPage: filters.page || 1,
-  });
+  // Calculate pagination values directly from filters state
+  const totalPages = Math.ceil((data?.total || 0) / PAGE_SIZE);
+  const currentPage = filters.page || 1;
 
-  // Sync pagination with filters
-  useEffect(() => {
-    if (pagination.currentPage !== filters.page) {
-      setFilters((f) => ({ ...f, page: pagination.currentPage }));
-    }
-  }, [pagination.currentPage]);
-
-  const handleFiltersChange = (newFilters: ResourceFilters) => {
+  const handleFiltersChange = useCallback((newFilters: ResourceFilters) => {
     setFilters(newFilters);
-    if (newFilters.page === 1) {
-      pagination.goToPage(1);
-    }
-  };
+  }, []);
 
-  const handleView = (resource: Resource) => navigate(`/resources/${resource.id}`);
-  const handleEdit = (resource: Resource) => navigate(`/resources/${resource.id}/edit`);
+  const handleView = useCallback((resource: Resource) => {
+    navigate(`/resources/${resource.id}`);
+  }, [navigate]);
 
-  const handleDownload = async (resource: Resource) => {
-    const blob = await downloadResource(resource.id);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = resource.name;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const handleEdit = useCallback((resource: Resource) => {
+    navigate(`/resources/${resource.id}/edit`);
+  }, [navigate]);
 
-  const handleCopy = (resource: Resource) => {
+  const handleDownload = useCallback(async (resource: Resource) => {
+    await downloadResourceFile(resource.id, resource.name);
+  }, []);
+
+  const handleCopy = useCallback((resource: Resource) => {
     navigate(`/resources/${resource.id}?action=copy`);
-  };
+  }, [navigate]);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (deleteTarget) {
       await deleteMutation.mutateAsync(deleteTarget.id);
       setDeleteTarget(null);
     }
-  };
+  }, [deleteTarget, deleteMutation]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -166,15 +152,15 @@ export default function ResourcesPage() {
             onDelete={setDeleteTarget}
           />
 
-          {pagination.totalPages > 1 && (
+          {totalPages > 1 && (
             <MobilePagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              hasPreviousPage={pagination.hasPreviousPage}
-              hasNextPage={pagination.hasNextPage}
-              onPreviousPage={pagination.previousPage}
-              onNextPage={pagination.nextPage}
-              onGoToPage={pagination.goToPage}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              hasPreviousPage={currentPage > 1}
+              hasNextPage={currentPage < totalPages}
+              onPreviousPage={() => setFilters(f => ({ ...f, page: Math.max(1, (f.page || 1) - 1) }))}
+              onNextPage={() => setFilters(f => ({ ...f, page: (f.page || 1) + 1 }))}
+              onGoToPage={(page) => setFilters(f => ({ ...f, page }))}
             />
           )}
         </>

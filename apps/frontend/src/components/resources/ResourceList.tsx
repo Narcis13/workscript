@@ -169,7 +169,7 @@ export function ResourceList({
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="size-8">
+                    <Button variant="ghost" size="icon" className="size-8" aria-label="Resource actions">
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>

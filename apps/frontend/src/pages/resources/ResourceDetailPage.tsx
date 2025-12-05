@@ -39,8 +39,9 @@ import {
   useDeleteResource,
   useCopyResource,
 } from '@/hooks/api/useResources';
-import { downloadResource } from '@/services/api/resources.api';
+import { downloadResourceFile } from '@/lib/resourceDownload';
 import { formatFileSize } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,13 +82,7 @@ export default function ResourceDetailPage() {
 
   const handleDownload = async () => {
     if (!resource) return;
-    const blob = await downloadResource(resource.id);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = resource.name;
-    a.click();
-    URL.revokeObjectURL(url);
+    await downloadResourceFile(resource.id, resource.name);
   };
 
   const handleDelete = async () => {
@@ -96,8 +91,25 @@ export default function ResourceDetailPage() {
     navigate('/resources');
   };
 
+  const validatePath = (path: string): boolean => {
+    // Disallow path traversal
+    if (path.includes('..') || path.includes('~')) return false;
+    // Disallow absolute paths
+    if (path.startsWith('/')) return false;
+    // Only allow alphanumeric, dash, underscore, forward slash
+    return /^[a-zA-Z0-9\-_\/]*$/.test(path);
+  };
+
   const handleCopy = async () => {
     if (!resource) return;
+
+    if (copyPath && !validatePath(copyPath)) {
+      toast.error('Invalid path', {
+        description: 'Path cannot contain "..", "~", or start with "/". Use alphanumeric characters, dashes, underscores, and forward slashes.',
+      });
+      return;
+    }
+
     const newResource = await copyMutation.mutateAsync({
       id: resource.id,
       name: copyName,
@@ -136,7 +148,7 @@ export default function ResourceDetailPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-start gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/resources')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/resources')} aria-label="Back to resources">
           <ArrowLeft className="size-4" />
         </Button>
 
@@ -152,17 +164,17 @@ export default function ResourceDetailPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={handleDownload}>
+          <Button variant="outline" size="icon" onClick={handleDownload} aria-label="Download resource">
             <Download className="size-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={() => setCopyDialogOpen(true)}>
+          <Button variant="outline" size="icon" onClick={() => setCopyDialogOpen(true)} aria-label="Copy resource">
             <Copy className="size-4" />
           </Button>
           <Button variant="outline" onClick={() => navigate(`/resources/${id}/edit`)}>
             <Pencil className="size-4 mr-2" />
             Edit
           </Button>
-          <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)}>
+          <Button variant="destructive" size="icon" onClick={() => setDeleteDialogOpen(true)} aria-label="Delete resource">
             <Trash2 className="size-4" />
           </Button>
         </div>

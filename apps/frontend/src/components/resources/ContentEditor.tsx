@@ -6,11 +6,13 @@
  * @module components/resources/ContentEditor
  */
 
-import { useRef } from 'react';
-import Editor, { type OnMount, type OnChange } from '@monaco-editor/react';
+import { useRef, lazy, Suspense } from 'react';
+import type { OnMount, OnChange } from '@monaco-editor/react';
 import { useTheme } from 'next-themes';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ResourceType } from '@/types/resource.types';
+
+const Editor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.Editor })));
 
 const languageMap: Record<ResourceType, string> = {
   prompt: 'markdown',
@@ -59,26 +61,28 @@ export function ContentEditor({
 
   return (
     <div className="border rounded-md overflow-hidden">
-      <Editor
-        height={height}
-        language={language}
-        value={value}
-        onChange={handleChange}
-        onMount={handleMount}
-        theme={monacoTheme}
-        loading={<Skeleton className="h-full w-full" />}
-        options={{
-          readOnly,
-          minimap: { enabled: false },
-          fontSize: 14,
-          lineNumbers: 'on',
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          wordWrap: 'on',
-          formatOnPaste: true,
-          tabSize: 2,
-        }}
-      />
+      <Suspense fallback={<Skeleton className="h-full w-full" style={{ height }} />}>
+        <Editor
+          height={height}
+          language={language}
+          value={value}
+          onChange={handleChange}
+          onMount={handleMount}
+          theme={monacoTheme}
+          loading={<Skeleton className="h-full w-full" />}
+          options={{
+            readOnly,
+            minimap: { enabled: false },
+            fontSize: 14,
+            lineNumbers: 'on',
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            wordWrap: 'on',
+            formatOnPaste: true,
+            tabSize: 2,
+          }}
+        />
+      </Suspense>
     </div>
   );
 }

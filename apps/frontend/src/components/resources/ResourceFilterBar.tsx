@@ -7,7 +7,7 @@
  * @module components/resources/ResourceFilterBar
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -60,7 +60,7 @@ export function ResourceFilterBar({
     if (debouncedSearch !== filters.search) {
       onFiltersChange({ ...filters, search: debouncedSearch || undefined, page: 1 });
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, filters, onFiltersChange]);
 
   const handleTypeChange = (value: string) => {
     onFiltersChange({

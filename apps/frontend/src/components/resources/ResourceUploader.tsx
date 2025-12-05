@@ -162,7 +162,7 @@ export function ResourceUploader({
               <Progress value={uploadProgress} className="h-2" />
             </div>
           ) : (
-            <Button variant="ghost" size="icon" onClick={clearFile}>
+            <Button variant="ghost" size="icon" onClick={clearFile} aria-label="Remove selected file">
               <X className="size-4" />
             </Button>
           )}

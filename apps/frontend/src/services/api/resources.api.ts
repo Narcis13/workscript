@@ -32,7 +32,13 @@ export async function fetchResources(filters?: ResourceFilters): Promise<Resourc
  */
 export async function fetchResource(id: string): Promise<Resource> {
   const response = await apiClient.get(`${BASE_URL}/${id}`);
-  return response.data.resource || response.data;
+  if (response.data.resource) {
+    return response.data.resource;
+  }
+  if (response.data.data) {
+    return response.data.data;
+  }
+  return response.data as unknown as Resource;
 }
 
 /**
@@ -51,11 +57,23 @@ export async function createResource(data: CreateResourcePayload): Promise<Resou
     const response = await apiClient.post(`${BASE_URL}/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return response.data.resource || response.data;
+    if (response.data.resource) {
+      return response.data.resource;
+    }
+    if (response.data.data) {
+      return response.data.data;
+    }
+    return response.data as unknown as Resource;
   }
 
   const response = await apiClient.post(BASE_URL, data);
-  return response.data.resource || response.data;
+  if (response.data.resource) {
+    return response.data.resource;
+  }
+  if (response.data.data) {
+    return response.data.data;
+  }
+  return response.data as unknown as Resource;
 }
 
 /**
@@ -63,7 +81,13 @@ export async function createResource(data: CreateResourcePayload): Promise<Resou
  */
 export async function updateResource(id: string, data: UpdateResourcePayload): Promise<Resource> {
   const response = await apiClient.put(`${BASE_URL}/${id}`, data);
-  return response.data.resource || response.data;
+  if (response.data.resource) {
+    return response.data.resource;
+  }
+  if (response.data.data) {
+    return response.data.data;
+  }
+  return response.data as unknown as Resource;
 }
 
 /**
@@ -71,7 +95,13 @@ export async function updateResource(id: string, data: UpdateResourcePayload): P
  */
 export async function updateResourceContent(id: string, content: string): Promise<Resource> {
   const response = await apiClient.put(`${BASE_URL}/${id}/content`, { content });
-  return response.data.resource || response.data;
+  if (response.data.resource) {
+    return response.data.resource;
+  }
+  if (response.data.data) {
+    return response.data.data;
+  }
+  return response.data as unknown as Resource;
 }
 
 /**
@@ -86,7 +116,13 @@ export async function deleteResource(id: string): Promise<void> {
  */
 export async function copyResource(id: string, name: string, path: string): Promise<Resource> {
   const response = await apiClient.post(`${BASE_URL}/${id}/copy`, { name, path });
-  return response.data.resource || response.data;
+  if (response.data.resource) {
+    return response.data.resource;
+  }
+  if (response.data.data) {
+    return response.data.data;
+  }
+  return response.data as unknown as Resource;
 }
 
 /**
@@ -113,5 +149,8 @@ export async function interpolateResource(
  */
 export async function fetchResourceContent(id: string): Promise<string> {
   const response = await apiClient.get(`${BASE_URL}/${id}/content`);
-  return response.data.content || response.data;
+  if (response.data.content) {
+    return response.data.content;
+  }
+  return response.data as unknown as string;
 }

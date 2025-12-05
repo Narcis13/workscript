@@ -11,10 +11,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as resourcesApi from '@/services/api/resources.api';
 import type {
+  Resource,
   ResourceFilters,
   CreateResourcePayload,
   UpdateResourcePayload,
 } from '@/types/resource.types';
+
+/**
+ * API error type for mutation error handlers
+ */
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      code?: string;
+    };
+    status?: number;
+  };
+  message?: string;
+}
 
 /**
  * Query key factory for resources
@@ -76,7 +91,7 @@ export function useCreateResource() {
         description: `"${resource.name}" has been created.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error('Failed to create resource', {
         description: error?.response?.data?.message || 'An unexpected error occurred.',
       });
@@ -85,7 +100,7 @@ export function useCreateResource() {
 }
 
 /**
- * Update resource metadata
+ * Update resource metadata with optimistic updates
  */
 export function useUpdateResource() {
   const queryClient = useQueryClient();
@@ -93,12 +108,35 @@ export function useUpdateResource() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateResourcePayload }) =>
       resourcesApi.updateResource(id, data),
+    onMutate: async ({ id, data }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: resourceKeys.detail(id) });
+
+      // Snapshot the previous value
+      const previousResource = queryClient.getQueryData<Resource>(resourceKeys.detail(id));
+
+      // Optimistically update to the new value
+      if (previousResource) {
+        queryClient.setQueryData<Resource>(resourceKeys.detail(id), {
+          ...previousResource,
+          ...data,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      // Return context with the previous value
+      return { previousResource };
+    },
     onSuccess: (resource) => {
       queryClient.invalidateQueries({ queryKey: resourceKeys.lists() });
       queryClient.setQueryData(resourceKeys.detail(resource.id), resource);
       toast.success('Resource updated');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError, { id }, context) => {
+      // Rollback to previous value on error
+      if (context?.previousResource) {
+        queryClient.setQueryData(resourceKeys.detail(id), context.previousResource);
+      }
       toast.error('Failed to update resource', {
         description: error?.response?.data?.message || 'An unexpected error occurred.',
       });
@@ -120,7 +158,7 @@ export function useUpdateContent() {
       queryClient.invalidateQueries({ queryKey: resourceKeys.content(resource.id) });
       toast.success('Content saved');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error('Failed to save content', {
         description: error?.response?.data?.message || 'An unexpected error occurred.',
       });
@@ -141,7 +179,7 @@ export function useDeleteResource() {
       queryClient.removeQueries({ queryKey: resourceKeys.detail(id) });
       toast.success('Resource deleted');
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error('Failed to delete resource', {
         description: error?.response?.data?.message || 'An unexpected error occurred.',
       });
@@ -162,7 +200,7 @@ export function useCopyResource() {
       queryClient.invalidateQueries({ queryKey: resourceKeys.lists() });
       toast.success('Resource copied', { description: `Created "${resource.name}"` });
     },
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error('Failed to copy resource', {
         description: error?.response?.data?.message || 'An unexpected error occurred.',
       });
@@ -177,7 +215,7 @@ export function useInterpolate() {
   return useMutation({
     mutationFn: ({ id, state }: { id: string; state: Record<string, unknown> }) =>
       resourcesApi.interpolateResource(id, state),
-    onError: (error: any) => {
+    onError: (error: ApiError) => {
       toast.error('Interpolation failed', {
         description: error?.response?.data?.message || 'Invalid state object.',
       });
