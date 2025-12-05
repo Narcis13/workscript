@@ -11,6 +11,7 @@ import {
   History,
   Activity,
   Plug,
+  FolderOpen,
   Menu,
   X,
 } from 'lucide-react';
@@ -48,6 +49,11 @@ const navigationLinks: NavLink[] = [
     href: '/workflows',
     label: 'Workflows',
     icon: Workflow,
+  },
+  {
+    href: '/resources',
+    label: 'Resources',
+    icon: FolderOpen,
   },
   {
     href: '/automations',

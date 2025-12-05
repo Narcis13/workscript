@@ -55,6 +55,12 @@ const WorkflowCreatePage = lazy(() => import('@/pages/workflows/WorkflowCreatePa
 const WorkflowDetailPage = lazy(() => import('@/pages/workflows/WorkflowDetailPage'));
 const WorkflowEditPage = lazy(() => import('@/pages/workflows/WorkflowEditPage'));
 
+// Resource Pages (Protected)
+const ResourcesPage = lazy(() => import('@/pages/resources/ResourcesPage'));
+const ResourceCreatePage = lazy(() => import('@/pages/resources/ResourceCreatePage'));
+const ResourceDetailPage = lazy(() => import('@/pages/resources/ResourceDetailPage'));
+const ResourceEditPage = lazy(() => import('@/pages/resources/ResourceEditPage'));
+
 // Automation Pages (Protected)
 const AutomationsPage = lazy(() => import('@/pages/automations/AutomationsPage'));
 const AutomationCreatePage = lazy(() => import('@/pages/automations/AutomationCreatePage'));
@@ -258,6 +264,42 @@ export const router = createBrowserRouter([
           </RouteErrorBoundary>
         ),
         // TODO: Add WORKFLOW_UPDATE permission check in Phase 3
+      },
+
+      // ----------------------------------------
+      // RESOURCE ROUTES
+      // ----------------------------------------
+      {
+        path: 'resources',
+        element: (
+          <RouteErrorBoundary fallbackPath="/dashboard">
+            <ResourcesPage />
+          </RouteErrorBoundary>
+        ),
+      },
+      {
+        path: 'resources/new',
+        element: (
+          <RouteErrorBoundary fallbackPath="/resources">
+            <ResourceCreatePage />
+          </RouteErrorBoundary>
+        ),
+      },
+      {
+        path: 'resources/:id',
+        element: (
+          <RouteErrorBoundary fallbackPath="/resources">
+            <ResourceDetailPage />
+          </RouteErrorBoundary>
+        ),
+      },
+      {
+        path: 'resources/:id/edit',
+        element: (
+          <RouteErrorBoundary fallbackPath="/resources">
+            <ResourceEditPage />
+          </RouteErrorBoundary>
+        ),
       },
 
       // ----------------------------------------

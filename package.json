@@ -6,7 +6,6 @@
   "license": "MIT",
   "homepage": "https://github.com/narcisbrindusescu/workscript",
   "workspaces": [
-    "./server",
     "./packages/*",
     "./apps/*"
   ],
