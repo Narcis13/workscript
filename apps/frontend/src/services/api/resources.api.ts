@@ -24,7 +24,12 @@ const BASE_URL = '/workscript/resources';
  */
 export async function fetchResources(filters?: ResourceFilters): Promise<ResourcesResponse> {
   const response = await apiClient.get(BASE_URL, { params: filters });
-  return response.data;
+  // Map API response fields to expected frontend interface
+  const data = response.data;
+  return {
+    resources: data.items || data.resources || [],
+    total: data.count ?? data.total ?? 0,
+  };
 }
 
 /**

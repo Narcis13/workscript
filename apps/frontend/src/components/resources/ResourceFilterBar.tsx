@@ -56,11 +56,14 @@ export function ResourceFilterBar({
   const [searchInput, setSearchInput] = useState(filters.search || '');
   const debouncedSearch = useDebounce(searchInput, 300);
 
+  // Only update when debouncedSearch actually changes, not on every filters change
   useEffect(() => {
-    if (debouncedSearch !== filters.search) {
+    const currentSearch = filters.search || '';
+    if (debouncedSearch !== currentSearch) {
       onFiltersChange({ ...filters, search: debouncedSearch || undefined, page: 1 });
     }
-  }, [debouncedSearch, filters, onFiltersChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   const handleTypeChange = (value: string) => {
     onFiltersChange({

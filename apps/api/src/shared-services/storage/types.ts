@@ -143,10 +143,11 @@ export const ALLOWED_EXTENSIONS = [
 export type AllowedExtension = (typeof ALLOWED_EXTENSIONS)[number];
 
 /**
- * Default sandbox root path (relative to project root).
+ * Default sandbox root path (relative to API server directory).
+ * Resolves to /apps/sandbox from /apps/api.
  * Can be overridden via SANDBOX_ROOT environment variable.
  */
-export const DEFAULT_SANDBOX_ROOT = 'apps/sandbox';
+export const DEFAULT_SANDBOX_ROOT = '../sandbox';
 
 /**
  * Gets the sandbox root path from environment or default.

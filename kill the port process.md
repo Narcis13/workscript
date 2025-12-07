@@ -1,4 +1,4 @@
-lsof -ti:3014 | xargs kill -9
+lsof -ti:5173 | xargs kill -9
 
 
 # bhvr *tool*🦫
