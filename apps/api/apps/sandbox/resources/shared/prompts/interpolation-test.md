@@ -1,1 +1,0 @@
-Hello {{$.name}}, you have {{$.count}} messages!
