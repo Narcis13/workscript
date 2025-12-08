@@ -4,7 +4,7 @@
  * @module pages/resources/ResourceEditPage
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -56,6 +56,7 @@ export default function ResourceEditPage() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const isResettingRef = useRef(false);
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -69,12 +70,17 @@ export default function ResourceEditPage() {
   // Populate form when resource loads
   useEffect(() => {
     if (resource) {
+      isResettingRef.current = true;
       form.reset({
         name: resource.name,
         description: resource.description || '',
         tags: resource.tags.join(', '),
         isPublic: resource.isPublic,
       });
+      // Use setTimeout to ensure the watch callback has fired before we clear the flag
+      setTimeout(() => {
+        isResettingRef.current = false;
+      }, 0);
     }
   }, [resource, form]);
 
@@ -85,10 +91,12 @@ export default function ResourceEditPage() {
     }
   }, [originalContent]);
 
-  // Track changes
+  // Track changes (skip programmatic resets)
   useEffect(() => {
     const subscription = form.watch(() => {
-      setHasUnsavedChanges(true);
+      if (!isResettingRef.current) {
+        setHasUnsavedChanges(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, [form]);
@@ -206,6 +214,7 @@ export default function ResourceEditPage() {
         </div>
 
         <Button
+          type="button"
           onClick={form.handleSubmit(handleSubmit)}
           disabled={!hasUnsavedChanges || isSaving}
         >

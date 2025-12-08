@@ -130,7 +130,7 @@ export function useUpdateResource() {
     onSuccess: (resource) => {
       queryClient.invalidateQueries({ queryKey: resourceKeys.lists() });
       queryClient.setQueryData(resourceKeys.detail(resource.id), resource);
-      toast.success('Resource updated');
+      // Toast handled by calling component to avoid duplicates
     },
     onError: (error: ApiError, { id }, context) => {
       // Rollback to previous value on error
@@ -156,7 +156,7 @@ export function useUpdateContent() {
     onSuccess: (resource) => {
       queryClient.setQueryData(resourceKeys.detail(resource.id), resource);
       queryClient.invalidateQueries({ queryKey: resourceKeys.content(resource.id) });
-      toast.success('Content saved');
+      // Toast handled by calling component to avoid duplicates
     },
     onError: (error: ApiError) => {
       toast.error('Failed to save content', {

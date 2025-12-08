@@ -56,7 +56,7 @@ export async function createResource(data: CreateResourcePayload): Promise<Resou
     formData.append('name', data.name);
     formData.append('type', data.type);
     if (data.description) formData.append('description', data.description);
-    if (data.tags) formData.append('tags', JSON.stringify(data.tags));
+    if (data.tags && data.tags.length > 0) formData.append('tags', data.tags.join(', '));
     if (data.isPublic !== undefined) formData.append('isPublic', String(data.isPublic));
 
     const response = await apiClient.post(`${BASE_URL}/upload`, formData, {
@@ -71,7 +71,16 @@ export async function createResource(data: CreateResourcePayload): Promise<Resou
     return response.data as unknown as Resource;
   }
 
-  const response = await apiClient.post(BASE_URL, data);
+  // Content-based resources go to /create endpoint
+  const response = await apiClient.post(`${BASE_URL}/create`, {
+    name: data.name,
+    content: data.content,
+    path: `${data.name.toLowerCase().replace(/\s+/g, '-')}.${data.type === 'prompt' ? 'md' : data.type === 'data' ? 'json' : 'txt'}`,
+    type: data.type,
+    description: data.description,
+    tags: data.tags,
+    isPublic: data.isPublic,
+  });
   if (response.data.resource) {
     return response.data.resource;
   }
@@ -134,7 +143,7 @@ export async function copyResource(id: string, name: string, path: string): Prom
  * Download resource content as blob
  */
 export async function downloadResource(id: string): Promise<Blob> {
-  const response = await apiClient.get(`${BASE_URL}/${id}/download`, { responseType: 'blob' });
+  const response = await apiClient.get(`${BASE_URL}/${id}/content`, { responseType: 'blob' });
   return response.data;
 }
 
@@ -146,7 +155,11 @@ export async function interpolateResource(
   state: Record<string, unknown>
 ): Promise<InterpolationResult> {
   const response = await apiClient.post(`${BASE_URL}/${id}/interpolate`, { state });
-  return response.data;
+  // Map backend "content" field to frontend "result" field
+  return {
+    result: response.data.content || response.data.result || '',
+    placeholders: response.data.placeholders,
+  };
 }
 
 /**

@@ -2,17 +2,19 @@
  * ResourcePreview Component
  *
  * Type-specific preview for resources (markdown, image, audio, JSON, CSV, PDF).
+ * Uses blob URLs for binary content to handle authentication properly.
  *
  * @module components/resources/ResourcePreview
  */
 
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import rehypeSanitize from 'rehype-sanitize';
 import DOMPurify from 'dompurify';
-import { ZoomIn, ZoomOut, Download, AlertCircle } from 'lucide-react';
+import { ZoomIn, ZoomOut, Download, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { downloadResource } from '@/services/api/resources.api';
 import type { Resource } from '@/types/resource.types';
 
 const Markdown = lazy(() => import('react-markdown'));
@@ -25,6 +27,59 @@ interface ResourcePreviewProps {
   onDownload?: () => void;
 }
 
+/**
+ * Hook to fetch binary content and create a blob URL
+ */
+function useBlobUrl(resourceId: string, enabled: boolean) {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
+    downloadResource(resourceId)
+      .then((blob) => {
+        if (isMounted) {
+          const url = URL.createObjectURL(blob);
+          setBlobUrl(url);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setError(err?.response?.data?.message || 'Failed to load content');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [resourceId, enabled]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl]);
+
+  return { blobUrl, loading, error };
+}
+
 export function ResourcePreview({
   resource,
   content,
@@ -34,22 +89,40 @@ export function ResourcePreview({
 }: ResourcePreviewProps) {
   const [zoom, setZoom] = useState(1);
 
-  if (loading) {
-    return <Skeleton className="h-96 w-full" />;
+  // Determine if we need to fetch binary content
+  const needsBinaryFetch =
+    resource.type === 'image' ||
+    resource.type === 'audio' ||
+    resource.mimeType === 'application/pdf';
+
+  const {
+    blobUrl,
+    loading: blobLoading,
+    error: blobError,
+  } = useBlobUrl(resource.id, needsBinaryFetch);
+
+  if (loading || blobLoading) {
+    return (
+      <div className="flex items-center justify-center h-96 border rounded-lg bg-muted/20">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
-  if (error) {
+  if (error || blobError) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="size-4" />
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>{error || blobError}</AlertDescription>
       </Alert>
     );
   }
 
   // Image preview
   if (resource.type === 'image') {
-    const imageUrl = `/api/workscript/resources/${resource.id}/download`;
+    if (!blobUrl) {
+      return <Skeleton className="h-96 w-full" />;
+    }
     return (
       <div className="space-y-2">
         <div className="flex gap-2">
@@ -73,7 +146,7 @@ export function ResourcePreview({
         </div>
         <div className="border rounded-lg overflow-auto max-h-[600px] bg-muted/20">
           <img
-            src={imageUrl}
+            src={blobUrl}
             alt={resource.name}
             style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
             className="max-w-none"
@@ -85,11 +158,13 @@ export function ResourcePreview({
 
   // Audio preview
   if (resource.type === 'audio') {
-    const audioUrl = `/api/workscript/resources/${resource.id}/download`;
+    if (!blobUrl) {
+      return <Skeleton className="h-24 w-full" />;
+    }
     return (
       <div className="p-6 border rounded-lg bg-muted/20">
         <audio controls className="w-full">
-          <source src={audioUrl} type={resource.mimeType} />
+          <source src={blobUrl} type={resource.mimeType} />
           Your browser does not support the audio element.
         </audio>
       </div>
@@ -98,12 +173,14 @@ export function ResourcePreview({
 
   // PDF preview
   if (resource.mimeType === 'application/pdf') {
-    const pdfUrl = `/api/workscript/resources/${resource.id}/download`;
+    if (!blobUrl) {
+      return <Skeleton className="h-96 w-full" />;
+    }
     return (
       <div className="border rounded-lg overflow-hidden">
-        <embed
-          src={pdfUrl}
-          type="application/pdf"
+        <iframe
+          src={blobUrl}
+          title={resource.name}
           width="100%"
           height="600px"
           className="bg-white"
