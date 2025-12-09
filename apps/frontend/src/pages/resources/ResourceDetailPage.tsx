@@ -72,11 +72,16 @@ export default function ResourceDetailPage() {
     }
   }, [searchParams, setSearchParams]);
 
-  // Set default copy name when resource loads
+  // Set default copy name and generate unique path when resource loads
   useEffect(() => {
     if (resource && copyDialogOpen && !copyName) {
       setCopyName(`${resource.name} (Copy)`);
-      setCopyPath(resource.path);
+      // Generate a unique path by adding "-copy" before the extension
+      const lastDotIndex = resource.path.lastIndexOf('.');
+      const copyPath = lastDotIndex > 0
+        ? `${resource.path.slice(0, lastDotIndex)}-copy${resource.path.slice(lastDotIndex)}`
+        : `${resource.path}-copy`;
+      setCopyPath(copyPath);
     }
   }, [resource, copyDialogOpen, copyName]);
 
@@ -96,8 +101,8 @@ export default function ResourceDetailPage() {
     if (path.includes('..') || path.includes('~')) return false;
     // Disallow absolute paths
     if (path.startsWith('/')) return false;
-    // Only allow alphanumeric, dash, underscore, forward slash
-    return /^[a-zA-Z0-9\-_\/]*$/.test(path);
+    // Only allow alphanumeric, dash, underscore, forward slash, dot
+    return /^[a-zA-Z0-9\-_\/\.]+$/.test(path);
   };
 
   const handleCopy = async () => {
@@ -105,7 +110,7 @@ export default function ResourceDetailPage() {
 
     if (copyPath && !validatePath(copyPath)) {
       toast.error('Invalid path', {
-        description: 'Path cannot contain "..", "~", or start with "/". Use alphanumeric characters, dashes, underscores, and forward slashes.',
+        description: 'Path cannot contain "..", "~", or start with "/". Use alphanumeric characters, dashes, underscores, dots, and forward slashes.',
       });
       return;
     }

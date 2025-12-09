@@ -41,6 +41,11 @@ const navigationLinks: NavLink[] = [
     icon: LayoutDashboard,
   },
   {
+    href: '/resources',
+    label: 'Resources',
+    icon: FolderOpen,
+  },
+  {
     href: '/nodes',
     label: 'Nodes',
     icon: BoxesIcon,
@@ -49,11 +54,6 @@ const navigationLinks: NavLink[] = [
     href: '/workflows',
     label: 'Workflows',
     icon: Workflow,
-  },
-  {
-    href: '/resources',
-    label: 'Resources',
-    icon: FolderOpen,
   },
   {
     href: '/automations',

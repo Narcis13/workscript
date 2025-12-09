@@ -197,7 +197,10 @@ export function useCopyResource() {
     mutationFn: ({ id, name, path }: { id: string; name: string; path: string }) =>
       resourcesApi.copyResource(id, name, path),
     onSuccess: (resource) => {
-      queryClient.invalidateQueries({ queryKey: resourceKeys.lists() });
+      // Invalidate all resource queries to ensure the list is refetched
+      queryClient.invalidateQueries({ queryKey: resourceKeys.all, refetchType: 'all' });
+      // Also add the new resource to cache
+      queryClient.setQueryData(resourceKeys.detail(resource.id), resource);
       toast.success('Resource copied', { description: `Created "${resource.name}"` });
     },
     onError: (error: ApiError) => {
