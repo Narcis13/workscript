@@ -43,3 +43,7 @@ bun.lockb
 # Database files
 server/secret.sqlite
 *.sqlite
+
+# Sandbox resources
+apps/sandbox/
+apps/api/apps/sandbox/

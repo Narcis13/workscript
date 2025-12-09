@@ -11,6 +11,7 @@ import {
   History,
   Activity,
   Plug,
+  FolderOpen,
   Menu,
   X,
 } from 'lucide-react';
@@ -38,6 +39,11 @@ const navigationLinks: NavLink[] = [
     href: '/dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    href: '/resources',
+    label: 'Resources',
+    icon: FolderOpen,
   },
   {
     href: '/nodes',
