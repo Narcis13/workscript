@@ -937,6 +937,97 @@ const plugin: SaaSPlugin = {
           tags: 'product,screenshot,vision'
         },
         expected_outcome: 'Image stored in sandbox and available for ask-ai node with vision capabilities'
+      },
+      {
+        scenario: 'Generate AI Manifest for Workflow-Building Agent',
+        request: 'GET /workscript/reflection/manifest',
+        expected_outcome: 'Returns complete AI manifest with systemPrompt, quickReference, capabilities organized by nodeCategories, syntaxReference for $.key notation, and estimated tokenCount. Use this as system prompt for AI agents that build workflows.',
+        notes: 'Use /manifest/compact for smaller context windows (~5000 tokens), or POST /manifest/custom to filter by use case (data-pipeline, ai-workflow, integration)'
+      },
+      {
+        scenario: 'Get Deep Node Introspection',
+        request: 'GET /workscript/reflection/nodes/filter',
+        expected_outcome: 'Returns complete introspection for FilterNode including: category, complexity, inputSchema with all parameters, edgeConditions explaining what triggers "passed?" vs "filtered?", stateInteractions showing it reads items and writes filterStats, and composability info with typical predecessors/successors',
+        notes: 'Use GET /reflection/nodes/:nodeId/operations to discover all filter operations grouped by data type (string, number, boolean, date, array, object)'
+      },
+      {
+        scenario: 'Analyze Workflow for Understanding',
+        request: 'POST /workscript/reflection/analysis/explain',
+        body: {
+          workflow: {
+            id: 'data-pipeline',
+            name: 'Data Pipeline',
+            version: '1.0.0',
+            initialState: { data: [{ id: 1, status: 'active' }] },
+            workflow: [
+              { 'filter': { items: '$.data', conditions: [{ field: 'status', operation: 'equals', value: 'active' }], 'passed?': { 'log': { message: 'Found {{$.filterStats.passedCount}} active items' } } } }
+            ]
+          }
+        },
+        expected_outcome: 'Returns WorkflowAnalysis with: summary describing what workflow does, steps array explaining each node purpose, stateFlow showing initial->intermediate->final state keys, dataTransformations tracking how data changes, and complexity metrics (nodeCount, maxDepth, branchCount, loopCount)'
+      },
+      {
+        scenario: 'Deep Validate Workflow for Semantic Issues',
+        request: 'POST /workscript/reflection/analysis/validate-deep',
+        body: {
+          workflow: {
+            id: 'test',
+            name: 'Test',
+            version: '1.0.0',
+            initialState: {},
+            workflow: [
+              { 'log': { message: 'Value: {{$.undefinedKey}}' } }
+            ]
+          }
+        },
+        expected_outcome: 'Returns { valid: false, semanticIssues: [{ type: "warning", path: "workflow[0]", message: "State key $.undefinedKey used but never defined", suggestion: "Add undefinedKey to initialState or ensure a previous node writes to it" }], stateConsistency: { usedBeforeDefined: ["undefinedKey"] } }'
+      },
+      {
+        scenario: 'Get Composability Suggestions',
+        request: 'POST /workscript/reflection/composability/suggest',
+        body: {
+          currentNode: 'filter',
+          currentEdge: 'passed',
+          currentState: { filterStats: { passedCount: 10 } },
+          intent: 'aggregate results'
+        },
+        expected_outcome: 'Returns suggestions sorted by confidence: [{ node: "summarize", confidence: 0.95, config: { operation: "count" }, explanation: "Summarize node aggregates filtered data and matches your intent to aggregate results" }]'
+      },
+      {
+        scenario: 'Generate Workflow from Pattern',
+        request: 'POST /workscript/reflection/patterns/generate',
+        body: {
+          patternId: 'etl-pipeline',
+          parameters: {
+            sourceTable: 'customers',
+            targetTable: 'active_customers',
+            filterConditions: [{ field: 'status', operation: 'equals', value: 'active' }],
+            transformations: [{ field: 'fullName', expression: '$.firstName + " " + $.lastName' }]
+          }
+        },
+        expected_outcome: 'Returns complete executable workflow definition following ETL pattern: database(find) -> filter -> editFields(transform) -> database(insert), plus explanation of what was generated'
+      },
+      {
+        scenario: 'Detect Patterns in Existing Workflow',
+        request: 'POST /workscript/reflection/patterns/detect',
+        body: {
+          workflow: {
+            id: 'my-workflow',
+            name: 'My Workflow',
+            version: '1.0.0',
+            initialState: { index: 0 },
+            workflow: [
+              { 'logic...': { operation: 'less', values: ['$.index', 10], 'true?': [{ 'log': { message: 'Processing {{$.index}}' } }, { '$.index': '$.index + 1' }], 'false?': null } }
+            ]
+          }
+        },
+        expected_outcome: 'Returns { detectedPatterns: [{ patternId: "loop-with-counter", confidence: 0.92, matchedNodes: ["logic..."], description: "Counter-based iteration pattern" }], suggestions: [{ patternId: "error-handling", reason: "Consider adding error edges for robustness" }] }'
+      },
+      {
+        scenario: 'Read Node Source Code',
+        request: 'GET /workscript/reflection/source/filter',
+        expected_outcome: 'Returns structured source with: language, content (full TypeScript), path to file, structure (className, methods with signatures, interfaces), highlights (key implementation snippets), and relatedFiles (test file, example file paths)',
+        notes: 'Use GET /reflection/source/:nodeId/raw for plain text TypeScript source. Source extraction is limited to packages/nodes/ for security.'
       }
     ],
 

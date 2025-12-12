@@ -29,14 +29,42 @@ import patternsRoutes from './routes/patterns';
 const reflectionRouter = new Hono();
 
 /**
- * GET /reflection/
+ * GET /reflection/ or GET /reflection
  * Returns an overview of the Reflection API and all available endpoints
  */
-reflectionRouter.get('/', (c) => {
+const apiOverviewHandler = (c: any) => {
   return c.json({
     name: 'Workscript Reflection API',
     version: '1.0.0',
     description: 'Introspection and reflection "consciousness layer" for AI agents to understand and compose workflows',
+    status: 'operational',
+    generatedAt: new Date().toISOString(),
+
+    quickStart: {
+      description: 'Quick examples to get started with the Reflection API',
+      examples: [
+        {
+          task: 'Generate AI system prompt for workflow building',
+          request: 'GET /workscript/reflection/manifest',
+          notes: 'Returns complete system prompt with node documentation'
+        },
+        {
+          task: 'List all available nodes with introspection',
+          request: 'GET /workscript/reflection/nodes',
+          notes: 'Returns 40+ nodes with category, complexity, and usage info'
+        },
+        {
+          task: 'Get suggestions for next node',
+          request: 'POST /workscript/reflection/composability/suggest',
+          notes: 'Pass currentNode, currentEdge, intent to get contextual suggestions'
+        },
+        {
+          task: 'Generate workflow from pattern',
+          request: 'POST /workscript/reflection/patterns/generate',
+          notes: 'Pass patternId and parameters to generate executable workflow'
+        }
+      ]
+    },
 
     endpoints: {
       nodes: {
@@ -117,10 +145,16 @@ reflectionRouter.get('/', (c) => {
     links: {
       documentation: '/workscript/reflection/manifest',
       nodeList: '/workscript/reflection/nodes',
-      patterns: '/workscript/reflection/patterns'
-    }
+      patterns: '/workscript/reflection/patterns',
+      composabilityGraph: '/workscript/reflection/composability/graph'
+    },
+
+    totalEndpoints: 21
   });
-});
+};
+
+// Support both with and without trailing slash
+reflectionRouter.get('/', apiOverviewHandler);
 
 // Mount sub-routers
 reflectionRouter.route('/nodes', nodesRoutes);

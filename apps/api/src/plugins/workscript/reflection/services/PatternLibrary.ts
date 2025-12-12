@@ -976,8 +976,23 @@ export class PatternLibrary {
           });
         }
       } else if (Array.isArray(value)) {
-        for (const item of value) {
-          this.substituteParameters(item, parameters);
+        for (let i = 0; i < value.length; i++) {
+          const item = value[i];
+          if (typeof item === 'string') {
+            // Handle string items in arrays
+            if (item.startsWith('{{') && item.endsWith('}}')) {
+              const paramName = item.slice(2, -2);
+              if (paramName in parameters) {
+                value[i] = parameters[paramName];
+              }
+            } else if (item.includes('{{')) {
+              value[i] = item.replace(/\{\{(\w+)\}\}/g, (_, paramName) => {
+                return paramName in parameters ? String(parameters[paramName]) : `{{${paramName}}}`;
+              });
+            }
+          } else if (typeof item === 'object' && item !== null) {
+            this.substituteParameters(item, parameters);
+          }
         }
       } else if (typeof value === 'object') {
         this.substituteParameters(value, parameters);
