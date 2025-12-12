@@ -281,13 +281,13 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 4.1 Manifest Generator Service
 
-- [ ] **Task 4.1.1: Create ManifestGenerator service**
+- [x] **Task 4.1.1: Create ManifestGenerator service**
   - Create `/apps/api/src/plugins/workscript/reflection/services/ManifestGenerator.ts`
   - Implement singleton pattern with getInstance()
   - Import WorkflowService for node metadata
   - _Requirements: 25_
 
-- [ ] **Task 4.1.2: Implement system prompt generation**
+- [x] **Task 4.1.2: Implement system prompt generation**
   - Add method `generateSystemPrompt(): string`
   - Include introduction: "You are a workflow orchestration expert..."
   - Include node count and category summary
@@ -295,7 +295,7 @@ This document provides a concrete, actionable implementation plan for building t
   - Include edge syntax and loop syntax
   - _Requirements: 8, 25_
 
-- [ ] **Task 4.1.3: Implement quick reference generation**
+- [x] **Task 4.1.3: Implement quick reference generation**
   - Add method `generateQuickReference(): string`
   - Generate markdown formatted reference
   - List nodes by category with brief descriptions
@@ -303,27 +303,27 @@ This document provides a concrete, actionable implementation plan for building t
   - Include common patterns
   - _Requirements: 8, 25_
 
-- [ ] **Task 4.1.4: Implement capabilities map generation**
+- [x] **Task 4.1.4: Implement capabilities map generation**
   - Add method `generateCapabilities(): CapabilitiesMap`
   - Group nodes by category
   - Include description and common patterns for each category
   - Include syntax reference section
   - _Requirements: 8, 25_
 
-- [ ] **Task 4.1.5: Implement token estimation**
+- [x] **Task 4.1.5: Implement token estimation**
   - Add method `estimateTokens(text: string): number`
   - Use approximation: characters / 4
   - Return estimated token count
   - _Requirements: 8_
 
-- [ ] **Task 4.1.6: Implement compact manifest generation**
+- [x] **Task 4.1.6: Implement compact manifest generation**
   - Add method `generateCompactManifest(): AIManifest`
   - Use shorter system prompt
   - Include only node IDs and one-liner descriptions
   - Target ~5000 tokens
   - _Requirements: 9, 25_
 
-- [ ] **Task 4.1.7: Implement custom manifest generation**
+- [x] **Task 4.1.7: Implement custom manifest generation**
   - Add method `generateCustomManifest(options: CustomManifestOptions): AIManifest`
   - Accept: useCase, includeCategories, excludeNodes, maxTokens, format
   - Apply filters to node list
@@ -331,7 +331,7 @@ This document provides a concrete, actionable implementation plan for building t
   - Format output based on format parameter
   - _Requirements: 10, 25_
 
-- [ ] **Task 4.1.8: Implement manifest caching**
+- [x] **Task 4.1.8: Implement manifest caching**
   - Cache full and compact manifests
   - Add TTL of 10 minutes
   - Clear cache on service initialization
@@ -339,26 +339,26 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 4.2 Manifest Routes Implementation
 
-- [ ] **Task 4.2.1: Create manifest routes file**
+- [x] **Task 4.2.1: Create manifest routes file**
   - Create `/apps/api/src/plugins/workscript/reflection/routes/manifest.ts`
   - Import Hono and create router
   - Import ManifestGenerator service
   - Export router as default
   - _Requirements: 8_
 
-- [ ] **Task 4.2.2: Implement GET /manifest endpoint**
+- [x] **Task 4.2.2: Implement GET /manifest endpoint**
   - Add route handler for `GET /`
   - Generate full manifest using ManifestGenerator
   - Return complete AIManifest response
   - _Requirements: 8_
 
-- [ ] **Task 4.2.3: Implement GET /manifest/compact endpoint**
+- [x] **Task 4.2.3: Implement GET /manifest/compact endpoint**
   - Add route handler for `GET /compact`
   - Generate compact manifest
   - Return compressed AIManifest
   - _Requirements: 9_
 
-- [ ] **Task 4.2.4: Implement POST /manifest/custom endpoint**
+- [x] **Task 4.2.4: Implement POST /manifest/custom endpoint**
   - Add route handler for `POST /custom`
   - Parse request body for options
   - Validate options
@@ -366,12 +366,12 @@ This document provides a concrete, actionable implementation plan for building t
   - Return filtered AIManifest
   - _Requirements: 10_
 
-- [ ] **Task 4.2.5: Mount manifest routes in main router**
+- [x] **Task 4.2.5: Mount manifest routes in main router**
   - Import manifestRoutes in index.ts
   - Mount with `router.route('/manifest', manifestRoutes)`
   - _Requirements: 1_
 
-- [ ] **Task 4.2.6: Test manifest endpoints**
+- [x] **Task 4.2.6: Test manifest endpoints**
   - Test GET `/reflection/manifest` returns full manifest
   - Test GET `/reflection/manifest/compact` returns shorter manifest
   - Test POST `/reflection/manifest/custom` with useCase filter
@@ -384,40 +384,40 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 5.1 Workflow Analyzer Service
 
-- [ ] **Task 5.1.1: Create WorkflowAnalyzer service**
+- [x] **Task 5.1.1: Create WorkflowAnalyzer service**
   - Create `/apps/api/src/plugins/workscript/reflection/services/WorkflowAnalyzer.ts`
   - Implement singleton pattern with getInstance()
   - Import workflow types and node metadata
   - _Requirements: 26_
 
-- [ ] **Task 5.1.2: Implement workflow parsing**
+- [x] **Task 5.1.2: Implement workflow parsing**
   - Add method `parseWorkflow(workflow: WorkflowDefinition): ParsedWorkflow`
   - Extract all nodes from workflow array
   - Build execution path graph
   - Identify conditional branches and loops
   - _Requirements: 11, 26_
 
-- [ ] **Task 5.1.3: Implement step explanation generation**
+- [x] **Task 5.1.3: Implement step explanation generation**
   - Add method `explainSteps(parsedWorkflow: ParsedWorkflow): StepExplanation[]`
   - For each node, generate purpose description
   - Identify inputs and outputs
   - Map next steps based on edges
   - _Requirements: 11, 26_
 
-- [ ] **Task 5.1.4: Implement state flow tracing**
+- [x] **Task 5.1.4: Implement state flow tracing**
   - Add method `traceStateFlow(parsedWorkflow: ParsedWorkflow): StateFlowInfo`
   - Track initial state keys
   - Track intermediate state changes at each node
   - Identify final state keys
   - _Requirements: 11, 26_
 
-- [ ] **Task 5.1.5: Implement data transformation tracking**
+- [x] **Task 5.1.5: Implement data transformation tracking**
   - Add method `trackTransformations(parsedWorkflow: ParsedWorkflow): DataTransformation[]`
   - Identify how data flows through nodes
   - Track type changes (array -> filtered array -> sorted array)
   - _Requirements: 11, 26_
 
-- [ ] **Task 5.1.6: Implement complexity calculation**
+- [x] **Task 5.1.6: Implement complexity calculation**
   - Add method `calculateComplexity(parsedWorkflow: ParsedWorkflow): ComplexityMetrics`
   - Count total nodes
   - Calculate max depth
@@ -425,13 +425,13 @@ This document provides a concrete, actionable implementation plan for building t
   - Count loops
   - _Requirements: 11_
 
-- [ ] **Task 5.1.7: Implement summary generation**
+- [x] **Task 5.1.7: Implement summary generation**
   - Add method `generateSummary(analysis: WorkflowAnalysis): string`
   - Generate 1-2 sentence description
   - Include main data flow description
   - _Requirements: 11_
 
-- [ ] **Task 5.1.8: Implement semantic validation**
+- [x] **Task 5.1.8: Implement semantic validation**
   - Add method `validateSemantics(workflow: WorkflowDefinition): SemanticValidation`
   - Check for state keys used before defined
   - Check for unused state writes
@@ -439,7 +439,7 @@ This document provides a concrete, actionable implementation plan for building t
   - Check for unreachable code
   - _Requirements: 12, 26_
 
-- [ ] **Task 5.1.9: Implement optimization detection**
+- [x] **Task 5.1.9: Implement optimization detection**
   - Add method `detectOptimizations(workflow: WorkflowDefinition): Optimization[]`
   - Detect sequential filters that could be combined
   - Detect missing error handlers
@@ -448,7 +448,7 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 5.2 Analysis Routes Implementation
 
-- [ ] **Task 5.2.1: Create analysis routes file**
+- [x] **Task 5.2.1: Create analysis routes file**
   - Create `/apps/api/src/plugins/workscript/reflection/routes/analysis.ts`
   - Import Hono and create router
   - Import WorkflowAnalyzer service
@@ -456,7 +456,7 @@ This document provides a concrete, actionable implementation plan for building t
   - Export router as default
   - _Requirements: 11_
 
-- [ ] **Task 5.2.2: Implement POST /analysis/explain endpoint**
+- [x] **Task 5.2.2: Implement POST /analysis/explain endpoint**
   - Add route handler for `POST /explain`
   - Parse workflow from request body
   - Generate full workflow analysis
@@ -464,21 +464,21 @@ This document provides a concrete, actionable implementation plan for building t
   - Return 400 if workflow invalid
   - _Requirements: 11_
 
-- [ ] **Task 5.2.3: Implement POST /analysis/validate-deep endpoint**
+- [x] **Task 5.2.3: Implement POST /analysis/validate-deep endpoint**
   - Add route handler for `POST /validate-deep`
   - Parse workflow from request body
   - Run semantic validation
   - Return { valid, schemaErrors, semanticIssues, stateConsistency }
   - _Requirements: 12_
 
-- [ ] **Task 5.2.4: Implement POST /analysis/optimize endpoint**
+- [x] **Task 5.2.4: Implement POST /analysis/optimize endpoint**
   - Add route handler for `POST /optimize`
   - Parse workflow from request body
   - Run optimization detection
   - Return { suggestions: Optimization[] }
   - _Requirements: 13_
 
-- [ ] **Task 5.2.5: Implement GET /analysis/:workflowId endpoint**
+- [x] **Task 5.2.5: Implement GET /analysis/:workflowId endpoint**
   - Add route handler for `GET /:workflowId`
   - Apply authentication middleware
   - Query workflow from database
@@ -487,12 +487,12 @@ This document provides a concrete, actionable implementation plan for building t
   - Return WorkflowAnalysis
   - _Requirements: 14_
 
-- [ ] **Task 5.2.6: Mount analysis routes in main router**
+- [x] **Task 5.2.6: Mount analysis routes in main router**
   - Import analysisRoutes in index.ts
   - Mount with `router.route('/analysis', analysisRoutes)`
   - _Requirements: 1_
 
-- [ ] **Task 5.2.7: Test analysis endpoints**
+- [x] **Task 5.2.7: Test analysis endpoints**
   - Test POST `/reflection/analysis/explain` with valid workflow
   - Test POST `/reflection/analysis/validate-deep` detects issues
   - Test POST `/reflection/analysis/optimize` returns suggestions

@@ -21,3 +21,15 @@ export {
   SourceExtractor,
   getSourceExtractor,
 } from './SourceExtractor';
+
+// Manifest generation service
+export {
+  ManifestGenerator,
+  getManifestGenerator,
+} from './ManifestGenerator';
+
+// Workflow analysis service
+export {
+  WorkflowAnalyzer,
+  getWorkflowAnalyzer,
+} from './WorkflowAnalyzer';
