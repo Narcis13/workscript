@@ -505,92 +505,92 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 6.1 Composability Graph Service
 
-- [ ] **Task 6.1.1: Create ComposabilityGraph service**
+- [x] **Task 6.1.1: Create ComposabilityGraph service**
   - Create `/apps/api/src/plugins/workscript/reflection/services/ComposabilityGraph.ts`
   - Implement singleton pattern with getInstance()
   - Import WorkflowService for node metadata
   - _Requirements: 27_
 
-- [ ] **Task 6.1.2: Implement graph building**
+- [x] **Task 6.1.2: Implement graph building**
   - Add method `buildGraph(): void`
   - For each node, extract post_to_state keys
   - For each node, extract get_from_state keys
   - Build connections map
   - _Requirements: 15, 27_
 
-- [ ] **Task 6.1.3: Implement state key map building**
+- [x] **Task 6.1.3: Implement state key map building**
   - Add method `buildStateKeyMap(): Map<string, StateKeyUsage>`
   - Track which nodes write each state key
   - Track which nodes read each state key
   - _Requirements: 15, 27_
 
-- [ ] **Task 6.1.4: Implement successor suggestion**
+- [x] **Task 6.1.4: Implement successor suggestion**
   - Add method `getSuggestedSuccessors(nodeId: string, edge: string): NodeSuggestion[]`
   - Find nodes that read state keys this node writes
   - Include reason and common config
   - _Requirements: 16, 27_
 
-- [ ] **Task 6.1.5: Implement predecessor suggestion**
+- [x] **Task 6.1.5: Implement predecessor suggestion**
   - Add method `getSuggestedPredecessors(nodeId: string): NodeSuggestion[]`
   - Find nodes that write state keys this node reads
   - Include edge, reason, and connectsVia
   - _Requirements: 17, 27_
 
-- [ ] **Task 6.1.6: Implement context-aware suggestion**
+- [x] **Task 6.1.6: Implement context-aware suggestion**
   - Add method `suggestNext(context: SuggestionContext): NodeSuggestion[]`
   - Accept currentNode, currentEdge, currentState, intent
   - Calculate confidence based on compatibility
   - Match intent to node purposes
   - _Requirements: 18, 27_
 
-- [ ] **Task 6.1.7: Implement graph caching**
+- [x] **Task 6.1.7: Implement graph caching**
   - Cache built graph on first access
   - Rebuild when node registry changes
   - _Requirements: 29_
 
 ### 6.2 Composability Routes Implementation
 
-- [ ] **Task 6.2.1: Create composability routes file**
+- [x] **Task 6.2.1: Create composability routes file**
   - Create `/apps/api/src/plugins/workscript/reflection/routes/composability.ts`
   - Import Hono and create router
   - Import ComposabilityGraph service
   - Export router as default
   - _Requirements: 15_
 
-- [ ] **Task 6.2.2: Implement GET /composability/graph endpoint**
+- [x] **Task 6.2.2: Implement GET /composability/graph endpoint**
   - Add route handler for `GET /graph`
   - Return full composability matrix
   - Include nodes with connections
   - Include stateKeyMap
   - _Requirements: 15_
 
-- [ ] **Task 6.2.3: Implement GET /composability/from/:nodeId endpoint**
+- [x] **Task 6.2.3: Implement GET /composability/from/:nodeId endpoint**
   - Add route handler for `GET /from/:nodeId`
   - Return possible successors for each edge
   - Include provides and suggestedNext
   - Return 404 if node not found
   - _Requirements: 16_
 
-- [ ] **Task 6.2.4: Implement GET /composability/to/:nodeId endpoint**
+- [x] **Task 6.2.4: Implement GET /composability/to/:nodeId endpoint**
   - Add route handler for `GET /to/:nodeId`
   - Return possible predecessors
   - Include requires and suggestedPredecessors
   - Return 404 if node not found
   - _Requirements: 17_
 
-- [ ] **Task 6.2.5: Implement POST /composability/suggest endpoint**
+- [x] **Task 6.2.5: Implement POST /composability/suggest endpoint**
   - Add route handler for `POST /suggest`
   - Parse context from request body
   - Generate contextual suggestions
   - Return sorted by confidence
   - _Requirements: 18_
 
-- [ ] **Task 6.2.6: Mount composability routes in main router**
+- [x] **Task 6.2.6: Mount composability routes in main router**
   - Import composabilityRoutes in index.ts
   - Mount with `router.route('/composability', composabilityRoutes)`
   - _Requirements: 1_
 
-- [ ] **Task 6.2.7: Test composability endpoints**
+- [x] **Task 6.2.7: Test composability endpoints**
   - Test GET `/reflection/composability/graph` returns full matrix
   - Test GET `/reflection/composability/from/filter` returns successors
   - Test GET `/reflection/composability/to/sort` returns predecessors
@@ -603,56 +603,56 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 7.1 Pattern Library Service
 
-- [ ] **Task 7.1.1: Create PatternLibrary service**
+- [x] **Task 7.1.1: Create PatternLibrary service**
   - Create `/apps/api/src/plugins/workscript/reflection/services/PatternLibrary.ts`
   - Implement singleton pattern with getInstance()
   - Define internal patterns array
   - _Requirements: 28_
 
-- [ ] **Task 7.1.2: Define ETL Pipeline pattern**
+- [x] **Task 7.1.2: Define ETL Pipeline pattern**
   - Add pattern with id: 'etl-pipeline'
   - Define stages: extract, transform, load
   - Create template workflow with database/fetchApi -> filter/transform -> database
   - Include variations: with-validation, with-deduplication
   - _Requirements: 19, 28_
 
-- [ ] **Task 7.1.3: Define Conditional Branching pattern**
+- [x] **Task 7.1.3: Define Conditional Branching pattern**
   - Add pattern with id: 'conditional-branching'
   - Define structure with logic node entry
   - Create template with true/false branches
   - _Requirements: 19, 28_
 
-- [ ] **Task 7.1.4: Define Loop with Counter pattern**
+- [x] **Task 7.1.4: Define Loop with Counter pattern**
   - Add pattern with id: 'loop-with-counter'
   - Define structure with logic... loop node
   - Include counter initialization and increment
   - _Requirements: 19, 28_
 
-- [ ] **Task 7.1.5: Define AI Processing Pipeline pattern**
+- [x] **Task 7.1.5: Define AI Processing Pipeline pattern**
   - Add pattern with id: 'ai-processing-pipeline'
   - Define stages: prepare, ai-call, process-response, store
   - Create template with editFields -> ask-ai -> jsonExtract -> database
   - _Requirements: 19, 28_
 
-- [ ] **Task 7.1.6: Define Error Handling pattern**
+- [x] **Task 7.1.6: Define Error Handling pattern**
   - Add pattern with id: 'error-handling'
   - Define structure with error edges
   - Show try/catch via edge routing
   - _Requirements: 19, 28_
 
-- [ ] **Task 7.1.7: Define Parallel Processing pattern**
+- [x] **Task 7.1.7: Define Parallel Processing pattern**
   - Add pattern with id: 'parallel-processing'
   - Define structure with splitOut -> process -> aggregate
   - _Requirements: 19, 28_
 
-- [ ] **Task 7.1.8: Implement pattern detection**
+- [x] **Task 7.1.8: Implement pattern detection**
   - Add method `detectPatterns(workflow: WorkflowDefinition): DetectedPattern[]`
   - Match workflow structure against pattern definitions
   - Calculate confidence scores
   - Identify matched nodes
   - _Requirements: 21, 28_
 
-- [ ] **Task 7.1.9: Implement workflow generation from pattern**
+- [x] **Task 7.1.9: Implement workflow generation from pattern**
   - Add method `generateFromPattern(patternId: string, parameters: object): WorkflowDefinition`
   - Substitute variables in template
   - Validate required parameters
@@ -661,34 +661,34 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 7.2 Pattern Routes Implementation
 
-- [ ] **Task 7.2.1: Create patterns routes file**
+- [x] **Task 7.2.1: Create patterns routes file**
   - Create `/apps/api/src/plugins/workscript/reflection/routes/patterns.ts`
   - Import Hono and create router
   - Import PatternLibrary service
   - Export router as default
   - _Requirements: 19_
 
-- [ ] **Task 7.2.2: Implement GET /patterns endpoint**
+- [x] **Task 7.2.2: Implement GET /patterns endpoint**
   - Add route handler for `GET /`
   - Return all patterns with summary info
   - Support category filter query param
   - _Requirements: 19_
 
-- [ ] **Task 7.2.3: Implement GET /patterns/:patternId endpoint**
+- [x] **Task 7.2.3: Implement GET /patterns/:patternId endpoint**
   - Add route handler for `GET /:patternId`
   - Return complete pattern details
   - Include full template
   - Return 404 if not found
   - _Requirements: 20_
 
-- [ ] **Task 7.2.4: Implement POST /patterns/detect endpoint**
+- [x] **Task 7.2.4: Implement POST /patterns/detect endpoint**
   - Add route handler for `POST /detect`
   - Parse workflow from request body
   - Run pattern detection
   - Return { detectedPatterns, suggestions }
   - _Requirements: 21_
 
-- [ ] **Task 7.2.5: Implement POST /patterns/generate endpoint**
+- [x] **Task 7.2.5: Implement POST /patterns/generate endpoint**
   - Add route handler for `POST /generate`
   - Parse patternId and parameters from body
   - Generate workflow from pattern
@@ -697,7 +697,7 @@ This document provides a concrete, actionable implementation plan for building t
   - Return 404 if pattern not found
   - _Requirements: 22_
 
-- [ ] **Task 7.2.6: Mount patterns routes in main router**
+- [x] **Task 7.2.6: Mount patterns routes in main router**
   - Import patternsRoutes in index.ts
   - Mount with `router.route('/patterns', patternsRoutes)`
   - _Requirements: 1_

@@ -33,3 +33,15 @@ export {
   WorkflowAnalyzer,
   getWorkflowAnalyzer,
 } from './WorkflowAnalyzer';
+
+// Composability graph service
+export {
+  ComposabilityGraph,
+  getComposabilityGraph,
+} from './ComposabilityGraph';
+
+// Pattern library service
+export {
+  PatternLibrary,
+  getPatternLibrary,
+} from './PatternLibrary';
