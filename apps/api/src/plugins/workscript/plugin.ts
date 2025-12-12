@@ -5,6 +5,7 @@ import automationRoutes from './automations';
 import executionRoutes from './executions';
 import nodeRoutes from './nodes';
 import resourceRoutes from './resources';
+import reflectionRoutes from './reflection';
 import { WorkflowService } from './services/WorkflowService';
 import { CronScheduler, type AutomationExecutionContext } from '../../shared-services/scheduler';
 import { AutomationRepository } from './repositories/automationRepository';
@@ -25,7 +26,8 @@ router.get('/', (c) => c.json({
     '/workscript/automations/*',
     '/workscript/executions/*',
     '/workscript/nodes/*',
-    '/workscript/resources/*'
+    '/workscript/resources/*',
+    '/workscript/reflection/*'
   ]
 }));
 
@@ -35,6 +37,7 @@ router.route('/automations', automationRoutes);
 router.route('/executions', executionRoutes);
 router.route('/nodes', nodeRoutes);
 router.route('/resources', resourceRoutes);
+router.route('/reflection', reflectionRoutes);
 
 /**
  * Workscript Plugin Definition
@@ -600,6 +603,192 @@ const plugin: SaaSPlugin = {
               404: 'Source RESOURCE_NOT_FOUND',
               409: 'Target path already exists'
             }
+          }
+        ]
+      },
+
+      // ============= REFLECTION =============
+      reflection: {
+        description: 'Reflection API - introspection and "consciousness layer" for AI agents to understand and compose workflows',
+        routes: [
+          {
+            path: '/workscript/reflection/',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get API overview and available endpoints'
+          },
+          {
+            path: '/workscript/reflection/nodes',
+            method: 'GET',
+            auth: 'None',
+            description: 'List all nodes with deep introspection data (category, complexity, inputSchema, edgeConditions, stateInteractions)',
+            query: {
+              category: 'string (optional) - Filter by category: core|ai|orchestration|data-manipulation|server|integrations',
+              search: 'string (optional) - Search nodes by name or description'
+            },
+            response: '{ nodes: ReflectionNodeInfo[], metadata: { totalNodes, byCategory } }'
+          },
+          {
+            path: '/workscript/reflection/nodes/:nodeId',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get complete introspection for a specific node',
+            response: 'ReflectionNodeInfo'
+          },
+          {
+            path: '/workscript/reflection/nodes/:nodeId/operations',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get available operations for operation-based nodes (filter, switch, etc.)',
+            response: '{ nodeId, operations: { string: [], number: [], boolean: [], date: [], array: [], object: [] } }'
+          },
+          {
+            path: '/workscript/reflection/nodes/:nodeId/examples',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get usage examples for a node',
+            response: '{ nodeId, examples: [], exampleWorkflow?: WorkflowDefinition }'
+          },
+          {
+            path: '/workscript/reflection/source/:nodeId',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get structured source code with parsed class info, methods, and interfaces',
+            response: '{ language: "typescript", content, path, structure, highlights, relatedFiles }'
+          },
+          {
+            path: '/workscript/reflection/source/:nodeId/raw',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get raw TypeScript source code (text/plain)',
+            response: 'Raw TypeScript source'
+          },
+          {
+            path: '/workscript/reflection/manifest',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get full AI manifest with system prompt, quick reference, and capabilities',
+            response: 'AIManifest'
+          },
+          {
+            path: '/workscript/reflection/manifest/compact',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get compressed manifest for smaller context windows (~5000 tokens)',
+            response: 'CompactManifest'
+          },
+          {
+            path: '/workscript/reflection/manifest/custom',
+            method: 'POST',
+            auth: 'None',
+            description: 'Generate filtered manifest for specific use cases',
+            body: {
+              useCase: '"data-pipeline"|"ai-workflow"|"integration"|"full" (optional)',
+              includeCategories: 'string[] (optional)',
+              excludeNodes: 'string[] (optional)',
+              maxTokens: 'number (optional)',
+              format: '"markdown"|"json"|"structured" (optional)'
+            },
+            response: 'AIManifest'
+          },
+          {
+            path: '/workscript/reflection/analysis/explain',
+            method: 'POST',
+            auth: 'None',
+            description: 'Get detailed workflow explanation with step-by-step analysis',
+            body: { workflow: 'WorkflowDefinition' },
+            response: 'WorkflowAnalysis'
+          },
+          {
+            path: '/workscript/reflection/analysis/validate-deep',
+            method: 'POST',
+            auth: 'None',
+            description: 'Perform semantic validation beyond JSON schema',
+            body: { workflow: 'WorkflowDefinition' },
+            response: '{ valid, schemaErrors, semanticIssues, stateConsistency }'
+          },
+          {
+            path: '/workscript/reflection/analysis/optimize',
+            method: 'POST',
+            auth: 'None',
+            description: 'Get optimization suggestions for a workflow',
+            body: { workflow: 'WorkflowDefinition' },
+            response: '{ suggestions: OptimizationSuggestion[] }'
+          },
+          {
+            path: '/workscript/reflection/analysis/:workflowId',
+            method: 'GET',
+            auth: 'Required (JWT)',
+            description: 'Analyze a stored workflow by ID',
+            response: 'WorkflowAnalysis'
+          },
+          {
+            path: '/workscript/reflection/composability/graph',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get full node compatibility matrix',
+            response: 'ComposabilityGraph'
+          },
+          {
+            path: '/workscript/reflection/composability/from/:nodeId',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get possible successors for a node',
+            response: 'SuccessorsResponse'
+          },
+          {
+            path: '/workscript/reflection/composability/to/:nodeId',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get possible predecessors for a node',
+            response: 'PredecessorsResponse'
+          },
+          {
+            path: '/workscript/reflection/composability/suggest',
+            method: 'POST',
+            auth: 'None',
+            description: 'Get context-aware node suggestions',
+            body: {
+              currentNode: 'string',
+              currentEdge: 'string',
+              currentState: 'object',
+              intent: 'string (optional)'
+            },
+            response: '{ suggestions: NodeSuggestion[] }'
+          },
+          {
+            path: '/workscript/reflection/patterns',
+            method: 'GET',
+            auth: 'None',
+            description: 'List all recognized workflow patterns',
+            query: { category: 'string (optional)' },
+            response: 'Pattern[]'
+          },
+          {
+            path: '/workscript/reflection/patterns/:patternId',
+            method: 'GET',
+            auth: 'None',
+            description: 'Get complete pattern details with template',
+            response: 'Pattern'
+          },
+          {
+            path: '/workscript/reflection/patterns/detect',
+            method: 'POST',
+            auth: 'None',
+            description: 'Detect patterns in a workflow',
+            body: { workflow: 'WorkflowDefinition' },
+            response: 'PatternDetectionResponse'
+          },
+          {
+            path: '/workscript/reflection/patterns/generate',
+            method: 'POST',
+            auth: 'None',
+            description: 'Generate workflow from pattern template',
+            body: {
+              patternId: 'string',
+              parameters: 'object'
+            },
+            response: 'PatternGenerationResponse'
           }
         ]
       }
