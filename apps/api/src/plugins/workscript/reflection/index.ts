@@ -17,6 +17,10 @@
 import { Hono } from 'hono';
 import type { NodeCategory } from './types/reflection.types';
 
+// Import sub-routers
+import nodesRoutes from './routes/nodes';
+import sourceRoutes from './routes/source';
+
 // Create the main reflection router
 const reflectionRouter = new Hono();
 
@@ -114,9 +118,11 @@ reflectionRouter.get('/', (c) => {
   });
 });
 
-// Sub-routers will be mounted here as they are implemented:
-// - router.route('/nodes', nodesRoutes);
-// - router.route('/source', sourceRoutes);
+// Mount sub-routers
+reflectionRouter.route('/nodes', nodesRoutes);
+reflectionRouter.route('/source', sourceRoutes);
+
+// Sub-routers to be mounted as they are implemented:
 // - router.route('/manifest', manifestRoutes);
 // - router.route('/analysis', analysisRoutes);
 // - router.route('/composability', composabilityRoutes);

@@ -95,46 +95,46 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 2.1 Node Introspection Service
 
-- [ ] **Task 2.1.1: Create node categorization mapping**
+- [x] **Task 2.1.1: Create node categorization mapping**
   - Create `/apps/api/src/plugins/workscript/reflection/services/nodeCategories.ts`
   - Define NODE_CATEGORIES map: nodeId -> category
   - Include all 40 nodes with correct categories
   - _Requirements: 2_
 
-- [ ] **Task 2.1.2: Create SourceExtractor service skeleton**
+- [x] **Task 2.1.2: Create SourceExtractor service skeleton**
   - Create `/apps/api/src/plugins/workscript/reflection/services/SourceExtractor.ts`
   - Implement singleton pattern with getInstance()
   - Add private nodePathMap for nodeId -> file path mapping
   - _Requirements: 24_
 
-- [ ] **Task 2.1.3: Implement node path resolution**
+- [x] **Task 2.1.3: Implement node path resolution**
   - Add method `resolveNodePath(nodeId: string): string | null`
   - Map core nodes to `/packages/nodes/src/{NodeName}Node.ts`
   - Map data nodes to `/packages/nodes/src/data/{NodeName}Node.ts`
   - Map custom nodes to appropriate paths
   - _Requirements: 24_
 
-- [ ] **Task 2.1.4: Implement source file reading**
+- [x] **Task 2.1.4: Implement source file reading**
   - Add method `readNodeSource(nodeId: string): Promise<string | null>`
   - Use fs.readFile to read TypeScript source
   - Handle file not found errors
   - _Requirements: 24_
 
-- [ ] **Task 2.1.5: Implement basic TypeScript parsing**
+- [x] **Task 2.1.5: Implement basic TypeScript parsing**
   - Add method `parseStructure(source: string): ParsedStructure`
   - Extract class name using regex: `/class\s+(\w+)\s+extends/`
   - Extract method signatures using regex
   - Extract interface definitions
   - _Requirements: 24_
 
-- [ ] **Task 2.1.6: Implement related files detection**
+- [x] **Task 2.1.6: Implement related files detection**
   - Add method `findRelatedFiles(nodeId: string): RelatedFiles`
   - Check for `.test.ts` file existence
   - Check for `.example.json` file existence
   - Return { testFile, exampleFile } paths or null
   - _Requirements: 24_
 
-- [ ] **Task 2.1.7: Implement source caching**
+- [x] **Task 2.1.7: Implement source caching**
   - Add private cache Map<string, CachedSource>
   - Cache source content with timestamp
   - Add TTL of 5 minutes for development
@@ -142,32 +142,32 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 2.2 Node Introspection Utilities
 
-- [ ] **Task 2.2.1: Create introspection builder utility**
+- [x] **Task 2.2.1: Create introspection builder utility**
   - Create `/apps/api/src/plugins/workscript/reflection/services/introspectionBuilder.ts`
   - Add function `buildInputSchema(metadata: NodeMetadata): Record<string, InputSchemaEntry>`
   - Parse ai_hints.example_config to extract type information
   - _Requirements: 2, 3_
 
-- [ ] **Task 2.2.2: Implement edge conditions builder**
+- [x] **Task 2.2.2: Implement edge conditions builder**
   - Add function `buildEdgeConditions(metadata: NodeMetadata): Record<string, EdgeConditionInfo>`
   - Parse ai_hints.expected_edges and ai_hints.post_to_state
   - Generate human-readable condition descriptions
   - _Requirements: 2, 3_
 
-- [ ] **Task 2.2.3: Implement state interactions builder**
+- [x] **Task 2.2.3: Implement state interactions builder**
   - Add function `buildStateInteractions(metadata: NodeMetadata): StateInteractionInfo`
   - Extract reads from ai_hints.get_from_state
   - Extract writes from ai_hints.post_to_state
   - Build writeSchema from example_config when possible
   - _Requirements: 2, 3_
 
-- [ ] **Task 2.2.4: Implement complexity calculator**
+- [x] **Task 2.2.4: Implement complexity calculator**
   - Add function `calculateComplexity(source: string): ComplexityLevel`
   - Count lines: < 100 = simple, 100-300 = medium, > 300 = complex
   - Return complexity level
   - _Requirements: 2_
 
-- [ ] **Task 2.2.5: Implement operations extractor**
+- [x] **Task 2.2.5: Implement operations extractor**
   - Add function `extractOperations(nodeId: string, source: string): Record<string, OperationInfo[]> | undefined`
   - Parse FilterNode for string/number/boolean/date/array/object operations
   - Parse SwitchNode for comparison operations
@@ -176,14 +176,14 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 2.3 Nodes Routes Implementation
 
-- [ ] **Task 2.3.1: Create nodes routes file**
+- [x] **Task 2.3.1: Create nodes routes file**
   - Create `/apps/api/src/plugins/workscript/reflection/routes/nodes.ts`
   - Import Hono and create router
   - Import WorkflowService and SourceExtractor
   - Export router as default
   - _Requirements: 2_
 
-- [ ] **Task 2.3.2: Implement GET /nodes endpoint**
+- [x] **Task 2.3.2: Implement GET /nodes endpoint**
   - Add route handler for `GET /`
   - Get all nodes from WorkflowService.getAvailableNodes()
   - Enrich each node with introspection data
@@ -191,7 +191,7 @@ This document provides a concrete, actionable implementation plan for building t
   - Return { nodes: ReflectionNodeInfo[], metadata: { totalNodes, byCategory } }
   - _Requirements: 2_
 
-- [ ] **Task 2.3.3: Implement GET /nodes/:nodeId endpoint**
+- [x] **Task 2.3.3: Implement GET /nodes/:nodeId endpoint**
   - Add route handler for `GET /:nodeId`
   - Get single node metadata from WorkflowService
   - Build full introspection data
@@ -199,14 +199,14 @@ This document provides a concrete, actionable implementation plan for building t
   - Return complete ReflectionNodeInfo
   - _Requirements: 3_
 
-- [ ] **Task 2.3.4: Implement GET /nodes/:nodeId/operations endpoint**
+- [x] **Task 2.3.4: Implement GET /nodes/:nodeId/operations endpoint**
   - Add route handler for `GET /:nodeId/operations`
   - Extract operations from node source
   - Return grouped operations with descriptions and examples
   - Return empty object if no operations
   - _Requirements: 4_
 
-- [ ] **Task 2.3.5: Implement GET /nodes/:nodeId/examples endpoint**
+- [x] **Task 2.3.5: Implement GET /nodes/:nodeId/examples endpoint**
   - Add route handler for `GET /:nodeId/examples`
   - Check for .example.json file
   - Parse and return example workflow if exists
@@ -214,12 +214,12 @@ This document provides a concrete, actionable implementation plan for building t
   - Return { examples: [], exampleWorkflow?: {} }
   - _Requirements: 5_
 
-- [ ] **Task 2.3.6: Mount nodes routes in main router**
+- [x] **Task 2.3.6: Mount nodes routes in main router**
   - Import nodesRoutes in index.ts
   - Mount with `router.route('/nodes', nodesRoutes)`
   - _Requirements: 1_
 
-- [ ] **Task 2.3.7: Test nodes endpoints**
+- [x] **Task 2.3.7: Test nodes endpoints**
   - Test GET `/reflection/nodes` returns all nodes
   - Test GET `/reflection/nodes/filter` returns FilterNode details
   - Test GET `/reflection/nodes/filter/operations` returns filter operations
@@ -232,14 +232,14 @@ This document provides a concrete, actionable implementation plan for building t
 
 ### 3.1 Source Routes Implementation
 
-- [ ] **Task 3.1.1: Create source routes file**
+- [x] **Task 3.1.1: Create source routes file**
   - Create `/apps/api/src/plugins/workscript/reflection/routes/source.ts`
   - Import Hono and create router
   - Import SourceExtractor service
   - Export router as default
   - _Requirements: 6_
 
-- [ ] **Task 3.1.2: Implement GET /source/:nodeId endpoint**
+- [x] **Task 3.1.2: Implement GET /source/:nodeId endpoint**
   - Add route handler for `GET /:nodeId`
   - Read source using SourceExtractor
   - Parse structure (class, methods, interfaces)
@@ -248,14 +248,14 @@ This document provides a concrete, actionable implementation plan for building t
   - Return 404 if node not found
   - _Requirements: 6_
 
-- [ ] **Task 3.1.3: Implement source highlights extraction**
+- [x] **Task 3.1.3: Implement source highlights extraction**
   - Add function to identify key code snippets
   - Extract execute method
   - Extract helper methods with significant logic
   - Include in response under highlights field
   - _Requirements: 6_
 
-- [ ] **Task 3.1.4: Implement GET /source/:nodeId/raw endpoint**
+- [x] **Task 3.1.4: Implement GET /source/:nodeId/raw endpoint**
   - Add route handler for `GET /:nodeId/raw`
   - Read raw source file
   - Set Content-Type: text/plain
@@ -263,12 +263,12 @@ This document provides a concrete, actionable implementation plan for building t
   - Return 404 with plain text if not found
   - _Requirements: 7_
 
-- [ ] **Task 3.1.5: Mount source routes in main router**
+- [x] **Task 3.1.5: Mount source routes in main router**
   - Import sourceRoutes in index.ts
   - Mount with `router.route('/source', sourceRoutes)`
   - _Requirements: 1_
 
-- [ ] **Task 3.1.6: Test source endpoints**
+- [x] **Task 3.1.6: Test source endpoints**
   - Test GET `/reflection/source/filter` returns structured source
   - Test GET `/reflection/source/filter/raw` returns plain text
   - Test GET `/reflection/source/nonexistent` returns 404

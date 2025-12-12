@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "dompurify": "^3.3.0",
+    "googleapis": "^168.0.0",
     "ws": "^8.18.3"
   }
 }
