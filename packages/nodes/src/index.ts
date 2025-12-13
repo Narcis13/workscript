@@ -47,6 +47,7 @@ export { LimitNode } from './data/LimitNode.js';
 export { ArrayUtilitiesNode } from './data/ArrayUtilitiesNode.js';
 export { EveryArrayItemNode } from './data/EveryArrayItemNode.js';
 export { RangeNode } from './data/RangeNode.js';
+export { WhileNode } from './data/WhileNode.js';
 
 // Data transformation
 export { EditFieldsNode } from './data/EditFieldsNode.js';
@@ -60,6 +61,12 @@ export { ExtractTextNode } from './data/ExtractTextNode.js';
 
 // HTTP/API operations
 export { FetchApiNode } from './data/FetchApiNode.js';
+
+// Resource operations
+export { ResourceReadNode } from './data/ResourceReadNode.js';
+export { ResourceWriteNode } from './data/ResourceWriteNode.js';
+export { ResourceInterpolateNode } from './data/ResourceInterpolateNode.js';
+export { ResourceListNode } from './data/ResourceListNode.js';
 
 // Filtering and comparison
 export { FilterNode } from './data/FilterNode.js';
@@ -128,6 +135,7 @@ import { LimitNode } from './data/LimitNode.js';
 import { ArrayUtilitiesNode } from './data/ArrayUtilitiesNode.js';
 import { EveryArrayItemNode } from './data/EveryArrayItemNode.js';
 import { RangeNode } from './data/RangeNode.js';
+import { WhileNode } from './data/WhileNode.js';
 import { EditFieldsNode } from './data/EditFieldsNode.js';
 import { SummarizeNode } from './data/SummarizeNode.js';
 import { TransformObjectNode } from './data/TransformObjectNode.js';
@@ -135,6 +143,10 @@ import { JSONExtractNode } from './data/JSONExtractNode.js';
 import { StringOperationsNode } from './data/StringOperationsNode.js';
 import { ExtractTextNode } from './data/ExtractTextNode.js';
 import { FetchApiNode } from './data/FetchApiNode.js';
+import { ResourceReadNode } from './data/ResourceReadNode.js';
+import { ResourceWriteNode } from './data/ResourceWriteNode.js';
+import { ResourceInterpolateNode } from './data/ResourceInterpolateNode.js';
+import { ResourceListNode } from './data/ResourceListNode.js';
 import { FilterNode } from './data/FilterNode.js';
 import { CompareDatasetsNode } from './data/CompareDatasetsNode.js';
 import { SwitchNode } from './data/SwitchNode.js';
@@ -171,11 +183,11 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * - Core nodes (6): Math, Logic, DataTransform, Empty, Log, StateSetter
  * - AI nodes (1): AskAI
  * - Workflow orchestration nodes (1): RunWorkflow
- * - Data manipulation nodes (23): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, FetchApi, etc.
+ * - Data manipulation nodes (28): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, While, FetchApi, Resource (4), etc.
  * - Server nodes (3): FileSystem, Database, Auth
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 40 nodes
+ * Total: 45 nodes
  *
  * @example
  * ```typescript
@@ -209,7 +221,7 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   RunWorkflowNode,
 
   // ============================================================================
-  // DATA MANIPULATION NODES (23)
+  // DATA MANIPULATION NODES (27)
   // ============================================================================
 
   // Array operations
@@ -221,6 +233,7 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   ArrayUtilitiesNode,
   EveryArrayItemNode,
   RangeNode,
+  WhileNode,
 
   // Data transformation
   EditFieldsNode,
@@ -234,6 +247,12 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
 
   // HTTP/API operations
   FetchApiNode,
+
+  // Resource operations (4)
+  ResourceReadNode,
+  ResourceWriteNode,
+  ResourceInterpolateNode,
+  ResourceListNode,
 
   // Filtering and comparison
   FilterNode,
@@ -292,7 +311,7 @@ export function getNodeCount() {
     core: 6,
     ai: 1,
     workflowOrchestration: 1,
-    dataManipulation: 23,
+    dataManipulation: 28,  // Includes 4 Resource nodes and While loop
     server: 3,
     customIntegrations: 6,
     total: ALL_NODES.length,

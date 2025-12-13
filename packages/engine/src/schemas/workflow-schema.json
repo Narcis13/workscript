@@ -107,6 +107,10 @@
     "edgeRoute": {
       "oneOf": [
         {
+          "type": "null",
+          "description": "Null terminates execution path (exits loops, ends workflow branch)"
+        },
+        {
           "type": "string",
           "pattern": "^([a-zA-Z0-9_-]+(\\.\\.\\.)?|\\$\\.[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*)$",
           "description": "Direct reference to a node ID (supports state setter syntax with $. prefix)"
