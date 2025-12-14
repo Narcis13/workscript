@@ -2,6 +2,7 @@ import { ExecutionEngine, StateManager, WorkflowParser, NodeRegistry, HookManage
 import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@workscript/engine';
 import { ALL_NODES } from '@workscript/nodes';
 import { BunWebSocketManager } from '../../../shared-services/websocket';
+import { JWTManager } from '../../../shared-services/auth';
 
 /**
  * Workscript Plugin - Workflow Service
@@ -228,10 +229,21 @@ export class WorkflowService {
     // Parse and validate workflow
     const parsedWorkflow = this.parser.parse(workflowDefinition);
 
-    // Inject initial state if provided
-    if (initialState && Object.keys(initialState).length > 0) {
-      (parsedWorkflow as any).initialState = initialState;
-    }
+    // Always generate a service token for workflow execution
+    // This ensures nodes can call internal APIs even if user JWT has expired
+    // Service tokens are non-expiring and have full API permissions
+    const jwtManager = JWTManager.getInstance();
+    const serviceToken = await jwtManager.generateServiceToken();
+
+    // Build initial state with service token (overrides any user JWT)
+    const stateToUse = {
+      ...(initialState || {}),
+      JWT_token: serviceToken
+    };
+    console.log('🔑 Injected service token for workflow execution');
+
+    // Inject initial state into parsed workflow
+    (parsedWorkflow as any).initialState = stateToUse;
 
     // Execute workflow
     return await this.executionEngine.execute(parsedWorkflow);

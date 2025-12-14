@@ -232,15 +232,16 @@ export class GoogleConnectNode extends WorkflowNode {
                     accountEmail: string;
                     accountName?: string;
                     isActive: boolean;
+                    createdAt: string | Date;
                 }>;
             };
 
-            // Find connection matching the email
-            const connection = data.connections.find(
+            // Find ALL connections matching the email
+            const matchingConnections = data.connections.filter(
                 (conn) => conn.accountEmail?.toLowerCase() === email.toLowerCase()
             );
 
-            if (!connection) {
+            if (matchingConnections.length === 0) {
                 context.state.lastGmailConnectError = { email, timestamp: Date.now() };
                 return {
                     error: () => ({
@@ -250,6 +251,20 @@ export class GoogleConnectNode extends WorkflowNode {
                     })
                 };
             }
+
+            // Sort connections: prefer active ones first, then by newest creation date
+            matchingConnections.sort((a, b) => {
+                // Active connections come first
+                if (a.isActive && !b.isActive) return -1;
+                if (!a.isActive && b.isActive) return 1;
+                // Among same status, prefer newest (by createdAt descending)
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA;
+            });
+
+            // Pick the best connection (active + newest)
+            const connection = matchingConnections[0];
 
             if (!connection.isActive) {
                 return {

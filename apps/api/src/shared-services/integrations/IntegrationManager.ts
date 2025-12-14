@@ -598,6 +598,23 @@ export class IntegrationManager {
         return updated;
       }
 
+      // Before creating a new connection, clean up old inactive connections
+      // for the same email (fixes duplicate connections from reconnect flows)
+      if (profile.email) {
+        const oldConnections = await this.repository.findByAccountEmail(
+          profile.email,
+          providerId
+        );
+
+        // Delete inactive connections for the same email
+        for (const oldConn of oldConnections) {
+          if (!oldConn.isActive) {
+            console.log(`[IntegrationManager] Cleaning up inactive connection: ${oldConn.id} (${oldConn.accountEmail})`);
+            await this.repository.delete(oldConn.id);
+          }
+        }
+      }
+
       // Create new connection
       const connectionId = createId();
       const connectionName = this.generateConnectionName(

@@ -1,5 +1,5 @@
 import {
-  mysqlTable, varchar, text, timestamp, json, boolean
+  mysqlTable, varchar, text, timestamp, json, boolean, index
 } from 'drizzle-orm/mysql-core';
 import { createId } from '@paralleldrive/cuid2';
 
@@ -37,7 +37,16 @@ export const workflowExecutions = mysqlTable('workflow_executions', {
   nodeLogs: json('node_logs'), // Store node execution logs
   startedAt: timestamp('started_at').notNull().defaultNow(),
   completedAt: timestamp('completed_at'),
-});
+}, (table) => ({
+  // Index for sorting by start time (most common query pattern)
+  startedAtIdx: index('workflow_executions_started_at_idx').on(table.startedAt),
+  // Index for filtering by workflow ID
+  workflowIdIdx: index('workflow_executions_workflow_id_idx').on(table.workflowId),
+  // Index for filtering by status
+  statusIdx: index('workflow_executions_status_idx').on(table.status),
+  // Composite index for workflow-specific queries with time ordering
+  workflowStartedIdx: index('workflow_executions_workflow_started_idx').on(table.workflowId, table.startedAt),
+}));
 
 // Type exports for use in repositories
 export type Workflow = typeof workflows.$inferSelect;

@@ -25,7 +25,7 @@ interface AskAIConfig {
   model: string;
   /** Optional system prompt to set context (uses default if not provided) */
   systemPrompt?: string;
-  /** Optional base URL for the API (defaults to http://localhost:3000) */
+  /** Optional base URL for the API (defaults to http://localhost:3013) */
   baseUrl?: string;
 }
 
@@ -56,6 +56,9 @@ interface AICompleteResponse {
  * This node integrates with the /ai/complete endpoint to enable AI-powered
  * workflow steps. It supports various AI models and handles authentication
  * via JWT tokens stored in workflow state.
+ *
+ * For automated workflows (cron jobs, webhooks), a service token is automatically
+ * injected by WorkflowService when no user JWT is present.
  *
  * @example
  * ```json
@@ -111,12 +114,12 @@ export class AskAINode extends WorkflowNode {
       };
     }
 
-    // Get JWT token from state
+    // Get JWT token from state (injected by WorkflowService for automated workflows)
     const jwtToken = context.state.JWT_token;
     if (!jwtToken) {
       return {
         error: () => ({
-          error: 'JWT token not found in state',
+          error: 'JWT token not found in state. For automated workflows, ensure WorkflowService injects a service token.',
           code: 'MISSING_JWT_TOKEN'
         })
       };

@@ -40,7 +40,7 @@
  * ```
  */
 
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and, lt, isNull } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 import {
   db,
@@ -624,12 +624,10 @@ export class ConnectionRepository {
       eq(oauthConnections.accountId, accountId),
     ];
 
-    // Handle null tenantId comparison
+    // Handle null tenantId comparison properly for MySQL
+    // In MySQL, NULL = NULL returns NULL (falsy), so we must use IS NULL
     if (tenantId === null || tenantId === undefined) {
-      // Match connections where tenantId is null
-      // Note: In MySQL, eq(col, null) doesn't work, need isNull
-      // But for simplicity, we'll use a workaround
-      conditions.push(eq(oauthConnections.tenantId, tenantId as never));
+      conditions.push(isNull(oauthConnections.tenantId));
     } else {
       conditions.push(eq(oauthConnections.tenantId, tenantId));
     }

@@ -51,32 +51,54 @@ executionsApp.get('/', authenticate, requirePermission(Permission.EXECUTION_READ
     // Parse and validate pageSize
     const limit = Math.min(Math.max(1, parseInt(pageSize, 10) || 50), 100);
 
-    // Build query with left join to get workflow name
-    let query = db.select({
+    // OPTIMIZATION: First get execution IDs with sort/limit, then join for workflow names
+    // This avoids sorting large JSON columns which causes MySQL sort memory errors
+    let executionQuery = db.select({
       id: workflowExecutions.id,
       workflowId: workflowExecutions.workflowId,
-      workflowName: workflows.name,
       status: workflowExecutions.status,
-      result: workflowExecutions.result,
       error: workflowExecutions.error,
       startedAt: workflowExecutions.startedAt,
       completedAt: workflowExecutions.completedAt
     })
-    .from(workflowExecutions)
-    .leftJoin(workflows, eq(workflowExecutions.workflowId, workflows.id));
+    .from(workflowExecutions);
 
     if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+      executionQuery = executionQuery.where(and(...conditions)) as any;
     }
 
-    // Apply sorting
+    // Apply sorting (on smaller result set without JSON columns)
     const orderByField = sortBy === 'startTime' ? workflowExecutions.startedAt : workflowExecutions.completedAt;
-    query = query.orderBy(sortOrder === 'asc' ? orderByField : desc(orderByField)) as any;
+    executionQuery = executionQuery.orderBy(sortOrder === 'asc' ? orderByField : desc(orderByField)) as any;
 
     // Apply limit
-    query = query.limit(limit) as any;
+    executionQuery = executionQuery.limit(limit) as any;
 
-    const executions = await query;
+    const baseExecutions = await executionQuery;
+
+    // Now fetch workflow names for the limited result set
+    const workflowIds = [...new Set(baseExecutions.map(e => e.workflowId))];
+    const workflowNames = new Map<string, string>();
+
+    if (workflowIds.length > 0) {
+      const workflowData = await db.select({
+        id: workflows.id,
+        name: workflows.name
+      })
+      .from(workflows)
+      .where(sql`${workflows.id} IN (${sql.join(workflowIds.map(id => sql`${id}`), sql`, `)})`);
+
+      for (const w of workflowData) {
+        workflowNames.set(w.id, w.name);
+      }
+    }
+
+    // Combine results
+    const executions = baseExecutions.map(e => ({
+      ...e,
+      workflowName: workflowNames.get(e.workflowId) || null,
+      result: null // Don't fetch large result JSON in list view
+    }));
 
     return c.json({
       items: executions,

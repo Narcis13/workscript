@@ -87,7 +87,7 @@
  */
 
 import { sign, verify } from 'hono/jwt';
-import { JWTPayload, RefreshTokenPayload, AuthErrorCode, AuthException, JWTConfig } from './types';
+import { JWTPayload, RefreshTokenPayload, AuthErrorCode, AuthException, JWTConfig, Role, Permission } from './types';
 
 /**
  * JWT Manager Class
@@ -257,6 +257,87 @@ export class JWTManager {
       throw new AuthException(
         AuthErrorCode.INVALID_TOKEN,
         'Failed to generate tokens',
+        500
+      );
+    }
+  }
+
+  /**
+   * Generate a non-expiring service token for internal workflow execution
+   *
+   * **Usage:** Called when workflows are executed by automations (cron jobs, webhooks)
+   * where no user session/JWT exists.
+   *
+   * **Key Features:**
+   * - No expiration (token is valid forever)
+   * - Has all necessary permissions for workflow execution
+   * - Uses 'service' role for identification
+   * - Should be used internally only (not exposed to clients)
+   *
+   * **Security:**
+   * - This token should only be injected server-side
+   * - Never return this token to external clients
+   * - Used for internal node-to-API communication during workflow execution
+   *
+   * @returns {Promise<string>} Non-expiring service token
+   *
+   * @example
+   * const serviceToken = await jwtManager.generateServiceToken();
+   * // Inject into workflow state for nodes that need API access
+   * state.JWT_token = serviceToken;
+   */
+  async generateServiceToken(): Promise<string> {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+
+      // Service token payload - no expiration
+      const serviceTokenPayload: JWTPayload = {
+        userId: 'service-account',
+        email: 'service@workscript.internal',
+        role: Role.API,
+        permissions: [
+          // Workflow permissions
+          Permission.WORKFLOW_CREATE,
+          Permission.WORKFLOW_READ,
+          Permission.WORKFLOW_UPDATE,
+          Permission.WORKFLOW_DELETE,
+          Permission.WORKFLOW_EXECUTE,
+          // Automation permissions
+          Permission.AUTOMATION_CREATE,
+          Permission.AUTOMATION_READ,
+          Permission.AUTOMATION_UPDATE,
+          Permission.AUTOMATION_DELETE,
+          Permission.AUTOMATION_EXECUTE,
+          // Execution permissions
+          Permission.EXECUTION_READ,
+          Permission.EXECUTION_EXPORT,
+          Permission.EXECUTION_RERUN,
+          // Resource permissions
+          Permission.RESOURCE_CREATE,
+          Permission.RESOURCE_READ,
+          Permission.RESOURCE_UPDATE,
+          Permission.RESOURCE_DELETE,
+          // API Key permissions
+          Permission.APIKEY_CREATE,
+          Permission.APIKEY_READ,
+          Permission.APIKEY_DELETE,
+        ],
+        iat: now,
+        // No 'exp' field - token never expires
+      };
+
+      const serviceToken = await sign(
+        serviceTokenPayload,
+        this.config.secret,
+        'HS256'
+      );
+
+      return serviceToken;
+    } catch (error) {
+      console.error('[JWTManager] Service token generation failed:', error);
+      throw new AuthException(
+        AuthErrorCode.INVALID_TOKEN,
+        'Failed to generate service token',
         500
       );
     }

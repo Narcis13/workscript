@@ -350,19 +350,27 @@ export function useDeleteConnection() {
 
     // Optimistic update
     onMutate: async (id) => {
-      // Cancel outgoing refetches
+      // Cancel outgoing refetches for all connection queries
       await queryClient.cancelQueries({
-        queryKey: integrationKeys.connections(),
+        predicate: (query) =>
+          query.queryKey[0] === 'integrations' &&
+          query.queryKey[1] === 'connections',
       });
 
       // Snapshot previous connections for all cached queries
       const previousQueries = queryClient.getQueriesData<ConnectionSummary[]>({
-        queryKey: integrationKeys.connections(),
+        predicate: (query) =>
+          query.queryKey[0] === 'integrations' &&
+          query.queryKey[1] === 'connections',
       });
 
       // Optimistically remove from all cached connection lists
       queryClient.setQueriesData<ConnectionSummary[]>(
-        { queryKey: integrationKeys.connections() },
+        {
+          predicate: (query) =>
+            query.queryKey[0] === 'integrations' &&
+            query.queryKey[1] === 'connections',
+        },
         (old) => old?.filter((c) => c.id !== id)
       );
 
@@ -377,7 +385,9 @@ export function useDeleteConnection() {
 
       // Invalidate all connections queries to ensure consistency
       queryClient.invalidateQueries({
-        queryKey: integrationKeys.connections(),
+        predicate: (query) =>
+          query.queryKey[0] === 'integrations' &&
+          query.queryKey[1] === 'connections',
       });
 
       toast.success('Connection disconnected', {
