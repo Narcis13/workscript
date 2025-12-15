@@ -172,3 +172,24 @@ export async function fetchResourceContent(id: string): Promise<string> {
   }
   return response.data as unknown as string;
 }
+
+/**
+ * Sync result type
+ */
+export interface SyncResult {
+  success: boolean;
+  dryRun: boolean;
+  synced: number;
+  skipped: number;
+  errors: string[];
+  details: Array<{ path: string; action: string; error?: string }>;
+}
+
+/**
+ * Sync filesystem with database
+ * Scans for files without DB records and creates them
+ */
+export async function syncResources(options?: { basePath?: string; dryRun?: boolean }): Promise<SyncResult> {
+  const response = await apiClient.post(`${BASE_URL}/sync`, options || {});
+  return response.data as SyncResult;
+}

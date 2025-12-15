@@ -24,8 +24,19 @@ export default defineConfig({
     global: 'globalThis',
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react/jsx-runtime', 'recharts'],
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'recharts',
+      'monaco-editor',
+      'monaco-editor/esm/vs/editor/editor.worker',
+      'monaco-editor/esm/vs/language/json/json.worker',
+    ],
     exclude: []
+  },
+  worker: {
+    format: 'es',
   },
   build: {
     rollupOptions: {

@@ -605,8 +605,9 @@ export class ResourceWriteNode extends WorkflowNode {
 
     try {
       const searchUrl = new URL('/workscript/resources', baseUrl);
-      searchUrl.searchParams.set('search', path);
-      searchUrl.searchParams.set('limit', '1');
+      // Use path filter for exact/suffix path matching (not search which only checks name/description)
+      searchUrl.searchParams.set('path', path);
+      searchUrl.searchParams.set('limit', '10');
 
       const response = await fetch(searchUrl.toString(), {
         method: 'GET',

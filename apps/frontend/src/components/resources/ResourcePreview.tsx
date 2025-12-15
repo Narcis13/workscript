@@ -191,8 +191,12 @@ export function ResourcePreview({
 
   // JSON preview
   if (resource.type === 'data' && resource.mimeType === 'application/json') {
+    // Handle undefined/empty content during loading
+    if (!content) {
+      return <Skeleton className="h-96 w-full" />;
+    }
     try {
-      const parsed = JSON.parse(content || '');
+      const parsed = JSON.parse(content);
       return (
         <div className="border rounded-lg p-4 bg-muted/20 overflow-auto max-h-[600px]">
           <pre className="text-sm font-mono whitespace-pre-wrap">

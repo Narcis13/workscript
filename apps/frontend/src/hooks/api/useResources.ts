@@ -225,3 +225,45 @@ export function useInterpolate() {
     },
   });
 }
+
+/**
+ * Sync filesystem with database
+ * Finds files without DB records and creates them
+ */
+export function useSyncResources() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (options?: { basePath?: string; dryRun?: boolean }) =>
+      resourcesApi.syncResources(options),
+    onSuccess: (result) => {
+      // Invalidate all resource queries to refresh the list
+      queryClient.invalidateQueries({ queryKey: resourceKeys.all, refetchType: 'all' });
+
+      if (result.dryRun) {
+        toast.info('Sync preview', {
+          description: `Would sync ${result.synced} files. Run without dry-run to apply.`,
+        });
+      } else if (result.synced > 0) {
+        toast.success('Sync completed', {
+          description: `Synced ${result.synced} files, skipped ${result.skipped} existing.`,
+        });
+      } else {
+        toast.info('Everything in sync', {
+          description: `All ${result.skipped} files already have database records.`,
+        });
+      }
+
+      if (result.errors.length > 0) {
+        toast.warning('Sync had errors', {
+          description: `${result.errors.length} files could not be synced.`,
+        });
+      }
+    },
+    onError: (error: ApiError) => {
+      toast.error('Sync failed', {
+        description: error?.response?.data?.message || 'An unexpected error occurred.',
+      });
+    },
+  });
+}

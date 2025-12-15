@@ -28,6 +28,8 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { createId } from '@paralleldrive/cuid2';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { authenticate, requirePermission } from '../../../shared-services/auth/middleware';
 import { type AuthContext, Permission } from '../../../shared-services/auth/types';
 import {
@@ -186,7 +188,7 @@ resourceRoutes.post(
         authorId: user.id,
       });
 
-      // Create database record
+      // Create database record - wrap in try-catch to cleanup file if DB insert fails
       const resourceId = createId();
       const newResource: NewResource = {
         id: resourceId,
@@ -206,7 +208,20 @@ resourceRoutes.post(
         isPublic: body.isPublic || false,
       };
 
-      const createdResource = await repository.create(newResource);
+      let createdResource;
+      try {
+        createdResource = await repository.create(newResource);
+      } catch (dbError) {
+        // Database insert failed - cleanup the orphaned file
+        console.error('[Resources Routes] DB insert failed, cleaning up file:', dbError);
+        try {
+          await storage.deleteResourceFile(fileResult.relativePath);
+          console.log('[Resources Routes] Cleaned up orphaned file:', fileResult.relativePath);
+        } catch (cleanupError) {
+          console.error('[Resources Routes] Failed to cleanup file after DB error:', cleanupError);
+        }
+        throw dbError; // Re-throw to be handled by outer catch
+      }
 
       // Log operation (fire-and-forget)
       const durationMs = Date.now() - startTime;
@@ -320,7 +335,7 @@ resourceRoutes.post(
         authorId: user.id,
       });
 
-      // Create database record
+      // Create database record - wrap in try-catch to cleanup file if DB insert fails
       const resourceId = createId();
       const newResource: NewResource = {
         id: resourceId,
@@ -340,7 +355,20 @@ resourceRoutes.post(
         isPublic,
       };
 
-      const createdResource = await repository.create(newResource);
+      let createdResource;
+      try {
+        createdResource = await repository.create(newResource);
+      } catch (dbError) {
+        // Database insert failed - cleanup the orphaned file
+        console.error('[Resources Routes] DB insert failed on upload, cleaning up file:', dbError);
+        try {
+          await storage.deleteResourceFile(fileResult.relativePath);
+          console.log('[Resources Routes] Cleaned up orphaned uploaded file:', fileResult.relativePath);
+        } catch (cleanupError) {
+          console.error('[Resources Routes] Failed to cleanup uploaded file after DB error:', cleanupError);
+        }
+        throw dbError; // Re-throw to be handled by outer catch
+      }
 
       // Log operation
       const durationMs = Date.now() - startTime;
@@ -441,6 +469,11 @@ resourceRoutes.get(
       // Search filter
       if (query.search) {
         filters.search = query.search;
+      }
+
+      // Path filter (exact match)
+      if (query.path) {
+        filters.path = query.path;
       }
 
       // Pagination
@@ -903,7 +936,10 @@ resourceRoutes.delete(
         );
       }
 
-      // Soft delete
+      // Get storage service for file deletion
+      const storage = getStorageService();
+
+      // Soft delete in database
       const deleted = await repository.softDelete(id);
 
       if (!deleted) {
@@ -919,11 +955,22 @@ resourceRoutes.delete(
         );
       }
 
+      // Also delete the file from filesystem
+      try {
+        await storage.deleteResourceFile(resource.path);
+        console.log('[Resources Routes] Deleted file from filesystem:', resource.path);
+      } catch (fileError) {
+        // Log the error but don't fail the request - the DB record is already soft deleted
+        console.error('[Resources Routes] Failed to delete file from filesystem:', fileError);
+        // Continue - the resource is still considered deleted even if file cleanup failed
+      }
+
       // Log operation
       const durationMs = Date.now() - startTime;
       repository.logOperation(
         createOperationLog(id, 'delete', 'user', user.id, 'success', {
           durationMs,
+          details: { filePath: resource.path },
         })
       );
 
@@ -1167,7 +1214,7 @@ resourceRoutes.post(
         newName: copyName,
       });
 
-      // Create new database record
+      // Create new database record - wrap in try-catch to cleanup file if DB insert fails
       const newResourceId = createId();
       const newResource: NewResource = {
         id: newResourceId,
@@ -1187,7 +1234,20 @@ resourceRoutes.post(
         isPublic: false, // Copies are private by default
       };
 
-      const createdResource = await repository.create(newResource);
+      let createdResource;
+      try {
+        createdResource = await repository.create(newResource);
+      } catch (dbError) {
+        // Database insert failed - cleanup the orphaned copied file
+        console.error('[Resources Routes] DB insert failed on copy, cleaning up file:', dbError);
+        try {
+          await storage.deleteResourceFile(copyResult.relativePath);
+          console.log('[Resources Routes] Cleaned up orphaned copied file:', copyResult.relativePath);
+        } catch (cleanupError) {
+          console.error('[Resources Routes] Failed to cleanup copied file after DB error:', cleanupError);
+        }
+        throw dbError; // Re-throw to be handled by outer catch
+      }
 
       // Log operation
       const durationMs = Date.now() - startTime;
@@ -1208,6 +1268,173 @@ resourceRoutes.post(
       console.error('[Resources Routes] Copy error:', error);
       return c.json(
         { success: false, error: 'Failed to copy resource', code: 'INTERNAL_ERROR' },
+        500
+      );
+    }
+  }
+);
+
+// =============================================================================
+// POST /sync - Sync filesystem with database
+// =============================================================================
+
+/**
+ * POST /sync
+ *
+ * Scans the filesystem for files that exist but don't have corresponding database records,
+ * and creates database records for them. This is useful for recovering from situations
+ * where files were created but the database insert failed.
+ *
+ * **Request Body:** (optional)
+ * {
+ *   "basePath": "resources/shared",   // Path to scan (default: resources/shared)
+ *   "dryRun": false                   // If true, only report what would be synced
+ * }
+ *
+ * **Response:**
+ * {
+ *   "success": true,
+ *   "synced": 3,                      // Number of files synced
+ *   "skipped": 10,                    // Number of files already in DB
+ *   "errors": [],                     // Any errors encountered
+ *   "details": [...]                  // Details of synced files
+ * }
+ *
+ * @permission RESOURCE_CREATE
+ */
+resourceRoutes.post(
+  '/sync',
+  authenticate,
+  requirePermission(Permission.RESOURCE_CREATE),
+  async (c: Context<{ Variables: AuthContext }>) => {
+    const user = c.get('user');
+
+    if (!user) {
+      return c.json({ success: false, error: 'Not authenticated' }, 401);
+    }
+
+    try {
+      const body = await c.req.json().catch(() => ({}));
+      const tenantId = user.tenantId || 'shared';
+      const basePath = body.basePath || `resources/${tenantId}`;
+      const dryRun = body.dryRun === true;
+
+      const storage = getStorageService();
+      const sandboxManager = storage.getSandboxManager();
+      const sandboxRoot = sandboxManager.getSandboxRoot();
+
+      const results = {
+        synced: 0,
+        skipped: 0,
+        errors: [] as string[],
+        details: [] as Array<{ path: string; action: string; error?: string }>,
+      };
+
+      // Recursive function to scan directories
+      async function scanDirectory(dirPath: string) {
+        const absoluteDir = path.join(sandboxRoot, dirPath);
+
+        let entries;
+        try {
+          entries = await fs.readdir(absoluteDir, { withFileTypes: true });
+        } catch (err) {
+          results.errors.push(`Failed to read directory: ${dirPath}`);
+          return;
+        }
+
+        for (const entry of entries) {
+          const relativePath = path.join(dirPath, entry.name);
+
+          if (entry.isDirectory()) {
+            // Recursively scan subdirectories
+            await scanDirectory(relativePath);
+          } else if (entry.isFile()) {
+            // Check if file exists in database
+            const existingResource = await repository.findByPath(relativePath);
+
+            if (existingResource) {
+              results.skipped++;
+              results.details.push({ path: relativePath, action: 'skipped (exists in DB)' });
+              continue;
+            }
+
+            // File exists on filesystem but not in database - sync it
+            if (dryRun) {
+              results.synced++;
+              results.details.push({ path: relativePath, action: 'would sync (dry run)' });
+              continue;
+            }
+
+            try {
+              // Read file to get content info
+              const absolutePath = path.join(sandboxRoot, relativePath);
+              const content = await fs.readFile(absolutePath);
+              const stats = await fs.stat(absolutePath);
+              const mimeType = getMimeType(relativePath);
+              const resourceType = getResourceTypeFromFilename(relativePath);
+
+              // Compute checksum
+              const contentProcessor = storage.getContentProcessor();
+              const checksum = contentProcessor.computeChecksum(content);
+
+              // Create database record
+              const resourceId = createId();
+              const newResource: NewResource = {
+                id: resourceId,
+                name: path.basename(relativePath, path.extname(relativePath)),
+                path: relativePath,
+                type: resourceType,
+                mimeType,
+                size: stats.size,
+                checksum,
+                authorType: 'system', // Created by sync process
+                authorId: 'sync',
+                tenantId,
+                description: 'Synced from filesystem',
+                tags: ['synced'],
+                metadata: { syncedAt: new Date().toISOString(), syncedBy: user.id },
+                isActive: true,
+                isPublic: false,
+              };
+
+              await repository.create(newResource);
+
+              results.synced++;
+              results.details.push({ path: relativePath, action: 'synced' });
+
+              // Log the sync operation
+              repository.logOperation(
+                createOperationLog(resourceId, 'create', 'system', 'sync', 'success', {
+                  newChecksum: checksum,
+                  details: { syncedBy: user.id, reason: 'filesystem-sync' },
+                })
+              );
+            } catch (syncError) {
+              const errorMsg = syncError instanceof Error ? syncError.message : String(syncError);
+              results.errors.push(`Failed to sync ${relativePath}: ${errorMsg}`);
+              results.details.push({ path: relativePath, action: 'error', error: errorMsg });
+            }
+          }
+        }
+      }
+
+      // Start scanning from the base path
+      await scanDirectory(basePath);
+
+      console.log(`[Resources Routes] Sync completed: ${results.synced} synced, ${results.skipped} skipped, ${results.errors.length} errors`);
+
+      return c.json({
+        success: true,
+        dryRun,
+        synced: results.synced,
+        skipped: results.skipped,
+        errors: results.errors,
+        details: results.details,
+      });
+    } catch (error) {
+      console.error('[Resources Routes] Sync error:', error);
+      return c.json(
+        { success: false, error: 'Failed to sync resources', code: 'INTERNAL_ERROR' },
         500
       );
     }

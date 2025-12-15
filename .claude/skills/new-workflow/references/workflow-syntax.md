@@ -6,12 +6,13 @@ Complete reference for creating valid Workscript workflow JSON files.
 
 1. [Top-Level Schema](#top-level-schema)
 2. [Fundamental Rules](#fundamental-rules)
-3. [Node Invocation](#node-invocation)
-4. [Edge Routing](#edge-routing)
-5. [State Management](#state-management)
-6. [Loop Patterns](#loop-patterns)
-7. [Validation Rules](#validation-rules)
-8. [Common Mistakes](#common-mistakes)
+3. [Flat vs Nested Workflows](#flat-vs-nested-workflows)
+4. [Node Invocation](#node-invocation)
+5. [Edge Routing](#edge-routing)
+6. [State Management](#state-management)
+7. [Loop Patterns](#loop-patterns)
+8. [Validation Rules](#validation-rules)
+9. [Common Mistakes](#common-mistakes)
 
 ---
 
@@ -97,22 +98,22 @@ You CANNOT define new node types in a workflow. All nodes must exist in `@worksc
 { "my-custom-handler": {...} }
 ```
 
-### RULE 2: Inline Configuration
+### RULE 2: Prefer Flat, Sequential Workflows
 
-When an edge leads to another node, configure that node INLINE within the edge - NOT as a separate step.
+**The workflow array executes nodes sequentially.** Use this for the happy path instead of nesting everything in `success?` edges.
 
-**WRONG - Flat sequential:**
+**PREFER - Flat sequential:**
 ```json
 {
   "workflow": [
-    { "filter": { "passed?": "sort" } },
-    { "sort": { "success?": "log" } },
+    { "filter": { "items": "$.data", "error?": {...} } },
+    { "sort": { "type": "simple", "error?": {...} } },
     { "log": { "message": "Done" } }
   ]
 }
 ```
 
-**CORRECT - Inline nested:**
+**AVOID - Excessive nesting (unless branching is needed):**
 ```json
 {
   "workflow": [
@@ -130,6 +131,114 @@ When an edge leads to another node, configure that node INLINE within the edge -
   ]
 }
 ```
+
+### RULE 3: Use Edges for Actual Branching
+
+Edges are powerful for conditional logic - use them when you need different paths:
+
+```json
+{
+  "workflow": [
+    {
+      "logic": {
+        "operation": "equal",
+        "values": ["$.status", "active"],
+        "true?": { "log": { "message": "Active user" } },
+        "false?": { "log": { "message": "Inactive user" } }
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Flat vs Nested Workflows
+
+### When to Use Flat (Workflow Array)
+
+Use the workflow array for sequential operations where the next step always runs after the previous one succeeds:
+
+```json
+{
+  "workflow": [
+    { "googleConnect": { "email": "$.email" } },
+    { "listEmails": { "maxResults": 10 } },
+    { "ask-ai": { "userPrompt": "Analyze: {{$.emails}}" } },
+    { "log": { "message": "Analysis complete" } }
+  ]
+}
+```
+
+**Add error handling per-node:**
+```json
+{
+  "workflow": [
+    {
+      "googleConnect": {
+        "email": "$.email",
+        "error?": { "log": { "message": "Connection failed" } }
+      }
+    },
+    {
+      "listEmails": {
+        "maxResults": 10,
+        "error?": { "log": { "message": "Failed to list emails" } }
+      }
+    }
+  ]
+}
+```
+
+### When to Use Edges (Nesting)
+
+Use edge nesting when you need **actual branching** - different code paths based on conditions:
+
+| Use Case | Edges to Use |
+|----------|--------------|
+| If/else logic | `true?`, `false?` |
+| Validation | `valid?`, `invalid?` |
+| Database lookup | `found?`, `not_found?` |
+| File existence | `exists?`, `not_exists?` |
+| Multi-way routing | `switch` dynamic edges |
+| Loops | `continue?` with `nodeType...` |
+
+**Example - Conditional branching (edges appropriate):**
+```json
+{
+  "workflow": [
+    {
+      "database": {
+        "operation": "find",
+        "table": "users",
+        "query": { "id": "$.userId" },
+        "found?": {
+          "log": { "message": "User found: {{$.dbRecord.name}}" }
+        },
+        "not_found?": {
+          "database": {
+            "operation": "insert",
+            "table": "users",
+            "data": { "id": "$.userId", "name": "New User" }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+### Decision Matrix
+
+| Scenario | Flat (Array) | Nested (Edges) |
+|----------|--------------|----------------|
+| Sequential pipeline | YES | NO |
+| Error handling only | YES + `error?` | NO |
+| If/else conditions | NO | YES |
+| Find-or-create | NO | YES |
+| Validation branching | NO | YES |
+| Multi-way routing | NO | YES |
+| Loops | NO | YES |
 
 ---
 
@@ -151,11 +260,11 @@ Use only for terminal nodes with no configuration.
     {
       "math": {
         "operation": "add",
-        "values": [10, 20, 30],
-        "success?": {
-          "log": { "message": "Result: $.mathResult" }
-        }
+        "values": [10, 20, 30]
       }
+    },
+    {
+      "log": { "message": "Result: {{$.mathResult}}" }
     }
   ]
 }
@@ -168,7 +277,7 @@ Use only for terminal nodes with no configuration.
   "workflow": [
     { "$.developer": "Alice" },
     { "$.config.timeout": 5000 },
-    { "log": { "message": "Developer is $.developer" } }
+    { "log": { "message": "Developer is {{$.developer}}" } }
   ]
 }
 ```
@@ -182,9 +291,10 @@ Use only for terminal nodes with no configuration.
     "param1": "value1",
     "param2": 123,
 
-    // Edge routes (end with ?)
-    "success?": { ... next node inline ... },
-    "error?": { ... error handler inline ... }
+    // Edge routes (only when branching needed)
+    "error?": { ... error handler ... },
+    "true?": { ... },
+    "false?": { ... }
   }
 }
 ```
@@ -214,12 +324,10 @@ Edges are keys ending with `?` containing the next node's inline config:
     "validationType": "required_fields",
     "requiredFields": ["name", "email"],
     "valid?": {
-      "editFields": {
-        "success?": { "log": { "message": "Valid!" } }
-      }
+      "log": { "message": "Data is valid" }
     },
     "invalid?": {
-      "log": { "message": "Invalid: $.validationErrors" }
+      "log": { "message": "Invalid: {{$.validationErrors}}" }
     }
   }
 }
@@ -244,24 +352,23 @@ Edges are keys ending with `?` containing the next node's inline config:
 
 ```json
 {
-  "math": {
-    "success?": {
-      "log": { "message": "Result: $.mathResult" }
-    }
+  "logic": {
+    "true?": { "log": { "message": "Condition is true" } },
+    "false?": { "log": { "message": "Condition is false" } }
   }
 }
 ```
 
-#### Type 2: Array of Nodes (Sequential)
+#### Type 2: Array of Nodes (Sequential within branch)
 
 ```json
 {
-  "math": {
-    "success?": [
+  "logic": {
+    "true?": [
       { "$.step": "first" },
-      { "log": { "message": "Step: $.step" } },
+      { "log": { "message": "Step: {{$.step}}" } },
       { "$.step": "second" },
-      { "log": { "message": "Step: $.step" } }
+      { "log": { "message": "Step: {{$.step}}" } }
     ]
   }
 }
@@ -305,7 +412,7 @@ Edges are keys ending with `?` containing the next node's inline config:
 ### State Resolution (`$.` Syntax)
 
 ```json
-{ "log": { "message": "User $.user.name has role $.user.role" } }
+{ "log": { "message": "User {{$.user.name}} has role {{$.user.role}}" } }
 ```
 At runtime: `$.user.name` -> `"Alice"`
 
@@ -368,7 +475,7 @@ Any node with ID ending in `...` becomes a loop:
     "operation": "less",
     "values": ["$.index", 10],
     "true?": [
-      { "log": { "message": "Processing index $.index" } },
+      { "log": { "message": "Processing index {{$.index}}" } },
       { "$.index": "$.index + 1" }
     ],
     "false?": null  // Exit loop
@@ -418,18 +525,18 @@ Any node with ID ending in `...` becomes a loop:
 
 ## Common Mistakes
 
-### Mistake 1: Flat Sequential References
+### Mistake 1: Over-Nesting with success? Edges
 
 ```json
-// WRONG
+// WRONG - Unnecessary nesting
 "workflow": [
-  { "filter": { "passed?": "sort" } },
-  { "sort": {...} }
+  { "math": { "success?": { "log": { "success?": { "empty": {} } } } } }
 ]
 
-// CORRECT
+// CORRECT - Flat sequential
 "workflow": [
-  { "filter": { "passed?": { "sort": {...} } } }
+  { "math": { "operation": "add", "values": [1, 2] } },
+  { "log": { "message": "Result: {{$.mathResult}}" } }
 ]
 ```
 
@@ -476,6 +583,36 @@ Any node with ID ending in `...` becomes a loop:
 { "math": { "values": ["$.count", 10] } }
 ```
 
+### Mistake 6: Using Edges When Flat Would Work
+
+```json
+// WRONG - Over-engineered
+{
+  "workflow": [
+    {
+      "editFields": {
+        "success?": {
+          "log": {
+            "success?": {
+              "editFields": { "success?": {...} }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+
+// CORRECT - Flat and readable
+{
+  "workflow": [
+    { "editFields": {...} },
+    { "log": {...} },
+    { "editFields": {...} }
+  ]
+}
+```
+
 ---
 
 ## Quick Reference Card
@@ -491,14 +628,28 @@ Any node with ID ending in `...` becomes a loop:
 }
 ```
 
-### Inline Edge Pattern
+### Flat Sequential Pattern (Preferred)
 ```json
 {
-  "nodeType": {
-    "config": "...",
-    "success?": { "nextNode": {...} },
-    "error?": { "log": {...} }
-  }
+  "workflow": [
+    { "node1": { "config": "..." } },
+    { "node2": { "config": "..." } },
+    { "node3": { "config": "..." } }
+  ]
+}
+```
+
+### Branching Pattern (When Needed)
+```json
+{
+  "workflow": [
+    {
+      "logic": {
+        "true?": { "nodeA": {...} },
+        "false?": { "nodeB": {...} }
+      }
+    }
+  ]
 }
 ```
 

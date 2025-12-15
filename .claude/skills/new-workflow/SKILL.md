@@ -40,56 +40,47 @@ Wait for the server to start, then retry the manifest fetch.
 
 Based on requirements, identify:
 1. **Entry point node(s)** - First node(s) to execute
-2. **Data flow** - How data moves through nodes (inline configuration)
-3. **Edge routing** - success?, error?, true?, false?, etc.
-4. **State keys** - What to read (`$.key`) and write
-5. **Loop requirements** - Use `nodeType...` suffix for loops
+2. **Data flow** - How data moves through nodes
+3. **Branching points** - Where edges are needed (conditionals, error handling)
+4. **Sequential steps** - Nodes that should run one after another (use workflow array)
+5. **State keys** - What to read (`$.key`) and write
+6. **Loop requirements** - Use `nodeType...` suffix for loops
 
 Use patterns from [references/patterns.md](references/patterns.md) as templates.
 
-### Step 4: Generate Valid JSON
+### Step 4: Generate Valid JSON - FLAT BY DEFAULT
 
-Create workflow JSON following [references/workflow-syntax.md](references/workflow-syntax.md):
+**CRITICAL: Prefer flat, linear workflows. Use edges only for actual branching.**
 
-```json
-{
-  "id": "kebab-case-id",
-  "name": "Human Readable Name",
-  "version": "1.0.0",
-  "description": "Optional description",
-  "initialState": { ... },
-  "workflow": [ ... ]
-}
-```
+The workflow array supports sequential execution - nodes run one after another automatically. Reserve edges for:
+- **Conditional branching**: `true?`/`false?`, `valid?`/`invalid?`, `found?`/`not_found?`
+- **Error handling**: `error?` edges
+- **Loop control**: `continue?`/`exit?` with `nodeType...`
+- **Multi-way routing**: `switch` node dynamic edges
 
-**CRITICAL RULES:**
+#### WRONG - Excessive Nesting (Anti-Pattern)
 
-1. **Inline configuration** - Configure next nodes INSIDE edges, NOT as flat sequential steps
-2. **Edge names end with `?`** - e.g., `success?`, `error?`, `true?`, `false?`
-3. **State references** - Use `$.key` for values, `{{$.key}}` for string templates
-4. **Loop syntax** - Use `nodeType...` with `null` exit edge
-5. **Pre-registered nodes only** - All nodes must exist in the registry
-
-**WRONG - Flat sequential:**
-```json
-{
-  "workflow": [
-    { "filter": { "passed?": "sort" } },
-    { "sort": { "success?": "log" } }
-  ]
-}
-```
-
-**CORRECT - Inline nested:**
 ```json
 {
   "workflow": [
     {
-      "filter": {
-        "passed?": {
-          "sort": {
+      "googleConnect": {
+        "email": "$.email",
+        "success?": {
+          "listEmails": {
+            "maxResults": 10,
             "success?": {
-              "log": { "message": "Done" }
+              "ask-ai": {
+                "userPrompt": "Analyze...",
+                "success?": {
+                  "resource-write": {
+                    "content": "$.aiResponse",
+                    "created?": {
+                      "log": { "message": "Done" }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -98,6 +89,84 @@ Create workflow JSON following [references/workflow-syntax.md](references/workfl
   ]
 }
 ```
+
+**Problems:**
+- 5+ levels of nesting
+- Hard to read and maintain
+- `success?` edges don't add value when next step is unconditional
+
+#### CORRECT - Flat Sequential (Preferred)
+
+```json
+{
+  "workflow": [
+    {
+      "googleConnect": {
+        "email": "$.email",
+        "error?": { "log": { "message": "Connection failed: {{$.error}}" } }
+      }
+    },
+    {
+      "listEmails": {
+        "maxResults": 10,
+        "no_results?": { "log": { "message": "No emails found" } },
+        "error?": { "log": { "message": "Failed: {{$.error}}" } }
+      }
+    },
+    {
+      "ask-ai": {
+        "userPrompt": "Analyze...",
+        "error?": { "log": { "message": "AI failed: {{$.error}}" } }
+      }
+    },
+    {
+      "resource-write": {
+        "content": "$.aiResponse",
+        "created?": { "log": { "message": "Created: {{$.writtenResourceId}}" } },
+        "updated?": { "log": { "message": "Updated: {{$.writtenResourceId}}" } },
+        "error?": { "log": { "message": "Write failed: {{$.error}}" } }
+      }
+    }
+  ]
+}
+```
+
+**Benefits:**
+- Linear, easy to read
+- Each node handles its own edge cases
+- Sequential flow is implicit
+
+#### WHEN TO USE EDGES FOR CHAINING
+
+Use edges for **actual branching** - when different paths lead to different outcomes:
+
+```json
+{
+  "workflow": [
+    {
+      "logic": {
+        "operation": "equal",
+        "values": ["$.user.role", "admin"],
+        "true?": {
+          "editFields": {
+            "fieldsToSet": [{ "name": "access", "value": "full", "type": "string" }]
+          }
+        },
+        "false?": {
+          "editFields": {
+            "fieldsToSet": [{ "name": "access", "value": "limited", "type": "string" }]
+          }
+        }
+      }
+    },
+    {
+      "log": { "message": "User {{$.user.name}} has {{$.access}} access" }
+    }
+  ]
+}
+```
+
+Here `true?`/`false?` are meaningful branches - they execute different logic.
 
 ### Step 5: Validate Workflow
 
@@ -125,6 +194,59 @@ Save validated workflow to:
 **File naming:**
 - Use kebab-case matching workflow id
 - Examples: `user-registration.json`, `data-pipeline.json`, `email-processor.json`
+
+## Workflow Structure Guidelines
+
+### Flat vs Nested Decision Matrix
+
+| Scenario | Use Flat (Workflow Array) | Use Edges (Nesting) |
+|----------|---------------------------|---------------------|
+| Sequential operations | YES | NO |
+| Error handling only | YES (with `error?` edge) | NO |
+| Conditional logic (`if/else`) | NO | YES (`true?`/`false?`) |
+| Validation branching | NO | YES (`valid?`/`invalid?`) |
+| Database lookup | NO | YES (`found?`/`not_found?`) |
+| Switch/routing | NO | YES (dynamic edges) |
+| Loops | NO | YES (`continue?`/`exit?`) |
+
+### Template: Flat Sequential Workflow
+
+```json
+{
+  "id": "kebab-case-id",
+  "name": "Human Readable Name",
+  "version": "1.0.0",
+  "description": "Optional description",
+  "initialState": { ... },
+  "workflow": [
+    { "node1": { "config": "...", "error?": { "log": {...} } } },
+    { "node2": { "config": "...", "error?": { "log": {...} } } },
+    { "node3": { "config": "..." } }
+  ]
+}
+```
+
+### Template: Branching Workflow
+
+```json
+{
+  "id": "kebab-case-id",
+  "name": "Human Readable Name",
+  "version": "1.0.0",
+  "initialState": { ... },
+  "workflow": [
+    {
+      "logic": {
+        "operation": "equal",
+        "values": ["$.condition", true],
+        "true?": { "node-for-true": { ... } },
+        "false?": { "node-for-false": { ... } }
+      }
+    },
+    { "final-node": { "message": "After branch" } }
+  ]
+}
+```
 
 ## API Integration
 
@@ -180,8 +302,8 @@ The API will be available at `http://localhost:3013`.
 
 | Type | Example | Description |
 |------|---------|-------------|
-| Inline object | `"success?": { "log": {...} }` | Execute next node |
-| Array | `"success?": [{ "$.x": 1 }, { "log": {...} }]` | Execute sequence |
+| Inline object | `"error?": { "log": {...} }` | Execute next node |
+| Array | `"true?": [{ "$.x": 1 }, { "log": {...} }]` | Execute sequence |
 | Null | `"false?": null` | End execution / exit loop |
 
 ### State Syntax
@@ -209,6 +331,7 @@ The API will be available at `http://localhost:3013`.
 - **Workflow Syntax**: [references/workflow-syntax.md](references/workflow-syntax.md) - Complete JSON structure reference
 - **Patterns**: [references/patterns.md](references/patterns.md) - Common workflow patterns with examples
 - **Node Reference**: [references/node-quick-reference.md](references/node-quick-reference.md) - All 45 nodes categorized
+- **Flat vs Nested Comparison**: [references/flat-vs-nested.md](references/flat-vs-nested.md) - Side-by-side examples
 
 ## Scripts
 

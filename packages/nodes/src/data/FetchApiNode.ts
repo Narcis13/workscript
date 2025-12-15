@@ -26,7 +26,7 @@
  * @example POST request with body
  * ```json
  * {
- *   "fetchApi-1": {
+ *   "fetchApi": {
  *     "url": "https://api.example.com/users",
  *     "method": "POST",
  *     "body": { "name": "$.userName", "email": "$.userEmail" },
@@ -101,7 +101,7 @@ export class FetchApiNode extends WorkflowNode {
       purpose: 'Make HTTP requests to external APIs and services using native fetch()',
       when_to_use: 'When you need to call REST APIs, webhooks, external services, or any HTTP endpoint. Use for data retrieval (GET), creating resources (POST), updating (PUT/PATCH), or deleting (DELETE).',
       expected_edges: ['success', 'error', 'clientError', 'serverError'],
-      example_usage: '{"fetchApi-1": {"url": "https://api.example.com/data", "method": "GET", "timeout": 5000, "success?": "process-data", "error?": "handle-error"}}',
+      example_usage: '{"fetchApi": {"url": "https://api.example.com/data", "method": "GET", "timeout": 5000, "success?": "process-data", "error?": "handle-error"}}',
       example_config: '{"url": "string (required)", "method?": "GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS", "body?": "any (for POST/PUT/PATCH)", "headers?": "Record<string, string>", "timeout?": "number (ms, default 30000)", "responseType?": "json|text|blob|arrayBuffer"}',
       get_from_state: [],
       post_to_state: ['fetchResponse', 'fetchStatus', 'fetchHeaders']

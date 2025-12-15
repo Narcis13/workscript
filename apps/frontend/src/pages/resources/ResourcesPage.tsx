@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, FolderOpen } from 'lucide-react';
+import { Plus, FolderOpen, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MobilePagination } from '@/components/shared/MobilePagination';
@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { ResourceList } from '@/components/resources/ResourceList';
 import { ResourceFilterBar } from '@/components/resources/ResourceFilterBar';
-import { useResources, useDeleteResource } from '@/hooks/api/useResources';
+import { useResources, useDeleteResource, useSyncResources } from '@/hooks/api/useResources';
 import { downloadResourceFile } from '@/lib/resourceDownload';
 import type { Resource, ResourceFilters } from '@/types/resource.types';
 
@@ -51,8 +51,13 @@ export default function ResourcesPage() {
 
   const { data, isLoading } = useResources(filters);
   const deleteMutation = useDeleteResource();
+  const syncMutation = useSyncResources();
 
   const [deleteTarget, setDeleteTarget] = useState<Resource | null>(null);
+
+  const handleSync = useCallback(() => {
+    syncMutation.mutate({});
+  }, [syncMutation]);
 
   // Calculate pagination values directly from filters state
   const totalPages = Math.ceil((data?.total || 0) / PAGE_SIZE);
@@ -115,10 +120,20 @@ export default function ResourcesPage() {
         title="Resources"
         description="Manage prompts, files, and data for your workflows"
         actions={
-          <Button onClick={() => navigate('/resources/new')}>
-            <Plus className="size-4 mr-2" />
-            Create Resource
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleSync}
+              disabled={syncMutation.isPending}
+            >
+              <RefreshCw className={`size-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              {syncMutation.isPending ? 'Syncing...' : 'Sync'}
+            </Button>
+            <Button onClick={() => navigate('/resources/new')}>
+              <Plus className="size-4 mr-2" />
+              Create Resource
+            </Button>
+          </div>
         }
       />
 

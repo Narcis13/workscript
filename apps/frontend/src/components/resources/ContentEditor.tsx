@@ -8,9 +8,27 @@
 
 import { useRef, lazy, Suspense } from 'react';
 import type { OnMount, OnChange } from '@monaco-editor/react';
+import { loader } from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
 import { useTheme } from 'next-themes';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ResourceType } from '@/types/resource.types';
+
+// Configure Monaco web workers for Vite
+// This fixes the "factory.create is not a function" error
+self.MonacoEnvironment = {
+  getWorker(_, label) {
+    if (label === 'json') {
+      return new jsonWorker();
+    }
+    return new editorWorker();
+  },
+};
+
+// Configure Monaco to use local monaco-editor package instead of CDN
+loader.config({ monaco });
 
 const Editor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.Editor })));
 

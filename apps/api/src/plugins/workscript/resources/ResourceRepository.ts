@@ -23,6 +23,8 @@ export interface ResourceFilters {
   tags?: string[];
   /** Search in name and description */
   search?: string;
+  /** Filter by exact path (or path suffix match) */
+  path?: string;
   /** Filter by tenant ID */
   tenantId?: string;
   /** Include public resources in results */
@@ -122,6 +124,7 @@ export class ResourceRepository {
       authorType,
       tags,
       search,
+      path,
       tenantId,
       includePublic = true,
       includeInactive = false,
@@ -203,6 +206,13 @@ export class ResourceRepository {
       );
     }
 
+    // Post-filter by path if provided (exact match or suffix match)
+    if (path) {
+      results = results.filter((resource) =>
+        resource.path === path || resource.path.endsWith(`/${path}`)
+      );
+    }
+
     return results;
   }
 
@@ -220,6 +230,7 @@ export class ResourceRepository {
       authorType,
       tags,
       search,
+      path,
       tenantId,
       includePublic = true,
       includeInactive = false,
@@ -272,6 +283,13 @@ export class ResourceRepository {
       results = results.filter((resource) =>
         resource.name.toLowerCase().includes(searchLower) ||
         (resource.description?.toLowerCase().includes(searchLower) ?? false)
+      );
+    }
+
+    // Post-filter by path if provided (exact match or suffix match)
+    if (path) {
+      results = results.filter((resource) =>
+        resource.path === path || resource.path.endsWith(`/${path}`)
       );
     }
 

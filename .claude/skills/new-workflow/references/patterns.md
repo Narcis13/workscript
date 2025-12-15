@@ -2,26 +2,29 @@
 
 Common workflow patterns with complete, production-ready examples.
 
+**IMPORTANT:** These patterns follow the "flat by default" principle - use the workflow array for sequential operations and reserve edges for actual branching (conditionals, loops, error handling).
+
 ## Table of Contents
 
-1. [Data Processing Pipeline](#1-data-processing-pipeline)
-2. [Conditional Branching](#2-conditional-branching)
-3. [Error Handling Chain](#3-error-handling-chain)
-4. [Loop with Counter](#4-loop-with-counter)
-5. [File Read-Process-Write](#5-file-read-process-write)
-6. [Multi-Path Switch Routing](#6-multi-path-switch-routing)
-7. [AI Content Processing](#7-ai-content-processing)
-8. [Validation Pipeline](#8-validation-pipeline)
+1. [Data Processing Pipeline (Flat)](#1-data-processing-pipeline-flat)
+2. [Conditional Branching (Edges Required)](#2-conditional-branching-edges-required)
+3. [Error Handling Chain (Flat + Error Edges)](#3-error-handling-chain-flat--error-edges)
+4. [Loop with Counter (Edges Required)](#4-loop-with-counter-edges-required)
+5. [File Read-Process-Write (Flat)](#5-file-read-process-write-flat)
+6. [Multi-Path Switch Routing (Edges Required)](#6-multi-path-switch-routing-edges-required)
+7. [AI Content Processing (Flat)](#7-ai-content-processing-flat)
+8. [Validation Pipeline (Mixed)](#8-validation-pipeline-mixed)
+9. [Database Find-or-Create (Edges Required)](#9-database-find-or-create-edges-required)
 
 ---
 
-## 1. Data Processing Pipeline
+## 1. Data Processing Pipeline (Flat)
 
-**Use case:** Filter, deduplicate, sort, and summarize data.
+**Use case:** Filter, deduplicate, sort, and summarize data sequentially.
 
 ```json
 {
-  "id": "data-pipeline",
+  "id": "data-pipeline-flat",
   "name": "Data Processing Pipeline",
   "version": "1.0.0",
   "initialState": {
@@ -38,47 +41,58 @@ Common workflow patterns with complete, production-ready examples.
         "conditions": [
           { "field": "status", "dataType": "string", "operation": "equals", "value": "active" }
         ],
-        "passed?": {
-          "removeDuplicates": {
-            "operation": "current_input",
-            "compareMode": "selected_fields",
-            "fieldsToCompare": ["name"],
-            "kept?": {
-              "sort": {
-                "type": "simple",
-                "fieldsToSortBy": [
-                  { "fieldName": "score", "order": "descending" }
-                ],
-                "success?": {
-                  "summarize": {
-                    "fieldsToSummarize": [
-                      { "fieldToAggregate": "score", "aggregation": "average", "outputFieldName": "avgScore" }
-                    ],
-                    "success?": {
-                      "log": { "message": "Pipeline complete. Average score: $.avgScore" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
         "filtered?": {
           "log": { "message": "No active records found" }
+        },
+        "error?": {
+          "log": { "message": "Filter error: {{$.error}}" }
         }
       }
+    },
+    {
+      "removeDuplicates": {
+        "operation": "current_input",
+        "compareMode": "selected_fields",
+        "fieldsToCompare": ["name"],
+        "error?": {
+          "log": { "message": "Dedup error: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "sort": {
+        "type": "simple",
+        "fieldsToSortBy": [
+          { "fieldName": "score", "order": "descending" }
+        ],
+        "error?": {
+          "log": { "message": "Sort error: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "summarize": {
+        "fieldsToSummarize": [
+          { "fieldToAggregate": "score", "aggregation": "average", "outputFieldName": "avgScore" }
+        ]
+      }
+    },
+    {
+      "log": { "message": "Pipeline complete. Average score: {{$.avgScore}}" }
     }
   ]
 }
 ```
 
+**Why flat:** Each step runs unconditionally after the previous. Error handling is per-node, not branching.
+
 **State keys written:** `filterPassed`, `filterFiltered`, `filterStats`, `keptItems`, `sortedItems`, `summarizeResult`
 
 ---
 
-## 2. Conditional Branching
+## 2. Conditional Branching (Edges Required)
 
-**Use case:** Execute different paths based on conditions.
+**Use case:** Execute different paths based on conditions. **Edges are necessary here.**
 
 ```json
 {
@@ -99,10 +113,7 @@ Common workflow patterns with complete, production-ready examples.
             "fieldsToSet": [
               { "name": "permissions", "value": "all", "type": "string" },
               { "name": "accessLevel", "value": 10, "type": "number" }
-            ],
-            "success?": {
-              "log": { "message": "Admin {{$.user.name}} granted full permissions" }
-            }
+            ]
           }
         },
         "false?": {
@@ -111,29 +122,31 @@ Common workflow patterns with complete, production-ready examples.
             "fieldsToSet": [
               { "name": "permissions", "value": "limited", "type": "string" },
               { "name": "accessLevel", "value": 1, "type": "number" }
-            ],
-            "success?": {
-              "log": { "message": "User {{$.user.name}} granted limited permissions" }
-            }
+            ]
           }
         }
       }
+    },
+    {
+      "log": { "message": "User {{$.user.name}} granted {{$.permissions}} permissions" }
     }
   ]
 }
 ```
 
+**Why edges:** `true?` and `false?` lead to different logic - this is actual branching.
+
 **State keys written:** `logicResult`, `editFieldsResult`, `fieldsModified`
 
 ---
 
-## 3. Error Handling Chain
+## 3. Error Handling Chain (Flat + Error Edges)
 
-**Use case:** Handle database operations with comprehensive error handling.
+**Use case:** Sequential operations with per-node error handling.
 
 ```json
 {
-  "id": "error-handling",
+  "id": "error-handling-flat",
   "name": "Database with Error Handling",
   "version": "1.0.0",
   "initialState": {
@@ -145,37 +158,42 @@ Common workflow patterns with complete, production-ready examples.
         "operation": "find",
         "table": "users",
         "query": { "id": "$.userId" },
-        "found?": {
-          "validateData": {
-            "validationType": "required_fields",
-            "requiredFields": ["email", "name"],
-            "valid?": {
-              "log": { "message": "User $.dbRecord.name is valid" }
-            },
-            "invalid?": {
-              "log": { "message": "User data incomplete: $.validationErrors" }
-            }
-          }
-        },
         "not_found?": {
-          "log": { "message": "User $.userId not found in database" }
+          "log": { "message": "User {{$.userId}} not found in database" }
         },
         "error?": {
-          "log": { "message": "Database connection error" }
+          "log": { "message": "Database connection error: {{$.error}}" }
         }
       }
+    },
+    {
+      "validateData": {
+        "validationType": "required_fields",
+        "requiredFields": ["email", "name"],
+        "invalid?": {
+          "log": { "message": "User data incomplete: {{$.validationErrors}}" }
+        },
+        "error?": {
+          "log": { "message": "Validation error: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "log": { "message": "User {{$.dbRecord.name}} is valid and ready" }
     }
   ]
 }
 ```
 
+**Why flat + edges:** Sequential flow, but `not_found?`, `invalid?`, and `error?` handle edge cases.
+
 **State keys written:** `dbRecord`, `validationResult`, `validationErrors`
 
 ---
 
-## 4. Loop with Counter
+## 4. Loop with Counter (Edges Required)
 
-**Use case:** Process items iteratively with a counter.
+**Use case:** Process items iteratively with a counter. **Loops require edge nesting.**
 
 ```json
 {
@@ -196,9 +214,7 @@ Common workflow patterns with complete, production-ready examples.
         "operation": "less",
         "values": ["$.index", 5],
         "true?": [
-          {
-            "log": { "message": "Processing item {{$.index}}" }
-          },
+          { "log": { "message": "Processing item {{$.index}}" } },
           { "$.index": "$.index + 1" },
           { "$.processed": "$.processed + 1" }
         ],
@@ -212,6 +228,8 @@ Common workflow patterns with complete, production-ready examples.
 }
 ```
 
+**Why edges:** Loops inherently require `true?`/`false?` (or `continue?`/`exit?`) to control iteration.
+
 **Key points:**
 - `logic...` suffix creates a loop
 - `false?`: null` exits the loop
@@ -219,13 +237,13 @@ Common workflow patterns with complete, production-ready examples.
 
 ---
 
-## 5. File Read-Process-Write
+## 5. File Read-Process-Write (Flat)
 
-**Use case:** Read file, process content, write output.
+**Use case:** Read file, process content, write output sequentially.
 
 ```json
 {
-  "id": "file-processing",
+  "id": "file-processing-flat",
   "name": "File Processing Pipeline",
   "version": "1.0.0",
   "initialState": {
@@ -237,52 +255,63 @@ Common workflow patterns with complete, production-ready examples.
       "filesystem": {
         "operation": "read",
         "path": "$.inputPath",
-        "success?": {
-          "transform": {
-            "operation": "parse",
-            "data": "$.fileContent",
-            "success?": {
-              "filter": {
-                "items": "$.transformResult",
-                "conditions": [
-                  { "field": "valid", "dataType": "boolean", "operation": "true" }
-                ],
-                "passed?": {
-                  "transform": {
-                    "operation": "stringify",
-                    "data": "$.filterPassed",
-                    "success?": {
-                      "filesystem": {
-                        "operation": "write",
-                        "path": "$.outputPath",
-                        "content": "$.transformResult",
-                        "success?": {
-                          "log": { "message": "Processed and saved to $.outputPath" }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
         "not_exists?": {
-          "log": { "message": "Input file not found: $.inputPath" }
+          "log": { "message": "Input file not found: {{$.inputPath}}" }
+        },
+        "error?": {
+          "log": { "message": "Read error: {{$.error}}" }
         }
       }
+    },
+    {
+      "transform": {
+        "operation": "parse",
+        "data": "$.fileContent",
+        "error?": {
+          "log": { "message": "Parse error: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "filter": {
+        "items": "$.transformResult",
+        "conditions": [
+          { "field": "valid", "dataType": "boolean", "operation": "true" }
+        ]
+      }
+    },
+    {
+      "transform": {
+        "operation": "stringify",
+        "data": "$.filterPassed"
+      }
+    },
+    {
+      "filesystem": {
+        "operation": "write",
+        "path": "$.outputPath",
+        "content": "$.transformResult",
+        "error?": {
+          "log": { "message": "Write error: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "log": { "message": "Processed and saved to {{$.outputPath}}" }
     }
   ]
 }
 ```
 
+**Why flat:** Sequential pipeline - read → parse → filter → stringify → write → log.
+
 **State keys written:** `fileContent`, `transformResult`, `filterPassed`, `fileWritten`
 
 ---
 
-## 6. Multi-Path Switch Routing
+## 6. Multi-Path Switch Routing (Edges Required)
 
-**Use case:** Route to different paths based on expression.
+**Use case:** Route to different paths based on expression. **Switch requires edge nesting.**
 
 ```json
 {
@@ -304,10 +333,7 @@ Common workflow patterns with complete, production-ready examples.
             "fieldsToSet": [
               { "name": "queue", "value": "urgent", "type": "string" },
               { "name": "sla", "value": "1h", "type": "string" }
-            ],
-            "success?": {
-              "log": { "message": "Critical ticket routed to urgent queue" }
-            }
+            ]
           }
         },
         "normal?": {
@@ -316,10 +342,7 @@ Common workflow patterns with complete, production-ready examples.
             "fieldsToSet": [
               { "name": "queue", "value": "standard", "type": "string" },
               { "name": "sla", "value": "24h", "type": "string" }
-            ],
-            "success?": {
-              "log": { "message": "Normal ticket routed to standard queue" }
-            }
+            ]
           }
         },
         "low?": {
@@ -328,17 +351,19 @@ Common workflow patterns with complete, production-ready examples.
             "fieldsToSet": [
               { "name": "queue", "value": "backlog", "type": "string" },
               { "name": "sla", "value": "1w", "type": "string" }
-            ],
-            "success?": {
-              "log": { "message": "Low priority ticket added to backlog" }
-            }
+            ]
           }
         }
       }
+    },
+    {
+      "log": { "message": "Ticket routed to {{$.queue}} queue with {{$.sla}} SLA" }
     }
   ]
 }
 ```
+
+**Why edges:** Switch nodes route to different paths - each edge is a distinct code path.
 
 **Key points:**
 - `switch` with `mode: "expression"` evaluates JavaScript
@@ -347,13 +372,13 @@ Common workflow patterns with complete, production-ready examples.
 
 ---
 
-## 7. AI Content Processing
+## 7. AI Content Processing (Flat)
 
-**Use case:** Use AI to process content.
+**Use case:** Use AI to process content sequentially.
 
 ```json
 {
-  "id": "ai-content",
+  "id": "ai-content-flat",
   "name": "AI Content Processing",
   "version": "1.0.0",
   "initialState": {
@@ -362,41 +387,38 @@ Common workflow patterns with complete, production-ready examples.
   "workflow": [
     {
       "ask-ai": {
-        "userPrompt": "Summarize this text in one sentence: $.inputText",
+        "userPrompt": "Summarize this text in one sentence: {{$.inputText}}",
         "model": "openai/gpt-4o-mini",
         "systemPrompt": "You are a professional content summarizer. Be concise.",
-        "success?": {
-          "editFields": {
-            "mode": "manual_mapping",
-            "fieldsToSet": [
-              { "name": "summary", "value": "$.aiResponse", "type": "string" }
-            ],
-            "success?": {
-              "log": { "message": "AI Summary: {{$.summary}}" }
-            }
-          }
-        },
         "error?": {
-          "log": { "message": "AI processing failed" }
+          "log": { "message": "AI processing failed: {{$.error}}" }
         }
       }
+    },
+    {
+      "editFields": {
+        "mode": "manual_mapping",
+        "fieldsToSet": [
+          { "name": "summary", "value": "$.aiResponse", "type": "string" }
+        ]
+      }
+    },
+    {
+      "log": { "message": "AI Summary: {{$.summary}}" }
     }
   ]
 }
 ```
 
-**State keys written:** `aiResponse`, `aiResponseData`, `summary`
+**Why flat:** Simple sequential pipeline - AI call → store result → log.
 
-**AI Node Requirements:**
-- `userPrompt`: Required - the prompt to send
-- `model`: Required - model identifier (e.g., `openai/gpt-4o-mini`)
-- `systemPrompt`: Optional - system message for context
+**State keys written:** `aiResponse`, `aiResponseData`, `summary`
 
 ---
 
-## 8. Validation Pipeline
+## 8. Validation Pipeline (Mixed)
 
-**Use case:** Validate data before database insert.
+**Use case:** Validate data with branching for valid/invalid paths.
 
 ```json
 {
@@ -415,68 +437,118 @@ Common workflow patterns with complete, production-ready examples.
       "validateData": {
         "validationType": "required_fields",
         "requiredFields": ["email", "password", "name"],
-        "valid?": {
-          "validateData": {
-            "validationType": "pattern",
-            "patternValidations": [
-              {
-                "field": "email",
-                "pattern": "^[^@]+@[^@]+\\.[^@]+$",
-                "errorMessage": "Invalid email format"
+        "invalid?": {
+          "log": { "message": "Missing required fields: {{$.validationErrors}}" }
+        }
+      }
+    },
+    {
+      "validateData": {
+        "validationType": "pattern",
+        "patternValidations": [
+          {
+            "field": "email",
+            "pattern": "^[^@]+@[^@]+\\.[^@]+$",
+            "errorMessage": "Invalid email format"
+          }
+        ],
+        "invalid?": {
+          "log": { "message": "Email validation failed: {{$.validationErrors}}" }
+        }
+      }
+    },
+    {
+      "database": {
+        "operation": "find",
+        "table": "users",
+        "query": { "email": "$.input.email" },
+        "found?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "error", "value": "Email already registered", "type": "string" },
+              { "name": "success", "value": false, "type": "boolean" }
+            ]
+          }
+        },
+        "not_found?": [
+          {
+            "auth": {
+              "operation": "hash",
+              "data": "$.input.password"
+            }
+          },
+          {
+            "database": {
+              "operation": "insert",
+              "table": "users",
+              "data": {
+                "email": "$.input.email",
+                "password": "$.hashedPassword",
+                "name": "$.input.name"
               }
-            ],
-            "valid?": {
-              "database": {
-                "operation": "find",
-                "table": "users",
-                "query": { "email": "$.input.email" },
-                "found?": {
-                  "editFields": {
-                    "mode": "manual_mapping",
-                    "fieldsToSet": [
-                      { "name": "error", "value": "Email already registered", "type": "string" },
-                      { "name": "success", "value": false, "type": "boolean" }
-                    ]
-                  }
-                },
-                "not_found?": {
-                  "auth": {
-                    "operation": "hash",
-                    "data": "$.input.password",
-                    "success?": {
-                      "database": {
-                        "operation": "insert",
-                        "table": "users",
-                        "data": {
-                          "email": "$.input.email",
-                          "password": "$.hashedPassword",
-                          "name": "$.input.name"
-                        },
-                        "success?": {
-                          "editFields": {
-                            "mode": "manual_mapping",
-                            "fieldsToSet": [
-                              { "name": "success", "value": true, "type": "boolean" },
-                              { "name": "userId", "value": "$.dbInserted.id", "type": "string" }
-                            ],
-                            "success?": {
-                              "log": { "message": "User registered: {{$.userId}}" }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+            }
+          },
+          {
+            "editFields": {
+              "mode": "manual_mapping",
+              "fieldsToSet": [
+                { "name": "success", "value": true, "type": "boolean" },
+                { "name": "userId", "value": "$.dbInserted.id", "type": "string" }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "log": { "message": "Registration result: success={{$.success}}" }
+    }
+  ]
+}
+```
+
+**Why mixed:** Sequential validation steps, but `found?`/`not_found?` require branching for find-or-create logic.
+
+---
+
+## 9. Database Find-or-Create (Edges Required)
+
+**Use case:** Find a record or create it if not found. **Edges required for this pattern.**
+
+```json
+{
+  "id": "find-or-create",
+  "name": "Find or Create User",
+  "version": "1.0.0",
+  "initialState": {
+    "email": "alice@example.com",
+    "defaultName": "New User"
+  },
+  "workflow": [
+    {
+      "database": {
+        "operation": "find",
+        "table": "users",
+        "query": { "email": "$.email" },
+        "found?": {
+          "log": { "message": "Found existing user: {{$.dbRecord.name}}" }
+        },
+        "not_found?": {
+          "database": {
+            "operation": "insert",
+            "table": "users",
+            "data": {
+              "email": "$.email",
+              "name": "$.defaultName"
             },
-            "invalid?": {
-              "log": { "message": "Email validation failed: $.validationErrors" }
+            "success?": {
+              "log": { "message": "Created new user: {{$.dbInserted.name}}" }
             }
           }
         },
-        "invalid?": {
-          "log": { "message": "Missing required fields: $.validationErrors" }
+        "error?": {
+          "log": { "message": "Database error: {{$.error}}" }
         }
       }
     }
@@ -484,25 +556,41 @@ Common workflow patterns with complete, production-ready examples.
 }
 ```
 
-**Key points:**
-- Chain multiple `validateData` nodes for different validation types
-- Use `database` with `found?`/`not_found?` for uniqueness checks
-- `auth` node for password hashing before storage
+**Why edges:** `found?` and `not_found?` lead to fundamentally different operations.
 
 ---
 
 ## Pattern Selection Guide
 
-| Use Case | Pattern |
-|----------|---------|
-| Process data arrays | Data Processing Pipeline |
-| Branch on conditions | Conditional Branching |
-| Handle errors gracefully | Error Handling Chain |
-| Iterate N times | Loop with Counter |
-| File ETL | File Read-Process-Write |
-| Multi-way routing | Multi-Path Switch Routing |
-| AI text processing | AI Content Processing |
-| Form validation | Validation Pipeline |
+| Use Case | Pattern | Style |
+|----------|---------|-------|
+| Process data arrays | Data Processing Pipeline | **Flat** |
+| Branch on conditions | Conditional Branching | Edges |
+| Handle errors gracefully | Error Handling Chain | **Flat + error edges** |
+| Iterate N times | Loop with Counter | Edges |
+| File ETL | File Read-Process-Write | **Flat** |
+| Multi-way routing | Multi-Path Switch Routing | Edges |
+| AI text processing | AI Content Processing | **Flat** |
+| Form validation | Validation Pipeline | Mixed |
+| Find or create records | Database Find-or-Create | Edges |
+
+## When to Use Each Style
+
+### Use FLAT (Workflow Array)
+
+- Sequential operations that always run in order
+- Pipeline processing (read → transform → write)
+- Operations where "success" just means "continue"
+- Adding error handling to sequential flows
+
+### Use EDGES (Nesting)
+
+- Conditional logic (`true?`/`false?`)
+- Loops (`nodeType...` with `continue?`/`exit?`)
+- Find-or-create patterns (`found?`/`not_found?`)
+- Validation branching (`valid?`/`invalid?`)
+- Multi-way routing (`switch` node)
+- When different branches do completely different things
 
 ## Initial State Templates
 
