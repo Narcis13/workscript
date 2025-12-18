@@ -21,7 +21,7 @@ describe('ValidateDataNode', () => {
     it('should have correct metadata', () => {
       expect(node.metadata.id).toBe('validateData');
       expect(node.metadata.name).toBe('Validate Data');
-      expect(node.metadata.version).toBe('1.0.0');
+      expect(node.metadata.version).toBe('1.1.0');
       expect(node.metadata.description).toContain('validate data');
     });
 
@@ -31,6 +31,10 @@ describe('ValidateDataNode', () => {
       expect(node.metadata.ai_hints?.when_to_use).toBeDefined();
       expect(node.metadata.ai_hints?.expected_edges).toContain('valid');
       expect(node.metadata.ai_hints?.expected_edges).toContain('invalid');
+    });
+
+    it('should include data in inputs', () => {
+      expect(node.metadata.inputs).toContain('data');
     });
   });
 
@@ -660,6 +664,282 @@ describe('ValidateDataNode', () => {
 
       expect(context.state.validationErrors).toBeDefined();
       expect(context.state.validationErrors.length).toBe(1);
+    });
+  });
+
+  describe('data config property', () => {
+    it('should accept data from config instead of context.inputs', async () => {
+      const data = {
+        name: 'John',
+        email: 'john@example.com'
+      };
+
+      const result = await node.execute(context, {
+        validationType: 'required_fields',
+        data: data,
+        requiredFields: ['name', 'email']
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+    });
+
+    it('should prefer config data over context.inputs data', async () => {
+      const inputData = {
+        name: 'John'
+        // email missing - would fail validation
+      };
+
+      const configData = {
+        name: 'John',
+        email: 'john@example.com'
+        // has email - should pass validation
+      };
+
+      context.inputs = { data: inputData };
+
+      const result = await node.execute(context, {
+        validationType: 'required_fields',
+        data: configData,
+        requiredFields: ['name', 'email']
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+    });
+
+    it('should fall back to context.inputs when config data is not provided', async () => {
+      const data = {
+        name: 'John',
+        email: 'john@example.com'
+      };
+
+      context.inputs = { data };
+
+      const result = await node.execute(context, {
+        validationType: 'required_fields',
+        requiredFields: ['name', 'email']
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+    });
+  });
+
+  describe('json validation', () => {
+    it('should validate valid JSON string', async () => {
+      const jsonString = '{"name": "John", "age": 30}';
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: jsonString
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+      expect(response.parsedJson).toEqual({ name: 'John', age: 30 });
+      expect(context.state.parsedJson).toEqual({ name: 'John', age: 30 });
+    });
+
+    it('should validate valid JSON array string', async () => {
+      const jsonString = '[1, 2, 3, "four"]';
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: jsonString
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+      expect(response.parsedJson).toEqual([1, 2, 3, 'four']);
+    });
+
+    it('should return invalid for invalid JSON string', async () => {
+      const invalidJson = '{invalid json}';
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: invalidJson
+      });
+
+      expect(result.invalid).toBeDefined();
+      const response = await result.invalid!(context);
+      expect(response.isValid).toBe(false);
+      expect(response.validationType).toBe('json');
+    });
+
+    it('should return invalid for JSON primitive values', async () => {
+      const primitiveJson = '"just a string"';
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: primitiveJson
+      });
+
+      expect(result.invalid).toBeDefined();
+      const response = await result.invalid!(context);
+      expect(response.isValid).toBe(false);
+      expect(response.errors[0].error).toContain('primitive value');
+    });
+
+    it('should accept already parsed object as valid JSON', async () => {
+      const alreadyParsed = { name: 'John', age: 30 };
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: alreadyParsed
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+      expect(response.parsedJson).toEqual(alreadyParsed);
+    });
+
+    it('should accept already parsed array as valid JSON', async () => {
+      const alreadyParsed = [1, 2, 3];
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: alreadyParsed
+      });
+
+      expect(result.valid).toBeDefined();
+      const response = await result.valid!(context);
+      expect(response.isValid).toBe(true);
+      expect(response.parsedJson).toEqual(alreadyParsed);
+    });
+
+    it('should return invalid for non-string non-object data', async () => {
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: 12345
+      });
+
+      expect(result.invalid).toBeDefined();
+      const response = await result.invalid!(context);
+      expect(response.isValid).toBe(false);
+      expect(response.errors[0].error).toContain('Expected string');
+    });
+
+    it('should return error when no data is provided for json validation', async () => {
+      const result = await node.execute(context, {
+        validationType: 'json'
+      });
+
+      expect(result.error).toBeDefined();
+      const response = await result.error!(context);
+      expect(response.error).toContain('No data to validate');
+    });
+
+    it('should store validation result in state for json validation', async () => {
+      const jsonString = '{"key": "value"}';
+
+      await node.execute(context, {
+        validationType: 'json',
+        data: jsonString
+      });
+
+      expect(context.state.validationResult).toBeDefined();
+      expect(context.state.validationResult.isValid).toBe(true);
+      expect(context.state.validationResult.validationType).toBe('json');
+      expect(context.state.parsedJson).toEqual({ key: 'value' });
+    });
+
+    it('should store validation errors in state for invalid json', async () => {
+      const invalidJson = 'not valid json';
+
+      await node.execute(context, {
+        validationType: 'json',
+        data: invalidJson
+      });
+
+      expect(context.state.validationResult).toBeDefined();
+      expect(context.state.validationResult.isValid).toBe(false);
+      expect(context.state.validationErrors).toBeDefined();
+      expect(context.state.validationErrors.length).toBe(1);
+    });
+
+    it('should include errors in response when outputErrors is true', async () => {
+      const invalidJson = 'invalid';
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: invalidJson,
+        outputErrors: true
+      });
+
+      expect(result.invalid).toBeDefined();
+      const response = await result.invalid!(context);
+      expect(response.errors).toBeDefined();
+      expect(response.errorCount).toBe(1);
+    });
+
+    it('should exclude errors in response when outputErrors is false', async () => {
+      const invalidJson = 'invalid';
+
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: invalidJson,
+        outputErrors: false
+      });
+
+      expect(result.invalid).toBeDefined();
+      const response = await result.invalid!(context);
+      expect(response.errors).toBeUndefined();
+      expect(response.errorCount).toBeUndefined();
+    });
+  });
+
+  describe('single edge return pattern', () => {
+    it('should return exactly one edge for valid data', async () => {
+      const data = { name: 'John', email: 'john@example.com' };
+
+      const result = await node.execute(context, {
+        validationType: 'required_fields',
+        data: data,
+        requiredFields: ['name', 'email']
+      });
+
+      expect(Object.keys(result)).toHaveLength(1);
+      expect(result.valid).toBeDefined();
+    });
+
+    it('should return exactly one edge for invalid data', async () => {
+      const data = { name: 'John' };
+
+      const result = await node.execute(context, {
+        validationType: 'required_fields',
+        data: data,
+        requiredFields: ['name', 'email']
+      });
+
+      expect(Object.keys(result)).toHaveLength(1);
+      expect(result.invalid).toBeDefined();
+    });
+
+    it('should return exactly one edge for error conditions', async () => {
+      const result = await node.execute(context, {
+        validationType: 'required_fields'
+        // Missing requiredFields
+      });
+
+      expect(Object.keys(result)).toHaveLength(1);
+      expect(result.error).toBeDefined();
+    });
+
+    it('should return exactly one edge for json validation', async () => {
+      const result = await node.execute(context, {
+        validationType: 'json',
+        data: '{"valid": true}'
+      });
+
+      expect(Object.keys(result)).toHaveLength(1);
     });
   });
 });

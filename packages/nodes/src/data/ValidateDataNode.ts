@@ -2,6 +2,7 @@
  * ValidateDataNode - Universal node for data validation against schemas and rules
  *
  * Validates data using various validation strategies:
+ * - JSON validation (checks if text is valid JSON)
  * - JSON Schema validation
  * - Type checking
  * - Required fields validation
@@ -12,11 +13,24 @@
  * @example
  * ```json
  * {
- *   "validate-1": {
+ *   "validateData": {
  *     "validationType": "required_fields",
+ *     "data": "$.dataToValidate",
  *     "requiredFields": ["name", "email", "age"],
  *     "valid?": "process-data",
  *     "invalid?": "handle-error"
+ *   }
+ * }
+ * ```
+ *
+ * @example JSON validation
+ * ```json
+ * {
+ *   "validateData": {
+ *     "validationType": "json",
+ *     "data": "$.textToValidate",
+ *     "valid?": "process-json",
+ *     "invalid?": "handle-invalid-json"
  *   }
  * }
  * ```
@@ -49,7 +63,8 @@ interface ValidationError {
 }
 
 interface ValidateDataNodeConfig {
-  validationType?: 'json_schema' | 'type_check' | 'required_fields' | 'range' | 'pattern' | 'custom';
+  validationType?: 'json' | 'json_schema' | 'type_check' | 'required_fields' | 'range' | 'pattern' | 'custom';
+  data?: any; // Data to validate - can be provided via config or context.inputs
   schema?: Record<string, any>;
   typeChecks?: TypeCheck[];
   requiredFields?: string[];
@@ -64,10 +79,11 @@ export class ValidateDataNode extends WorkflowNode {
   metadata = {
     id: 'validateData',
     name: 'Validate Data',
-    version: '1.0.0',
-    description: 'Universal node - validate data against schemas and rules',
+    version: '1.1.0',
+    description: 'Universal node - validate data against schemas, rules, and JSON format',
     inputs: [
       'validationType',
+      'data',
       'schema',
       'typeChecks',
       'requiredFields',
@@ -76,21 +92,22 @@ export class ValidateDataNode extends WorkflowNode {
       'stopOnError',
       'outputErrors'
     ],
-    outputs: ['data', 'isValid', 'errors'],
+    outputs: ['data', 'isValid', 'errors', 'parsedJson'],
     ai_hints: {
-      purpose: 'Validate data against schemas, type checks, required fields, ranges, and patterns',
-      when_to_use: 'When you need to ensure data quality and conformance to expected structure before processing',
+      purpose: 'Validate data against schemas, type checks, required fields, ranges, patterns, and JSON format',
+      when_to_use: 'When you need to ensure data quality, conformance to expected structure, or verify JSON validity before processing',
       expected_edges: ['valid', 'invalid', 'error'],
-      example_usage: '{"validate-1": {"validationType": "required_fields", "requiredFields": ["name", "email"], "valid?": "process", "invalid?": "reject"}}',
-      example_config: '{"validationType": "type_check|required_fields|range|pattern|json_schema", "requiredFields?": "[string, ...]", "typeChecks?": "[{field, expectedType}, ...]", "outputErrors?": "boolean"}',
+      example_usage: '{"validateData": {"validationType": "required_fields", "data": "$.dataToValidate", "requiredFields": ["name", "email"], "valid?": "process", "invalid?": "reject"}}',
+      example_config: '{"validationType": "json|type_check|required_fields|range|pattern|json_schema", "data": "any", "requiredFields?": "[string, ...]", "typeChecks?": "[{field, expectedType}, ...]", "outputErrors?": "boolean"}',
       get_from_state: [],
-      post_to_state: ['validationResult', 'validationErrors']
+      post_to_state: ['validationResult', 'validationErrors', 'parsedJson']
     }
   };
 
   async execute(context: ExecutionContext, config?: unknown): Promise<EdgeMap> {
     const {
       validationType = 'required_fields',
+      data: configData,
       schema,
       typeChecks,
       requiredFields,
@@ -101,16 +118,30 @@ export class ValidateDataNode extends WorkflowNode {
       outputErrors = true
     } = (config as ValidateDataNodeConfig) || {};
 
-    // Extract data to validate from inputs
-    const dataToValidate = context.inputs?.data;
+    // Extract data to validate from config first, then fall back to context.inputs
+    const dataToValidate = configData !== undefined ? configData : context.inputs?.data;
 
-    if (!dataToValidate || typeof dataToValidate !== 'object') {
-      return {
-        error: () => ({
-          error: 'No data to validate or data is not an object',
-          nodeId: context.nodeId
-        })
-      };
+    // For JSON validation, we accept string input
+    if (validationType === 'json') {
+      if (dataToValidate === undefined || dataToValidate === null) {
+        return {
+          error: () => ({
+            error: 'No data to validate for JSON validation',
+            nodeId: context.nodeId
+          })
+        };
+      }
+      // JSON validation handles its own type checking
+    } else {
+      // For other validation types, we require an object
+      if (!dataToValidate || typeof dataToValidate !== 'object') {
+        return {
+          error: () => ({
+            error: 'No data to validate or data is not an object',
+            nodeId: context.nodeId
+          })
+        };
+      }
     }
 
     try {
@@ -119,6 +150,58 @@ export class ValidateDataNode extends WorkflowNode {
 
       // Execute validation based on type
       switch (validationType) {
+        case 'json': {
+          const jsonResult = this.validateJson(dataToValidate);
+          if (jsonResult.isValid) {
+            // Store parsed JSON in state
+            context.state.parsedJson = jsonResult.parsedValue;
+            context.state.validationResult = {
+              isValid: true,
+              timestamp: new Date().toISOString(),
+              validationType: 'json'
+            };
+
+            return {
+              valid: () => ({
+                data: dataToValidate,
+                parsedJson: jsonResult.parsedValue,
+                isValid: true,
+                validationType: 'json'
+              })
+            };
+          } else {
+            context.state.validationResult = {
+              isValid: false,
+              timestamp: new Date().toISOString(),
+              validationType: 'json'
+            };
+            context.state.validationErrors = [{
+              field: '__json__',
+              error: jsonResult.error || 'Invalid JSON',
+              value: dataToValidate
+            }];
+
+            const response: any = {
+              data: dataToValidate,
+              isValid: false,
+              validationType: 'json'
+            };
+
+            if (outputErrors) {
+              response.errors = [{
+                field: '__json__',
+                error: jsonResult.error || 'Invalid JSON',
+                value: dataToValidate
+              }];
+              response.errorCount = 1;
+            }
+
+            return {
+              invalid: () => response
+            };
+          }
+        }
+
         case 'json_schema':
           errors.push(...this.validateJsonSchema(dataToValidate, schema));
           break;
@@ -239,6 +322,46 @@ export class ValidateDataNode extends WorkflowNode {
           validationType,
           details: error instanceof Error ? error.stack : undefined
         })
+      };
+    }
+  }
+
+  /**
+   * Validate if a string is valid JSON
+   * Returns the parsed value if valid, or error information if invalid
+   */
+  private validateJson(data: any): { isValid: boolean; parsedValue?: any; error?: string } {
+    // If already an object/array, it's valid JSON (already parsed)
+    if (typeof data === 'object' && data !== null) {
+      return { isValid: true, parsedValue: data };
+    }
+
+    // If not a string, it's not valid JSON text
+    if (typeof data !== 'string') {
+      return {
+        isValid: false,
+        error: `Expected string for JSON validation, got ${typeof data}`
+      };
+    }
+
+    // Try to parse the string as JSON
+    try {
+      const parsed = JSON.parse(data);
+      // JSON.parse successfully parsed - check if it's an object or array
+      if (typeof parsed === 'object' && parsed !== null) {
+        return { isValid: true, parsedValue: parsed };
+      } else {
+        // Primitive values like "true", "123", "null" are technically valid JSON
+        // but based on the requirement, we're validating for JSON objects
+        return {
+          isValid: false,
+          error: `JSON parsed to primitive value (${typeof parsed}), expected object or array`
+        };
+      }
+    } catch (parseError) {
+      return {
+        isValid: false,
+        error: parseError instanceof Error ? parseError.message : 'Invalid JSON syntax'
       };
     }
   }

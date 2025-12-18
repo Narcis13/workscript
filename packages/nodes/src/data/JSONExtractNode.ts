@@ -12,7 +12,7 @@ import type { ExecutionContext, EdgeMap } from '@workscript/engine';
  * @example
  * ```json
  * {
- *   "extract-1": {
+ *   "jsonExtract": {
  *     "method": "dot_notation",
  *     "path": "user.profile.name",
  *     "outputField": "userName",
@@ -33,7 +33,7 @@ export class JSONExtractNode extends WorkflowNode {
       purpose: 'Extract values from JSON/objects using dot notation, bracket notation, or path expressions',
       when_to_use: 'When you need to extract specific values from nested objects or arrays in workflow data',
       expected_edges: ['success', 'not_found', 'error'],
-      example_usage: '{"extract-1": {"method": "dot_notation", "path": "user.profile.name", "outputField": "userName", "success?": "next-node"}}',
+      example_usage: '{"jsonExtract": {"method": "dot_notation", "path": "user.profile.name", "outputField": "userName", "success?": "next-node"}}',
       example_config: '{"method": "dot_notation|bracket_notation|simple_path", "path": "string", "fallbackValue?": "any", "multiple?": "boolean", "outputField?": "string"}',
       get_from_state: [],
       post_to_state: ['extractedValue']
