@@ -164,13 +164,17 @@ export async function interpolateResource(
 
 /**
  * Fetch resource content as text
+ *
+ * Note: The API returns raw content with Content-Type header based on file type.
+ * For JSON files, this means Axios would auto-parse it. We use responseType: 'text'
+ * to get the raw string, which is needed for displaying in editors and JSON.parse().
  */
 export async function fetchResourceContent(id: string): Promise<string> {
-  const response = await apiClient.get(`${BASE_URL}/${id}/content`);
-  if (response.data.content) {
-    return response.data.content;
-  }
-  return response.data as unknown as string;
+  const response = await apiClient.get(`${BASE_URL}/${id}/content`, {
+    responseType: 'text',
+  });
+  // With responseType: 'text', response.data is always a string
+  return response.data;
 }
 
 /**

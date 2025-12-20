@@ -9,28 +9,46 @@
 import { useRef, lazy, Suspense } from 'react';
 import type { OnMount, OnChange } from '@monaco-editor/react';
 import { loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
-import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
-import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
 import { useTheme } from 'next-themes';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ResourceType } from '@/types/resource.types';
 
-// Configure Monaco web workers for Vite
-// This fixes the "factory.create is not a function" error
-self.MonacoEnvironment = {
-  getWorker(_, label) {
-    if (label === 'json') {
-      return new jsonWorker();
-    }
-    return new editorWorker();
-  },
-};
+// Flag to track if Monaco has been initialized
+let monacoInitialized = false;
 
-// Configure Monaco to use local monaco-editor package instead of CDN
-loader.config({ monaco });
+// Initialize Monaco with proper worker configuration
+async function initMonaco() {
+  if (monacoInitialized) return;
 
-const Editor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.Editor })));
+  // Dynamically import monaco-editor to avoid issues with SSR/initial load
+  const monaco = await import('monaco-editor');
+
+  // Import workers
+  const editorWorker = await import('monaco-editor/esm/vs/editor/editor.worker?worker');
+  const jsonWorker = await import('monaco-editor/esm/vs/language/json/json.worker?worker');
+
+  // Configure Monaco environment BEFORE loading
+  self.MonacoEnvironment = {
+    getWorker(_, label) {
+      if (label === 'json') {
+        return new jsonWorker.default();
+      }
+      return new editorWorker.default();
+    },
+  };
+
+  // Configure the loader to use the local monaco instance
+  loader.config({ monaco });
+
+  monacoInitialized = true;
+}
+
+// Start initialization immediately
+const monacoPromise = initMonaco();
+
+const Editor = lazy(() =>
+  monacoPromise.then(() => import('@monaco-editor/react').then(mod => ({ default: mod.Editor })))
+);
 
 const languageMap: Record<ResourceType, string> = {
   prompt: 'markdown',

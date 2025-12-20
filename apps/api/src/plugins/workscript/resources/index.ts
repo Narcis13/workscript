@@ -396,6 +396,89 @@ resourceRoutes.post(
 );
 
 // =============================================================================
+// GET /by-path - Lookup resource by path (for upsert operations)
+// =============================================================================
+
+/**
+ * GET /by-path
+ *
+ * Looks up a resource by exact path without tenant filtering.
+ * This is specifically designed for upsert operations where we need to check
+ * if a path exists globally before creating/updating.
+ *
+ * **Query Parameters:**
+ * - path (required): The resource path to look up
+ *
+ * **Response (200):**
+ * ```json
+ * {
+ *   "success": true,
+ *   "resource": { ... } | null,
+ *   "found": true | false
+ * }
+ * ```
+ *
+ * @see ResourceWriteNode upsert mode
+ */
+resourceRoutes.get(
+  '/by-path',
+  authenticate,
+  requirePermission(Permission.RESOURCE_READ),
+  async (c: Context<{ Variables: AuthContext }>) => {
+    const user = c.get('user');
+
+    if (!user) {
+      return c.json({ success: false, error: 'Not authenticated' }, 401);
+    }
+
+    try {
+      const query = c.req.query();
+
+      if (!query.path) {
+        return c.json({ success: false, error: 'Path is required', code: 'VALIDATION_ERROR' }, 400);
+      }
+
+      const pathToFind = query.path;
+      const tenantId = user.tenantId || 'shared';
+
+      // Try multiple path variations to find the resource
+      // This handles cases where resources may be in different tenants (e.g., shared)
+      const pathsToTry: string[] = [];
+
+      if (pathToFind.startsWith('resources/')) {
+        // Already a full path, try it first
+        pathsToTry.push(pathToFind);
+      } else {
+        // Try user's tenant path first
+        pathsToTry.push(`resources/${tenantId}/${pathToFind}`);
+        // Try "shared" tenant path (for cross-tenant upsert operations)
+        if (tenantId !== 'shared') {
+          pathsToTry.push(`resources/shared/${pathToFind}`);
+        }
+        // Try raw path last
+        pathsToTry.push(pathToFind);
+      }
+
+      // Try each path variation
+      for (const tryPath of pathsToTry) {
+        const resource = await repository.findByPath(tryPath);
+        if (resource) {
+          return c.json({ success: true, resource, found: true });
+        }
+      }
+
+      return c.json({ success: true, resource: null, found: false });
+    } catch (error) {
+      console.error('[Resources Routes] Path lookup error:', error);
+      return c.json(
+        { success: false, error: 'Failed to lookup resource by path', code: 'INTERNAL_ERROR' },
+        500
+      );
+    }
+  }
+);
+
+// =============================================================================
 // GET / - List resources
 // =============================================================================
 
@@ -850,13 +933,33 @@ resourceRoutes.put(
 
       // Update content via StorageService
       const storage = getStorageService();
+
+      // Read old content first for potential rollback
+      const oldContent = await storage.readResource(resource.path);
+
+      // Update file content
       const updateResult = await storage.updateResourceContent(resource.path, body.content);
 
       // Update database record with new size and checksum
-      const updatedResource = await repository.update(id, {
-        size: updateResult.size,
-        checksum: updateResult.newChecksum,
-      });
+      // Wrap in try-catch to rollback file if DB update fails
+      let updatedResource;
+      try {
+        updatedResource = await repository.update(id, {
+          size: updateResult.size,
+          checksum: updateResult.newChecksum,
+        });
+      } catch (dbError) {
+        // DB update failed - rollback file to original content
+        console.error('[Resources Routes] DB update failed on content update, rolling back file:', dbError);
+        try {
+          await storage.updateResourceContent(resource.path, oldContent.content);
+          console.log('[Resources Routes] Rolled back file content to original state');
+        } catch (rollbackError) {
+          console.error('[Resources Routes] CRITICAL: Failed to rollback file content after DB error:', rollbackError);
+          // File is now inconsistent with DB - this should be flagged for manual intervention
+        }
+        throw dbError; // Re-throw to be handled by outer catch
+      }
 
       // Log operation
       const durationMs = Date.now() - startTime;
@@ -946,7 +1049,24 @@ resourceRoutes.delete(
         // Double-check if it was actually deleted (MySQL/Drizzle may return 0 affected rows)
         const checkResource = await repository.findById(id, true); // include inactive
         if (!checkResource || checkResource.isActive === false) {
-          // Resource was actually deleted, report success
+          // Resource was actually deleted - also delete the file from filesystem
+          try {
+            await storage.deleteResourceFile(resource.path);
+            console.log('[Resources Routes] Deleted file from filesystem (early path):', resource.path);
+          } catch (fileError) {
+            // Log the error but don't fail the request - the DB record is already soft deleted
+            console.error('[Resources Routes] Failed to delete file from filesystem:', fileError);
+          }
+
+          // Log operation (also for early return path)
+          const durationMs = Date.now() - startTime;
+          repository.logOperation(
+            createOperationLog(id, 'delete', 'user', user.id, 'success', {
+              durationMs,
+              details: { filePath: resource.path, earlyReturnPath: true },
+            })
+          );
+
           return c.json({ success: true, resourceId: id });
         }
         return c.json(
@@ -1421,15 +1541,51 @@ resourceRoutes.post(
       // Start scanning from the base path
       await scanDirectory(basePath);
 
-      console.log(`[Resources Routes] Sync completed: ${results.synced} synced, ${results.skipped} skipped, ${results.errors.length} errors`);
+      // Also check for orphaned DB records (records without files)
+      const orphanedRecords: Array<{ id: string; path: string; action: string }> = [];
+      const checkOrphans = body.checkOrphans !== false; // Default to true
+
+      if (checkOrphans) {
+        // Get all active resources for this tenant
+        const allResources = await repository.findAll({
+          tenantId,
+          includePublic: false,
+          includeInactive: false,
+          limit: 1000, // Check up to 1000 resources
+        });
+
+        for (const resource of allResources) {
+          // Only check resources within the scanned basePath
+          if (!resource.path.startsWith(basePath)) {
+            continue;
+          }
+
+          const absolutePath = path.join(sandboxRoot, resource.path);
+          try {
+            await fs.access(absolutePath);
+            // File exists, no action needed
+          } catch {
+            // File doesn't exist - orphaned DB record
+            orphanedRecords.push({
+              id: resource.id,
+              path: resource.path,
+              action: dryRun ? 'would mark as orphaned (dry run)' : 'orphaned (file missing)',
+            });
+          }
+        }
+      }
+
+      console.log(`[Resources Routes] Sync completed: ${results.synced} synced, ${results.skipped} skipped, ${orphanedRecords.length} orphaned, ${results.errors.length} errors`);
 
       return c.json({
         success: true,
         dryRun,
         synced: results.synced,
         skipped: results.skipped,
+        orphanedRecords: orphanedRecords.length,
         errors: results.errors,
         details: results.details,
+        orphaned: orphanedRecords,
       });
     } catch (error) {
       console.error('[Resources Routes] Sync error:', error);

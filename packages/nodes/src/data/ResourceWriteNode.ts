@@ -589,7 +589,9 @@ export class ResourceWriteNode extends WorkflowNode {
   }
 
   /**
-   * Search for a resource by path
+   * Search for a resource by path using the dedicated /by-path endpoint
+   * This endpoint does not filter by tenant, which is needed for upsert operations
+   * to correctly detect existing resources at a path regardless of tenant ownership.
    */
   private async findResourceByPath(
     baseUrl: string,
@@ -604,10 +606,9 @@ export class ResourceWriteNode extends WorkflowNode {
     );
 
     try {
-      const searchUrl = new URL('/workscript/resources', baseUrl);
-      // Use path filter for exact/suffix path matching (not search which only checks name/description)
+      // Use the dedicated /by-path endpoint for path lookup without tenant filtering
+      const searchUrl = new URL('/workscript/resources/by-path', baseUrl);
       searchUrl.searchParams.set('path', path);
-      searchUrl.searchParams.set('limit', '10');
 
       const response = await fetch(searchUrl.toString(), {
         method: 'GET',
@@ -624,15 +625,15 @@ export class ResourceWriteNode extends WorkflowNode {
         return null;
       }
 
-      const data = await response.json() as { items?: ResourceMetadata[]; count?: number };
+      const data = await response.json() as {
+        success: boolean;
+        resource?: ResourceMetadata | null;
+        found?: boolean;
+      };
 
-      // Check if we found a resource with matching path
-      if (data.items && data.items.length > 0) {
-        // Find exact path match or return first result
-        const exactMatch = data.items.find((item: ResourceMetadata) =>
-          item.path === path || item.path.endsWith(`/${path}`)
-        );
-        return exactMatch || data.items[0];
+      // Return the resource if found
+      if (data.success && data.found && data.resource) {
+        return data.resource;
       }
 
       return null;
