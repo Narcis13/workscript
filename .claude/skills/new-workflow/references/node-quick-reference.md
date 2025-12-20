@@ -291,23 +291,139 @@ Modes: `rules`, `expression`
 
 | Node ID | Name | Edges | State Written |
 |---------|------|-------|---------------|
-| `validateData` | Validate Data | `valid`, `invalid`, `error` | `validationResult`, `validationErrors` |
+| `validateData` | Validate Data | `valid`, `invalid`, `error` | `validationResult`, `validationErrors`, `parsedJson` |
 
 #### validateData
+
+**CRITICAL: Always use validateData for defensive guards before processing external data or AI responses.**
+
+Validation types: `json`, `json_schema`, `type_check`, `required_fields`, `range`, `pattern`, `custom`
+
+##### JSON Validation (for AI/API responses)
+
+```json
+{
+  "validateData": {
+    "validationType": "json",
+    "data": "$.aiResponse",
+    "valid?": { "log": { "message": "Valid JSON, parsed to $.parsedJson" } },
+    "invalid?": { "log": { "message": "Invalid JSON: {{$.validationErrors}}" } }
+  }
+}
+```
+
+**State written:** `parsedJson` (the parsed JSON object)
+
+##### Required Fields
 
 ```json
 {
   "validateData": {
     "validationType": "required_fields",
+    "data": "$.input",
     "requiredFields": ["name", "email", "phone"],
-    "stopOnError": true,
     "valid?": { ... },
     "invalid?": { ... }
   }
 }
 ```
 
-Validation types: `json_schema`, `type_check`, `required_fields`, `range`, `pattern`, `custom`
+##### Type Check
+
+```json
+{
+  "validateData": {
+    "validationType": "type_check",
+    "data": "$.data",
+    "typeChecks": [
+      { "field": "count", "expectedType": "number" },
+      { "field": "items", "expectedType": "array" },
+      { "field": "config", "expectedType": "object" }
+    ],
+    "valid?": { ... },
+    "invalid?": { ... }
+  }
+}
+```
+
+Types: `string`, `number`, `boolean`, `array`, `object`, `null`
+
+##### Pattern Validation (Regex)
+
+```json
+{
+  "validateData": {
+    "validationType": "pattern",
+    "data": "$.user",
+    "patternValidations": [
+      { "field": "email", "pattern": "^[^@]+@[^@]+\\.[^@]+$", "errorMessage": "Invalid email" },
+      { "field": "phone", "pattern": "^\\+?[0-9]{10,14}$", "errorMessage": "Invalid phone" }
+    ],
+    "valid?": { ... },
+    "invalid?": { ... }
+  }
+}
+```
+
+##### Range Validation
+
+```json
+{
+  "validateData": {
+    "validationType": "range",
+    "data": "$.order",
+    "rangeValidations": [
+      { "field": "quantity", "min": 1, "max": 100 },
+      { "field": "price", "min": 0 }
+    ],
+    "valid?": { ... },
+    "invalid?": { ... }
+  }
+}
+```
+
+##### JSON Schema Validation
+
+```json
+{
+  "validateData": {
+    "validationType": "json_schema",
+    "data": "$.payload",
+    "schema": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "number" }
+      }
+    },
+    "valid?": { ... },
+    "invalid?": { ... }
+  }
+}
+```
+
+##### Guard Pattern: AI Response Validation Chain
+
+```json
+{
+  "validateData": {
+    "validationType": "json",
+    "data": "$.aiResponse",
+    "valid?": {
+      "validateData": {
+        "validationType": "required_fields",
+        "data": "$.parsedJson",
+        "requiredFields": ["results"],
+        "valid?": { "filter": { "items": "$.parsedJson.results" } },
+        "invalid?": { "log": { "message": "Missing fields: {{$.validationErrors}}" } }
+      }
+    },
+    "invalid?": { "log": { "message": "AI returned invalid JSON" } }
+  }
+}
+```
 
 ### Object Utilities (1)
 

@@ -15,6 +15,8 @@ Common workflow patterns with complete, production-ready examples.
 7. [AI Content Processing (Flat)](#7-ai-content-processing-flat)
 8. [Validation Pipeline (Mixed)](#8-validation-pipeline-mixed)
 9. [Database Find-or-Create (Edges Required)](#9-database-find-or-create-edges-required)
+10. [AI with JSON Validation (Guards Required)](#10-ai-with-json-validation-guards-required)
+11. [Guarded API Pipeline (Defense Required)](#11-guarded-api-pipeline-defense-required)
 
 ---
 
@@ -633,5 +635,316 @@ Common workflow patterns with complete, production-ready examples.
   "items": ["a", "b", "c"],
   "index": 0,
   "processed": 0
+}
+```
+
+---
+
+## 10. AI with JSON Validation (Guards Required)
+
+**Use case:** Call AI for structured output and validate the response is valid JSON with expected schema. **Guards prevent runtime errors from malformed AI responses.**
+
+```json
+{
+  "id": "ai-json-guarded",
+  "name": "AI Structured Output with Validation",
+  "version": "1.0.0",
+  "description": "Extract structured data from text with full validation guards",
+  "initialState": {
+    "text": "John Smith is the CEO of Acme Corp. Contact: john@acme.com"
+  },
+  "workflow": [
+    {
+      "ask-ai": {
+        "userPrompt": "Extract person info from: {{$.text}}\n\nReturn ONLY valid JSON, no markdown.",
+        "model": "openai/gpt-4o-mini",
+        "systemPrompt": "You extract structured data. Return ONLY valid JSON in this format: {\"name\": string, \"title\": string, \"company\": string, \"email\": string}",
+        "error?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "extractionFailed", "value": true, "type": "boolean" },
+              { "name": "failureReason", "value": "AI call failed", "type": "string" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "validateData": {
+        "validationType": "json",
+        "data": "$.aiResponse",
+        "valid?": {
+          "validateData": {
+            "validationType": "required_fields",
+            "data": "$.parsedJson",
+            "requiredFields": ["name", "email"],
+            "valid?": {
+              "validateData": {
+                "validationType": "pattern",
+                "data": "$.parsedJson",
+                "patternValidations": [
+                  { "field": "email", "pattern": "^[^@]+@[^@]+\\.[^@]+$", "errorMessage": "Invalid email format" }
+                ],
+                "valid?": {
+                  "editFields": {
+                    "mode": "manual_mapping",
+                    "fieldsToSet": [
+                      { "name": "extractedPerson", "value": "$.parsedJson", "type": "object" },
+                      { "name": "extractionSuccess", "value": true, "type": "boolean" }
+                    ]
+                  }
+                },
+                "invalid?": {
+                  "editFields": {
+                    "mode": "manual_mapping",
+                    "fieldsToSet": [
+                      { "name": "extractionFailed", "value": true, "type": "boolean" },
+                      { "name": "failureReason", "value": "Email format invalid", "type": "string" }
+                    ]
+                  }
+                }
+              }
+            },
+            "invalid?": {
+              "editFields": {
+                "mode": "manual_mapping",
+                "fieldsToSet": [
+                  { "name": "extractionFailed", "value": true, "type": "boolean" },
+                  { "name": "failureReason", "value": "Missing required fields in AI response", "type": "string" }
+                ]
+              }
+            }
+          }
+        },
+        "invalid?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "extractionFailed", "value": true, "type": "boolean" },
+              { "name": "failureReason", "value": "AI did not return valid JSON", "type": "string" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "logic": {
+        "operation": "equal",
+        "values": ["$.extractionSuccess", true],
+        "true?": {
+          "log": { "message": "Successfully extracted: {{$.extractedPerson.name}} ({{$.extractedPerson.email}})" }
+        },
+        "false?": {
+          "log": { "message": "Extraction failed: {{$.failureReason}}" }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Why guards:** AI responses can be malformed JSON, missing fields, or have invalid data. Each layer of validation prevents runtime errors:
+1. `json` validation ensures parseable JSON
+2. `required_fields` ensures expected structure
+3. `pattern` validation ensures data quality
+
+**State keys written:** `aiResponse`, `parsedJson`, `validationResult`, `validationErrors`, `extractedPerson`, `extractionSuccess`, `extractionFailed`, `failureReason`
+
+---
+
+## 11. Guarded API Pipeline (Defense Required)
+
+**Use case:** Fetch data from external API with full defensive validation. **Guards protect against malformed responses and network errors.**
+
+```json
+{
+  "id": "api-guarded-pipeline",
+  "name": "Guarded API Data Pipeline",
+  "version": "1.0.0",
+  "description": "Fetch and process API data with comprehensive guards",
+  "initialState": {
+    "apiUrl": "https://api.example.com/users",
+    "expectedFields": ["id", "name", "email"]
+  },
+  "workflow": [
+    {
+      "validateData": {
+        "validationType": "required_fields",
+        "data": { "url": "$.apiUrl" },
+        "requiredFields": ["url"],
+        "invalid?": {
+          "log": { "message": "Missing API URL in configuration" }
+        },
+        "error?": {
+          "log": { "message": "Config validation error: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "fetchApi": {
+        "url": "$.apiUrl",
+        "method": "GET",
+        "headers": { "Accept": "application/json" },
+        "timeout": 30000,
+        "success?": {
+          "log": { "message": "API returned status {{$.apiStatus}}" }
+        },
+        "clientError?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "pipelineError", "value": "Client error (4xx)", "type": "string" },
+              { "name": "errorStatus", "value": "$.apiStatus", "type": "number" }
+            ]
+          }
+        },
+        "serverError?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "pipelineError", "value": "Server error (5xx)", "type": "string" },
+              { "name": "errorStatus", "value": "$.apiStatus", "type": "number" }
+            ]
+          }
+        },
+        "error?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "pipelineError", "value": "Network or timeout error", "type": "string" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "validateData": {
+        "validationType": "type_check",
+        "data": "$.apiResponse",
+        "typeChecks": [
+          { "field": "data", "expectedType": "array" }
+        ],
+        "valid?": {
+          "logic": {
+            "operation": "greater",
+            "values": ["$.apiResponse.data.length", 0],
+            "true?": {
+              "log": { "message": "Received {{$.apiResponse.data.length}} records" }
+            },
+            "false?": {
+              "editFields": {
+                "mode": "manual_mapping",
+                "fieldsToSet": [
+                  { "name": "pipelineWarning", "value": "API returned empty data array", "type": "string" }
+                ]
+              }
+            }
+          }
+        },
+        "invalid?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "pipelineError", "value": "API response missing data array", "type": "string" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "filter": {
+        "items": "$.apiResponse.data",
+        "conditions": [
+          { "field": "email", "dataType": "string", "operation": "exists" }
+        ],
+        "passed?": {
+          "log": { "message": "{{$.filterStats.passedCount}} records have valid email" }
+        },
+        "filtered?": {
+          "log": { "message": "No records with valid email found" }
+        },
+        "error?": {
+          "editFields": {
+            "mode": "manual_mapping",
+            "fieldsToSet": [
+              { "name": "pipelineError", "value": "Filter operation failed", "type": "string" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "log": { "message": "Pipeline complete. Processed {{$.filterStats.passedCount}} valid records." }
+    }
+  ]
+}
+```
+
+**Why guards:**
+1. **Config validation** - Ensures required configuration exists before API call
+2. **HTTP status handling** - Separate edges for client/server errors
+3. **Response structure** - Validates expected array structure
+4. **Empty array check** - Handles edge case of valid but empty response
+5. **Field existence filter** - Ensures required fields exist before processing
+
+**Guard layers:**
+- Pre-call: URL validation
+- Post-call: HTTP status handling, response structure validation
+- Post-filter: Record quality validation
+
+**State keys written:** `apiResponse`, `apiStatus`, `validationResult`, `filterPassed`, `filterStats`, `pipelineError`, `pipelineWarning`
+
+---
+
+## Guard Pattern Selection Guide
+
+| Risk | Guard Type | Node | Example |
+|------|------------|------|---------|
+| Missing input | Required fields | `validateData` | Validate config before use |
+| Malformed JSON | JSON validation | `validateData` | Check AI/API response |
+| Wrong types | Type check | `validateData` | Verify numbers before math |
+| Invalid format | Pattern validation | `validateData` | Email, phone, URL formats |
+| Empty arrays | Length check | `logic` | Before loops or filter |
+| Network failure | Error edges | `fetchApi` | `error?`, `clientError?` |
+| Database miss | Not found edge | `database` | `not_found?` handling |
+| File missing | Not exists edge | `filesystem` | `not_exists?` handling |
+
+## Anti-Pattern: Unguarded AI Response
+
+❌ **WRONG** - No validation of AI response:
+
+```json
+{
+  "workflow": [
+    { "ask-ai": { "userPrompt": "Get JSON data...", "model": "..." } },
+    { "filter": { "items": "$.aiResponse.results" } }
+  ]
+}
+```
+
+✅ **CORRECT** - Validate AI response structure:
+
+```json
+{
+  "workflow": [
+    { "ask-ai": { "userPrompt": "Get JSON data...", "model": "..." } },
+    {
+      "validateData": {
+        "validationType": "json",
+        "data": "$.aiResponse",
+        "valid?": {
+          "validateData": {
+            "validationType": "required_fields",
+            "data": "$.parsedJson",
+            "requiredFields": ["results"],
+            "valid?": {
+              "filter": { "items": "$.parsedJson.results" }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
 ```

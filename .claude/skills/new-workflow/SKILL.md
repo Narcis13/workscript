@@ -1,11 +1,13 @@
 ---
 name: new-workflow
-description: Generate production-ready Workscript workflow JSON files for the Workscript Agentic Workflow Engine. Use when asked to create workflows, automations, data pipelines, or generate workflow JSON. Fetches up-to-date node documentation from the Reflection API when available. Outputs validated .json files to the sandbox prompts folder. Also suitable for Claude Code subagents needing to compose workflows programmatically.
+description: Generate production-ready Workscript workflow JSON files for the Workscript Agentic Workflow Engine with built-in defensive guards. Use when asked to create workflows, automations, data pipelines, or generate workflow JSON. All generated workflows include data validation (validateData node) for structured JSON outputs, input guards, array length checks, and error handling edges. Fetches up-to-date node documentation from the Reflection API when available. Outputs validated .json files to the sandbox prompts folder. Also suitable for Claude Code subagents needing to compose workflows programmatically.
 ---
 
 # Workscript Workflow Generator
 
 Generate valid, production-ready workflow JSON files for the Workscript Agentic Workflow Engine.
+
+**Every workflow MUST include defensive guards to prevent runtime errors.** See [Defensive Guards & Validation](#defensive-guards--validation) section.
 
 ## Workflow Generation Process
 
@@ -17,6 +19,8 @@ Ask clarifying questions to understand:
 - What are the expected outputs/side effects?
 - Are there error handling requirements?
 - Will it need loops, conditionals, or API calls?
+- **Does the workflow use AI for structured output?** (Requires JSON validation)
+- **Is the input from external sources?** (Requires input validation)
 
 ### Step 2: Fetch Node Documentation
 
@@ -167,6 +171,58 @@ Use edges for **actual branching** - when different paths lead to different outc
 ```
 
 Here `true?`/`false?` are meaningful branches - they execute different logic.
+
+### Step 4.5: Add Defensive Guards
+
+**Before finalizing, add guards for:**
+
+1. **Input validation at entry point:**
+   ```json
+   {
+     "validateData": {
+       "validationType": "required_fields",
+       "data": "$.input",
+       "requiredFields": ["requiredField1", "requiredField2"],
+       "invalid?": { "log": { "message": "Missing required input: {{$.validationErrors}}" } }
+     }
+   }
+   ```
+
+2. **AI response JSON validation** (if using `ask-ai` for structured data):
+   ```json
+   {
+     "validateData": {
+       "validationType": "json",
+       "data": "$.aiResponse",
+       "valid?": { ... },
+       "invalid?": { "log": { "message": "AI did not return valid JSON" } }
+     }
+   }
+   ```
+
+3. **Array guards before loops** (if processing arrays):
+   ```json
+   {
+     "logic": {
+       "operation": "greater",
+       "values": ["$.items.length", 0],
+       "true?": { ... },
+       "false?": { "log": { "message": "No items to process" } }
+     }
+   }
+   ```
+
+4. **Error edges on all nodes that can fail:**
+   ```json
+   {
+     "nodeType": {
+       "config": "...",
+       "error?": { "log": { "message": "Operation failed: {{$.error}}" } }
+     }
+   }
+   ```
+
+See [Defensive Guards & Validation](#defensive-guards--validation) for complete patterns.
 
 ### Step 5: Validate Workflow
 
@@ -326,12 +382,254 @@ The API will be available at `http://localhost:3013`.
 | `filesystem` | `success?`, `exists?`, `not_exists?`, `error?` |
 | `switch` | `<dynamic>?`, `default?`, `error?` |
 
+## Defensive Guards & Validation
+
+**CRITICAL: All generated workflows MUST include defensive guards to prevent runtime errors.**
+
+### Guard Types
+
+| Guard Type | Node | When to Use |
+|------------|------|-------------|
+| Input Validation | `validateData` | Before processing user/external input |
+| Array Length Check | `logic` | Before iteration or array access |
+| Required Fields | `validateData` | Before accessing nested properties |
+| JSON Structure | `validateData` | When AI output must be structured JSON |
+| Type Check | `validateData` | Before type-sensitive operations |
+
+### Pattern 1: Validate Input Before Processing
+
+Always validate external/user input at workflow entry:
+
+```json
+{
+  "workflow": [
+    {
+      "validateData": {
+        "validationType": "required_fields",
+        "data": "$.input",
+        "requiredFields": ["userId", "action"],
+        "invalid?": {
+          "log": { "message": "Missing required input: {{$.validationErrors}}" }
+        },
+        "error?": {
+          "log": { "message": "Input validation failed: {{$.error}}" }
+        }
+      }
+    },
+    {
+      "log": { "message": "Processing valid input for user {{$.input.userId}}" }
+    }
+  ]
+}
+```
+
+### Pattern 2: Array Length Guard Before Iteration
+
+Check array exists and has items before looping:
+
+```json
+{
+  "workflow": [
+    {
+      "logic": {
+        "operation": "and",
+        "values": [
+          { "operation": "greater", "values": ["$.items.length", 0] }
+        ],
+        "true?": {
+          "logic...": {
+            "operation": "less",
+            "values": ["$.index", "$.items.length"],
+            "true?": [
+              { "log": { "message": "Processing item {{$.index}}" } },
+              { "$.index": "$.index + 1" }
+            ],
+            "false?": null
+          }
+        },
+        "false?": {
+          "log": { "message": "No items to process" }
+        }
+      }
+    }
+  ]
+}
+```
+
+### Pattern 3: Validate AI Response as Structured JSON
+
+**ALWAYS validate AI output when expecting JSON structure:**
+
+```json
+{
+  "workflow": [
+    {
+      "ask-ai": {
+        "userPrompt": "Extract entities as JSON: {{$.text}}",
+        "model": "openai/gpt-4o-mini",
+        "systemPrompt": "Return ONLY valid JSON: {\"entities\": [{\"name\": string, \"type\": string}]}",
+        "error?": {
+          "editFields": {
+            "fieldsToSet": [{ "name": "aiError", "value": "$.error", "type": "string" }]
+          }
+        }
+      }
+    },
+    {
+      "validateData": {
+        "validationType": "json",
+        "data": "$.aiResponse",
+        "valid?": {
+          "validateData": {
+            "validationType": "required_fields",
+            "data": "$.parsedJson",
+            "requiredFields": ["entities"],
+            "valid?": {
+              "log": { "message": "AI returned valid structure with {{$.parsedJson.entities.length}} entities" }
+            },
+            "invalid?": {
+              "log": { "message": "AI response missing required fields: {{$.validationErrors}}" }
+            }
+          }
+        },
+        "invalid?": {
+          "log": { "message": "AI did not return valid JSON: {{$.validationErrors}}" }
+        }
+      }
+    }
+  ]
+}
+```
+
+### Pattern 4: Type Safety Before Operations
+
+Validate types before type-sensitive operations:
+
+```json
+{
+  "workflow": [
+    {
+      "validateData": {
+        "validationType": "type_check",
+        "data": "$.data",
+        "typeChecks": [
+          { "field": "amount", "expectedType": "number" },
+          { "field": "items", "expectedType": "array" },
+          { "field": "metadata", "expectedType": "object" }
+        ],
+        "valid?": {
+          "math": {
+            "operation": "multiply",
+            "values": ["$.data.amount", 1.1]
+          }
+        },
+        "invalid?": {
+          "log": { "message": "Type validation failed: {{$.validationErrors}}" }
+        }
+      }
+    }
+  ]
+}
+```
+
+### Pattern 5: Comprehensive Guard Chain
+
+For critical workflows, chain multiple guards:
+
+```json
+{
+  "workflow": [
+    {
+      "validateData": {
+        "validationType": "required_fields",
+        "data": "$.request",
+        "requiredFields": ["userId", "email", "payload"],
+        "invalid?": {
+          "editFields": {
+            "fieldsToSet": [
+              { "name": "errorType", "value": "MISSING_FIELDS", "type": "string" },
+              { "name": "errorDetails", "value": "$.validationErrors", "type": "any" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "validateData": {
+        "validationType": "pattern",
+        "data": "$.request",
+        "patternValidations": [
+          { "field": "email", "pattern": "^[^@]+@[^@]+\\.[^@]+$", "errorMessage": "Invalid email format" }
+        ],
+        "invalid?": {
+          "editFields": {
+            "fieldsToSet": [
+              { "name": "errorType", "value": "INVALID_FORMAT", "type": "string" },
+              { "name": "errorDetails", "value": "$.validationErrors", "type": "any" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "validateData": {
+        "validationType": "type_check",
+        "data": "$.request.payload",
+        "typeChecks": [
+          { "field": "amount", "expectedType": "number" }
+        ],
+        "invalid?": {
+          "editFields": {
+            "fieldsToSet": [
+              { "name": "errorType", "value": "TYPE_ERROR", "type": "string" },
+              { "name": "errorDetails", "value": "$.validationErrors", "type": "any" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "log": { "message": "All validations passed for {{$.request.userId}}" }
+    }
+  ]
+}
+```
+
+### Guard Checklist for Generated Workflows
+
+Before finalizing any workflow, ensure:
+
+- [ ] **Entry validation**: First node validates `initialState` or external input
+- [ ] **AI output validation**: Any `ask-ai` response used as structured data is validated with `validateData` (validationType: `json`)
+- [ ] **Array guards**: Loops check array length before iteration
+- [ ] **Required fields**: Nested property access is guarded by `required_fields` validation
+- [ ] **Error edges**: All nodes that can fail have `error?` edges
+- [ ] **Type checks**: Operations requiring specific types validate beforehand
+- [ ] **Graceful fallbacks**: `invalid?` edges provide meaningful error context
+
+### validateData Node Reference
+
+| Validation Type | Purpose | Required Config |
+|-----------------|---------|-----------------|
+| `json` | Check if string is valid JSON | `data` |
+| `required_fields` | Check fields exist and non-empty | `data`, `requiredFields[]` |
+| `type_check` | Verify field types | `data`, `typeChecks[]` |
+| `pattern` | Regex validation | `data`, `patternValidations[]` |
+| `range` | Numeric bounds | `data`, `rangeValidations[]` |
+| `json_schema` | Full JSON Schema | `data`, `schema` |
+
+**State written by validateData:**
+- `validationResult`: `{ isValid, timestamp, validationType }`
+- `validationErrors`: Array of `{ field, error, value }`
+- `parsedJson`: (only for `json` type) The parsed JSON object
+
 ## Reference Documentation
 
 - **Workflow Syntax**: [references/workflow-syntax.md](references/workflow-syntax.md) - Complete JSON structure reference
 - **Patterns**: [references/patterns.md](references/patterns.md) - Common workflow patterns with examples
 - **Node Reference**: [references/node-quick-reference.md](references/node-quick-reference.md) - All 45 nodes categorized
 - **Flat vs Nested Comparison**: [references/flat-vs-nested.md](references/flat-vs-nested.md) - Side-by-side examples
+- **Defensive Guards**: See section above for validation patterns
 
 ## Scripts
 
