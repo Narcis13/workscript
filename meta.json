@@ -1,0 +1,241 @@
+{
+    "id": "workflow-generator",
+    "name": "Workflow Generator",
+    "version": "1.0.0",
+    "description": "Generate production-ready workflows from natural language using AI",
+    "initialState": {
+      "userRequest": "",
+      "model": "anthropic/claude-sonnet-4-20250514",
+      "apiBaseUrl": "http://localhost:3013",
+      "retryCount": 0,
+      "maxRetries": 3,
+      "generationComplete": false
+    },
+    "workflow": [
+ 
+      {
+        "validateData": {
+          "validationType": "required_fields",
+          "data": { "userRequest": "$.userRequest", "JWT_token": "$.JWT_token" },
+          "requiredFields": ["userRequest", "JWT_token"],
+          "invalid?": { "log": { "message": "Missing required input: {{$.validationErrors}}" } }
+        }
+      },
+ 
+      {
+        "fetchApi": {
+          "url": "{{$.apiBaseUrl}}/workscript/reflection/manifest/compact",
+          "method": "GET",
+          "headers": { "Authorization": "Bearer {{$.JWT_token}}" },
+          "error?": {
+            "editFields": {
+              "mode": "manual_mapping",
+              "fieldsToSet": [{ "name": "nodeDocumentation", "value": "Use general Workscript knowledge", "type": "string" }]
+            }
+          }
+        }
+      },
+   
+      {
+        "editFields": {
+          "mode": "manual_mapping",
+          "fieldsToSet": [{ "name": "nodeDocumentation", "value":
+  "$.fetchResponse.systemPrompt", "type": "string" }]
+        }
+      },
+   
+      {
+        "logic...": {
+          "operation": "and",
+          "values": [
+            { "operation": "less", "values": ["$.retryCount", "$.maxRetries"] },
+            { "operation": "equal", "values": ["$.generationComplete", false] }
+          ],
+          "true?": [
+     
+            {
+              "editFields": {
+                "mode": "manual_mapping",
+                "fieldsToSet": [{
+                  "name": "currentPrompt",
+                  "value": "$.retryCount > 0 ? 'RETRY ATTEMPT ' + $.retryCount + '. Previous attempt failed JSON validation. Return ONLY pure JSON, no markdown code blocks, no explanations.\\n\\n' + $.userRequest : $.userRequest",
+                  "type": "string"
+                }]
+              }
+            },
+          
+            {
+              "ask-ai": {
+                "userPrompt": "Generate a Workscript workflow JSON for this request:\n\n{{$.currentPrompt}}\n\nCRITICAL: Return ONLY valid JSON. No markdown. Nocode blocks. No explanations. Start with { and end with }.",
+                "model": "$.model",
+                "systemPrompt": "{{$.nodeDocumentation}}\n\nYou are generating workflow JSON. Output ONLY the JSON object. No markdown code fences. No explanations before or after.",
+                "error?": {
+                  "editFields": {
+                    "mode": "manual_mapping",
+                    "fieldsToSet": [
+                      { "name": "retryCount", "value": "$.retryCount + 1", "type":
+  "number" },
+                      { "name": "lastError", "value": "AI request failed", "type":
+  "string" }
+                    ]
+                  }
+                }
+              }
+            },
+          
+            {
+              "stringOperations": {
+                "operation": "replaceRegex",
+                "field": "aiResponse",
+                "outputField": "cleanedResponse",
+                "pattern": "^```(?:json)?\\s*|\\s*```$",
+                "replacement": "",
+                "flags": "gm"
+              }
+            },
+    
+            {
+              "validateData": {
+                "validationType": "json",
+                "data": "$.cleanedResponse",
+                "valid?": {
+                  "editFields": {
+                    "mode": "manual_mapping",
+                    "fieldsToSet": [{ "name": "generatedWorkflow", "value":
+  "$.parsedJson", "type": "object" }]
+                  }
+                },
+                "invalid?": {
+                  "editFields": {
+                    "mode": "manual_mapping",
+                    "fieldsToSet": [
+                      { "name": "retryCount", "value": "$.retryCount + 1", "type":
+  "number" },
+                      { "name": "lastError", "value": "$.validationErrors", "type":
+  "any" }
+                    ],
+                    "success?": { "log": { "message": "Retry {{$.retryCount}}/{{$.maxRetries}}: Invalid JSON" } }
+                  }
+                }
+              }
+            },
+    
+            {
+              "logic": {
+                "operation": "notEqual",
+                "values": ["$.generatedWorkflow", null],
+                "true?": {
+                  "validateData": {
+                    "validationType": "required_fields",
+                    "data": "$.generatedWorkflow",
+                    "requiredFields": ["id", "name", "version", "workflow"],
+                    "valid?": {
+                      "editFields": {
+                        "mode": "manual_mapping",
+                        "fieldsToSet": [{ "name": "generationComplete", "value": true,
+   "type": "boolean" }]
+                      }
+                    },
+                    "invalid?": {
+                      "editFields": {
+                        "mode": "manual_mapping",
+                        "fieldsToSet": [
+                          { "name": "retryCount", "value": "$.retryCount + 1", "type":
+   "number" },
+                          { "name": "lastError", "value": "Missing required fields",
+  "type": "string" },
+                          { "name": "generatedWorkflow", "value": null, "type": "any"
+  }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "false?": null
+        }
+      },
+   
+      {
+        "logic": {
+          "operation": "equal",
+          "values": ["$.generationComplete", false],
+          "true?": {
+            "log": { "message": "Failed to generate valid workflow after {{$.maxRetries}} attempts. Last error: {{$.lastError}}" }
+          },
+          "false?": null
+        }
+      },
+     
+      {
+        "logic": {
+          "operation": "equal",
+          "values": ["$.generationComplete", true],
+          "true?": {
+            "fetchApi": {
+              "url": "{{$.apiBaseUrl}}/workscript/workflows/create",
+              "method": "POST",
+              "headers": { "Authorization": "Bearer {{$.JWT_token}}", "Content-Type":
+  "application/json" },
+              "body": {
+                "name": "$.generatedWorkflow.name",
+                "description": "AI-generated: {{$.userRequest}}",
+                "definition": "$.generatedWorkflow",
+                "version": "$.generatedWorkflow.version",
+                "isActive": true
+              },
+              "success?": {
+                "editFields": {
+                  "mode": "manual_mapping",
+                  "fieldsToSet": [
+                    { "name": "savedWorkflow", "value": "$.fetchResponse.workflow",
+  "type": "object" },
+                    { "name": "saveSuccess", "value": true, "type": "boolean" }
+                  ],
+                  "success?": { "log": { "message": "Workflow saved: {{$.savedWorkflow.id}}" } }
+                }
+              },
+              "clientError?": {
+                "editFields": {
+                  "mode": "manual_mapping",
+                  "fieldsToSet": [
+                    { "name": "saveError", "value": "$.fetchResponse.error", "type":
+  "string" },
+                    { "name": "saveSuccess", "value": false, "type": "boolean" }
+                  ]
+                }
+              },
+              "error?": {
+                "editFields": {
+                  "mode": "manual_mapping",
+                  "fieldsToSet": [
+                    { "name": "saveError", "value": "$.error", "type": "string" },
+                    { "name": "saveSuccess", "value": false, "type": "boolean" }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+ 
+      {
+        "editFields": {
+          "mode": "manual_mapping",
+          "fieldsToSet": [{
+            "name": "result",
+            "value": {
+              "success": "$.generationComplete && $.saveSuccess",
+              "workflowId": "$.savedWorkflow.id",
+              "workflow": "$.generatedWorkflow",
+              "attempts": "$.retryCount",
+              "error": "$.lastError || $.saveError"
+            },
+            "type": "object"
+          }]
+        }
+      }
+    ]
+  }

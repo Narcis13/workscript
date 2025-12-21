@@ -1,6 +1,6 @@
 ---
 name: new-workflow
-description: Generate production-ready Workscript workflow JSON files for the Workscript Agentic Workflow Engine with built-in defensive guards. Use when asked to create workflows, automations, data pipelines, or generate workflow JSON. All generated workflows include data validation (validateData node) for structured JSON outputs, input guards, array length checks, and error handling edges. Fetches up-to-date node documentation from the Reflection API when available. Outputs validated .json files to the sandbox prompts folder. Also suitable for Claude Code subagents needing to compose workflows programmatically.
+description: Generate production-ready Workscript workflow JSON files for the Workscript Agentic Workflow Engine with built-in defensive guards and complexity detection. Use when asked to create workflows, automations, data pipelines, or generate workflow JSON. IMPORTANT - For complex requests that would result in deeply nested or overly complex workflows, this skill will STOP and suggest developing new custom nodes first using /new-node, then return to create a simpler, more linear workflow. All generated workflows include data validation (validateData node) for structured JSON outputs, input guards, array length checks, and error handling edges. Fetches up-to-date node documentation from the Reflection API when available. Outputs validated .json files to the sandbox prompts folder. Also suitable for Claude Code subagents needing to compose workflows programmatically.
 ---
 
 # Workscript Workflow Generator
@@ -21,6 +21,7 @@ Ask clarifying questions to understand:
 - Will it need loops, conditionals, or API calls?
 - **Does the workflow use AI for structured output?** (Requires JSON validation)
 - **Is the input from external sources?** (Requires input validation)
+- **Is this domain-specific logic that might be reused?** (May warrant a custom node)
 
 ### Step 2: Fetch Node Documentation
 
@@ -39,6 +40,111 @@ cd /Users/narcisbrindusescu/teste/workscript && bun run dev
 Wait for the server to start, then retry the manifest fetch.
 
 **Alternatively**, use the offline reference: [references/node-quick-reference.md](references/node-quick-reference.md)
+
+### Step 2.5: Complexity Assessment (CRITICAL)
+
+**Before designing the workflow, assess if it can be built with existing nodes OR if new nodes should be developed first.**
+
+#### Complexity Red Flags
+
+Stop and consider node development if ANY of these apply:
+
+| Red Flag | Threshold | Example |
+|----------|-----------|---------|
+| **Nesting depth** | > 3 levels of conditional edges | Validation → Branch → Nested branch → Another branch |
+| **Repeated patterns** | Same 3+ node sequence appears twice | Filter → Transform → Validate repeated for different fields |
+| **Multi-step atomic operation** | 4+ nodes for one conceptual step | Parse HTML → Extract elements → Filter tags → Build object |
+| **Missing domain abstraction** | No node covers the core domain logic | Workflow for "invoice processing" but no invoice-specific node |
+| **State juggling** | 5+ state keys for intermediate values | `$.temp1`, `$.parsed`, `$.validated`, `$.mapped`, `$.final` |
+| **Workaround patterns** | Using `ask-ai` to avoid building proper logic | "Use AI to determine the category" when rules would suffice |
+
+#### Complexity Assessment Questions
+
+Ask yourself:
+
+1. **Can I describe each workflow step in 1-2 words?**
+   - ✅ "Filter active" → "Sort by date" → "Send email" (Simple)
+   - ❌ "Parse and extract nested JSON, validate structure, map fields, handle arrays" (Complex - needs a node)
+
+2. **Would a domain expert understand the workflow at a glance?**
+   - ✅ User sees: `validateInvoice` → `calculateTax` → `generatePDF`
+   - ❌ User sees: 15 nodes doing string manipulation and math
+
+3. **Am I repeating logic that should be encapsulated?**
+   - ✅ One `dateTime` node handles all date formatting
+   - ❌ Multiple `stringOperations` + `math` + `logic` to achieve the same
+
+4. **Is the workflow solving a generic or specific problem?**
+   - Generic (reusable) → Build workflow
+   - Specific domain logic → Consider a node
+
+#### When to Pivot to Node Development
+
+**STOP generating the workflow and suggest node development when:**
+
+```
+Complexity Score = (nesting_depth × 2) + repeated_patterns + (nodes_for_one_concept - 1) + workarounds
+
+If Complexity Score ≥ 6 → Suggest new node(s)
+```
+
+**Example calculation:**
+- 4 levels of nesting (4 × 2 = 8)
+- 1 repeated pattern (1)
+- 5 nodes for "parse invoice" (5 - 1 = 4)
+- 1 workaround using AI (1)
+- **Total: 14** → Definitely needs new node(s)
+
+#### Node Suggestion Template
+
+When complexity threshold is exceeded, respond with:
+
+---
+
+**⚠️ Complexity Alert: This workflow would be too complex to maintain.**
+
+Based on your requirements, I recommend developing **new node(s)** first:
+
+| Suggested Node | Purpose | Would Replace |
+|----------------|---------|---------------|
+| `parseInvoice` | Extract invoice data from various formats | 5 nodes (filter + jsonExtract + validate + transform + editFields) |
+| `calculateLineItems` | Compute totals, tax, discounts | 4 nodes (loop + math + aggregate + editFields) |
+
+**Benefits of building these nodes:**
+1. Workflow becomes **3 nodes instead of 15**
+2. Each node is **testable in isolation**
+3. Logic is **reusable** across workflows
+4. Domain concepts are **explicit** (not buried in JSON config)
+
+**Next steps:**
+1. Run `/new-node` to create `parseInvoice` node
+2. Run `/new-node` to create `calculateLineItems` node
+3. Return here to generate the simplified workflow
+
+Would you like me to proceed with node development first?
+
+---
+
+#### Simplified Workflow Vision
+
+Always show what the workflow WOULD look like with the suggested nodes:
+
+```json
+{
+  "id": "invoice-processor",
+  "name": "Invoice Processor",
+  "version": "1.0.0",
+  "workflow": [
+    { "parseInvoice": { "source": "$.rawData", "format": "auto" } },
+    { "calculateLineItems": { "items": "$.invoiceData.lines" } },
+    { "generatePDF": { "template": "invoice-template", "data": "$.processedInvoice" } }
+  ]
+}
+```
+
+**Compare to what it would be WITHOUT the new nodes:** (show the 15-node monstrosity briefly)
+
+This contrast helps the user understand the value of investing in node development.
 
 ### Step 3: Design Workflow Structure
 
@@ -625,6 +731,7 @@ Before finalizing any workflow, ensure:
 
 ## Reference Documentation
 
+- **Complexity Detection**: [references/complexity-detection.md](references/complexity-detection.md) - When to stop and suggest node development
 - **Workflow Syntax**: [references/workflow-syntax.md](references/workflow-syntax.md) - Complete JSON structure reference
 - **Patterns**: [references/patterns.md](references/patterns.md) - Common workflow patterns with examples
 - **Node Reference**: [references/node-quick-reference.md](references/node-quick-reference.md) - All 45 nodes categorized

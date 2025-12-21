@@ -51,6 +51,7 @@ export function useResources(filters?: ResourceFilters) {
     queryKey: resourceKeys.list(filters),
     queryFn: () => resourcesApi.fetchResources(filters),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: 'always', // Always refetch when navigating to Resources page
   });
 }
 
