@@ -39,8 +39,7 @@
       {
         "editFields": {
           "mode": "manual_mapping",
-          "fieldsToSet": [{ "name": "nodeDocumentation", "value":
-  "$.fetchResponse.systemPrompt", "type": "string" }]
+          "fieldsToSet": [{ "name": "nodeDocumentation", "value":"$.fetchResponse.systemPrompt", "type": "string" }]
         }
       },
    
@@ -73,10 +72,8 @@
                   "editFields": {
                     "mode": "manual_mapping",
                     "fieldsToSet": [
-                      { "name": "retryCount", "value": "$.retryCount + 1", "type":
-  "number" },
-                      { "name": "lastError", "value": "AI request failed", "type":
-  "string" }
+                      { "name": "retryCount", "value": "$.retryCount + 1", "type": "number" },
+                      { "name": "lastError", "value": "AI request failed", "type": "string" }
                     ]
                   }
                 }
@@ -101,18 +98,15 @@
                 "valid?": {
                   "editFields": {
                     "mode": "manual_mapping",
-                    "fieldsToSet": [{ "name": "generatedWorkflow", "value":
-  "$.parsedJson", "type": "object" }]
+                    "fieldsToSet": [{ "name": "generatedWorkflow", "value":"$.parsedJson", "type": "object" }]
                   }
                 },
                 "invalid?": {
                   "editFields": {
                     "mode": "manual_mapping",
                     "fieldsToSet": [
-                      { "name": "retryCount", "value": "$.retryCount + 1", "type":
-  "number" },
-                      { "name": "lastError", "value": "$.validationErrors", "type":
-  "any" }
+                      { "name": "retryCount", "value": "$.retryCount + 1", "type":"number" },
+                      { "name": "lastError", "value": "$.validationErrors", "type":"any" }
                     ],
                     "success?": { "log": { "message": "Retry {{$.retryCount}}/{{$.maxRetries}}: Invalid JSON" } }
                   }
@@ -132,20 +126,16 @@
                     "valid?": {
                       "editFields": {
                         "mode": "manual_mapping",
-                        "fieldsToSet": [{ "name": "generationComplete", "value": true,
-   "type": "boolean" }]
+                        "fieldsToSet": [{ "name": "generationComplete", "value": true,"type": "boolean" }]
                       }
                     },
                     "invalid?": {
                       "editFields": {
                         "mode": "manual_mapping",
                         "fieldsToSet": [
-                          { "name": "retryCount", "value": "$.retryCount + 1", "type":
-   "number" },
-                          { "name": "lastError", "value": "Missing required fields",
-  "type": "string" },
-                          { "name": "generatedWorkflow", "value": null, "type": "any"
-  }
+                          { "name": "retryCount", "value": "$.retryCount + 1", "type":"number" },
+                          { "name": "lastError", "value": "Missing required fields","type": "string" },
+                          { "name": "generatedWorkflow", "value": null, "type": "any"}
                         ]
                       }
                     }
@@ -177,8 +167,7 @@
             "fetchApi": {
               "url": "{{$.apiBaseUrl}}/workscript/workflows/create",
               "method": "POST",
-              "headers": { "Authorization": "Bearer {{$.JWT_token}}", "Content-Type":
-  "application/json" },
+              "headers": { "Authorization": "Bearer {{$.JWT_token}}", "Content-Type":"application/json" },
               "body": {
                 "name": "$.generatedWorkflow.name",
                 "description": "AI-generated: {{$.userRequest}}",
@@ -190,8 +179,7 @@
                 "editFields": {
                   "mode": "manual_mapping",
                   "fieldsToSet": [
-                    { "name": "savedWorkflow", "value": "$.fetchResponse.workflow",
-  "type": "object" },
+                    { "name": "savedWorkflow", "value": "$.fetchResponse.workflow","type": "object" },
                     { "name": "saveSuccess", "value": true, "type": "boolean" }
                   ],
                   "success?": { "log": { "message": "Workflow saved: {{$.savedWorkflow.id}}" } }
@@ -201,8 +189,7 @@
                 "editFields": {
                   "mode": "manual_mapping",
                   "fieldsToSet": [
-                    { "name": "saveError", "value": "$.fetchResponse.error", "type":
-  "string" },
+                    { "name": "saveError", "value": "$.fetchResponse.error", "type":"string" },
                     { "name": "saveSuccess", "value": false, "type": "boolean" }
                   ]
                 }
