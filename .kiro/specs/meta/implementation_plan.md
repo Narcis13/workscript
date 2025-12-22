@@ -40,7 +40,7 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 1.2 Create Output Directory
 
-- [ ] **Task 1.2.1: Create prompts directory if not exists**
+- [x] **Task 1.2.1: Create prompts directory if not exists**
   - Ensure `/apps/sandbox/resources/shared/prompts/` exists
   - Verify write permissions
   - _Requirements: 10_
@@ -51,12 +51,12 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 2.1 Create Base Workflow File
 
-- [ ] **Task 2.1.1: Create workflow-generator.json file**
+- [x] **Task 2.1.1: Create workflow-generator.json file**
   - Create new file at `/apps/sandbox/resources/shared/prompts/workflow-generator.json`
   - Add base JSON structure with `id`, `name`, `version`, `description`
   - _Requirements: 1, 11_
 
-- [ ] **Task 2.1.2: Define initial state structure**
+- [x] **Task 2.1.2: Define initial state structure**
   - Add `initialState` object with:
     - `userRequest`: "" (empty string default)
     - `model`: "anthropic/claude-sonnet-4-20250514"
@@ -66,7 +66,7 @@ This document provides a concrete, actionable implementation plan for the Meta-W
     - `generationComplete`: false
   - _Requirements: 1, 3, 8, 13_
 
-- [ ] **Task 2.1.3: Initialize empty workflow array**
+- [x] **Task 2.1.3: Initialize empty workflow array**
   - Add `"workflow": []` as the main workflow container
   - _Requirements: 7_
 
@@ -85,18 +85,18 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 2.3 Implement Documentation Fetch
 
-- [ ] **Task 2.3.1: Add fetchApi node for manifest**
+- [x] **Task 2.3.1: Add fetchApi node for manifest**
   - Configure URL: `{{$.apiBaseUrl}}/workscript/reflection/manifest/compact`
   - Set method: `GET`
   - Add Authorization header with Bearer token
   - _Requirements: 2, 14_
 
-- [ ] **Task 2.3.2: Add error? edge handler for fetch**
+- [x] **Task 2.3.2: Add error? edge handler for fetch**
   - Add `editFields` node to set fallback documentation
   - Set `$.nodeDocumentation` to fallback message
   - _Requirements: 2_
 
-- [ ] **Task 2.3.3: Add success handler for fetch**
+- [x] **Task 2.3.3: Add success handler for fetch**
   - Add `editFields` node to extract `systemPrompt`
   - Set `$.nodeDocumentation` from `$.fetchResponse.systemPrompt`
   - _Requirements: 2, 13_
@@ -107,73 +107,76 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 3.1 Configure Loop Node
 
-- [ ] **Task 3.1.1: Add logic... looping node**
+- [x] **Task 3.1.1: Add logic... looping node**
   - Use `logic...` suffix for loop behavior
-  - Set operation to `and` for compound condition
+  - Set operation to `equal` for checking generationComplete first (nested logic for compound condition)
   - _Requirements: 8_
 
-- [ ] **Task 3.1.2: Configure first loop condition**
-  - Add `operation: "less"` check
+- [x] **Task 3.1.2: Configure first loop condition**
+  - Outer node checks `$.generationComplete == false` using `operation: "equal"`
+  - _Requirements: 8_
+
+- [x] **Task 3.1.3: Configure second loop condition**
+  - Nested logic node with `operation: "less"` check
   - Compare `$.retryCount` with `$.maxRetries`
   - _Requirements: 8_
 
-- [ ] **Task 3.1.3: Configure second loop condition**
-  - Add `operation: "equal"` check
-  - Compare `$.generationComplete` with `false`
-  - _Requirements: 8_
-
-- [ ] **Task 3.1.4: Set false? edge to null**
-  - Configure `false?` edge to `null` to exit loop
+- [x] **Task 3.1.4: Set false? edge to null**
+  - Configure `false?` edge to `null` on both logic nodes to exit loop
   - _Requirements: 8_
 
 ### 3.2 Build Dynamic Prompt
 
-- [ ] **Task 3.2.1: Add editFields node for prompt building**
-  - Create node to build `$.currentPrompt`
-  - Use conditional expression for retry context
+- [x] **Task 3.2.1: Add editFields node for prompt building**
+  - Created switch node with expression mode to determine retry vs first attempt
+  - Switch evaluates `item > 0 ? 'retry' : 'first_attempt'`
+  - Each branch uses editFields to set `$.currentPrompt`
   - _Requirements: 9_
 
-- [ ] **Task 3.2.2: Configure retry prompt logic**
-  - If `$.retryCount > 0`, prepend retry message
-  - Include emphasis on pure JSON output
-  - Append original `$.userRequest`
+- [x] **Task 3.2.2: Configure retry prompt logic**
+  - When `$.retryCount > 0`, routes to `retry?` edge
+  - Prepends "RETRY ATTEMPT X of Y" with previous error context
+  - Emphasizes pure JSON output without markdown code blocks
+  - Lists required workflow structure fields
+  - Appends original `$.userRequest`
   - _Requirements: 9_
 
-- [ ] **Task 3.2.3: Configure first attempt prompt**
-  - If `$.retryCount == 0`, use `$.userRequest` directly
+- [x] **Task 3.2.3: Configure first attempt prompt**
+  - When `$.retryCount == 0`, routes to `first_attempt?` edge
+  - Sets `$.currentPrompt` directly to `$.userRequest`
   - No retry prefix for first attempt
   - _Requirements: 9_
 
 ### 3.3 Implement AI Generation
 
-- [ ] **Task 3.3.1: Add ask-ai node**
+- [x] **Task 3.3.1: Add ask-ai node**
   - Set `userPrompt` with current prompt and generation instructions
   - Configure critical formatting instructions
   - _Requirements: 4_
 
-- [ ] **Task 3.3.2: Configure model parameter**
+- [x] **Task 3.3.2: Configure model parameter**
   - Set `model` to `$.model` for configurable selection
   - _Requirements: 3, 4_
 
-- [ ] **Task 3.3.3: Configure system prompt**
+- [x] **Task 3.3.3: Configure system prompt**
   - Include `{{$.nodeDocumentation}}` for node reference
   - Add strict JSON-only output instructions
   - _Requirements: 4_
 
-- [ ] **Task 3.3.4: Add error? edge handler for AI**
+- [x] **Task 3.3.4: Add error? edge handler for AI**
   - Increment `$.retryCount` on error
   - Set `$.lastError` to "AI request failed"
   - _Requirements: 4, 8, 13_
 
 ### 3.4 Implement Response Cleanup
 
-- [ ] **Task 3.4.1: Add stringOperations node**
+- [x] **Task 3.4.1: Add stringOperations node**
   - Configure operation: `replaceRegex`
   - Set field to `aiResponse`
   - Set outputField to `cleanedResponse`
   - _Requirements: 5_
 
-- [ ] **Task 3.4.2: Configure regex pattern**
+- [x] **Task 3.4.2: Configure regex pattern**
   - Pattern: `^```(?:json)?\\s*|\\s*```$`
   - Replacement: empty string
   - Flags: `gm` (global, multiline)
@@ -181,17 +184,17 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 3.5 Implement JSON Validation
 
-- [ ] **Task 3.5.1: Add validateData node for JSON**
+- [x] **Task 3.5.1: Add validateData node for JSON**
   - Configure `validationType: "json"`
   - Set `data` to `$.cleanedResponse`
   - _Requirements: 6_
 
-- [ ] **Task 3.5.2: Add valid? edge handler**
+- [x] **Task 3.5.2: Add valid? edge handler**
   - Add `editFields` node
   - Set `$.generatedWorkflow` from `$.parsedJson`
   - _Requirements: 6, 13_
 
-- [ ] **Task 3.5.3: Add invalid? edge handler**
+- [x] **Task 3.5.3: Add invalid? edge handler**
   - Increment `$.retryCount`
   - Set `$.lastError` to `$.validationErrors`
   - Add log node for retry message
@@ -199,23 +202,23 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 3.6 Implement Structure Validation
 
-- [ ] **Task 3.6.1: Add logic node for null check**
+- [x] **Task 3.6.1: Add logic node for null check**
   - Check if `$.generatedWorkflow` is not null
   - Only validate structure if JSON parsed successfully
   - _Requirements: 7_
 
-- [ ] **Task 3.6.2: Add validateData node for structure**
+- [x] **Task 3.6.2: Add validateData node for structure**
   - Configure `validationType: "required_fields"`
   - Set `data` to `$.generatedWorkflow`
   - Set `requiredFields` to `["id", "name", "version", "workflow"]`
   - _Requirements: 7_
 
-- [ ] **Task 3.6.3: Add valid? edge handler**
+- [x] **Task 3.6.3: Add valid? edge handler**
   - Set `$.generationComplete` to `true`
   - This exits the retry loop
   - _Requirements: 7, 8_
 
-- [ ] **Task 3.6.4: Add invalid? edge handler**
+- [x] **Task 3.6.4: Add invalid? edge handler**
   - Increment `$.retryCount`
   - Set `$.lastError` to "Missing required fields"
   - Reset `$.generatedWorkflow` to null
@@ -227,30 +230,30 @@ This document provides a concrete, actionable implementation plan for the Meta-W
 
 ### 4.1 Handle Generation Failure
 
-- [ ] **Task 4.1.1: Add logic node after loop**
+- [x] **Task 4.1.1: Add logic node after loop**
   - Check if `$.generationComplete == false`
   - Only execute if all retries failed
   - _Requirements: 8, 12_
 
-- [ ] **Task 4.1.2: Add failure log node**
+- [x] **Task 4.1.2: Add failure log node**
   - Log message with max retries count
   - Include `$.lastError` for debugging
   - _Requirements: 8, 12_
 
 ### 4.2 Implement Database Save
 
-- [ ] **Task 4.2.1: Add logic node for save condition**
+- [x] **Task 4.2.1: Add logic node for save condition**
   - Check if `$.generationComplete == true`
   - Only save if generation succeeded
   - _Requirements: 10_
 
-- [ ] **Task 4.2.2: Add fetchApi node for save**
+- [x] **Task 4.2.2: Add fetchApi node for save**
   - Configure URL: `{{$.apiBaseUrl}}/workscript/workflows/create`
   - Set method: `POST`
   - Add Authorization and Content-Type headers
   - _Requirements: 10, 14_
 
-- [ ] **Task 4.2.3: Configure request body**
+- [x] **Task 4.2.3: Configure request body**
   - Set `name` from `$.generatedWorkflow.name`
   - Set `description` with user request context
   - Set `definition` to `$.generatedWorkflow`
@@ -258,47 +261,47 @@ This document provides a concrete, actionable implementation plan for the Meta-W
   - Set `isActive` to `true`
   - _Requirements: 10_
 
-- [ ] **Task 4.2.4: Add success? edge handler**
+- [x] **Task 4.2.4: Add success? edge handler**
   - Set `$.savedWorkflow` from `$.fetchResponse.workflow`
   - Set `$.saveSuccess` to `true`
   - Add log node for success message
   - _Requirements: 10, 11, 12_
 
-- [ ] **Task 4.2.5: Add clientError? edge handler**
+- [x] **Task 4.2.5: Add clientError? edge handler**
   - Set `$.saveError` from `$.fetchResponse.error`
   - Set `$.saveSuccess` to `false`
   - _Requirements: 10, 11_
 
-- [ ] **Task 4.2.6: Add serverError? edge handler**
+- [x] **Task 4.2.6: Add serverError? edge handler**
   - Set `$.saveError` to generic server error message
   - Set `$.saveSuccess` to `false`
   - _Requirements: 10, 11_
 
-- [ ] **Task 4.2.7: Add error? edge handler**
+- [x] **Task 4.2.7: Add error? edge handler**
   - Set `$.saveError` from `$.error`
   - Set `$.saveSuccess` to `false`
   - _Requirements: 10, 11_
 
 ### 4.3 Construct Final Result
 
-- [ ] **Task 4.3.1: Add editFields node for result**
+- [x] **Task 4.3.1: Add editFields node for result**
   - Create `$.result` object
   - Set `success` based on generation and save status
   - _Requirements: 11_
 
-- [ ] **Task 4.3.2: Include workflow ID in result**
+- [x] **Task 4.3.2: Include workflow ID in result**
   - Set `workflowId` from `$.savedWorkflow.id`
   - _Requirements: 11_
 
-- [ ] **Task 4.3.3: Include workflow in result**
+- [x] **Task 4.3.3: Include workflow in result**
   - Set `workflow` from `$.generatedWorkflow`
   - _Requirements: 11_
 
-- [ ] **Task 4.3.4: Include attempt count in result**
+- [x] **Task 4.3.4: Include attempt count in result**
   - Set `attempts` from `$.retryCount`
   - _Requirements: 11_
 
-- [ ] **Task 4.3.5: Include error in result**
+- [x] **Task 4.3.5: Include error in result**
   - Set `error` from `$.lastError` or `$.saveError`
   - Handle null cases appropriately
   - _Requirements: 11_
