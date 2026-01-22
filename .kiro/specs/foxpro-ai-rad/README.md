@@ -22,7 +22,7 @@ Recreerea paradigmei **FoxPro 2.6 RAD (Rapid Application Development)** pe infra
 | **Backend** | Hono 4.7.x | API server |
 | **Frontend** | React 19 + Vite 6 | Management UI |
 | **Database** | MySQL + Drizzle ORM | Persistență |
-| **AI** | Claude SDK (@anthropic-ai/sdk) | Generare inteligentă |
+| **AI** | AskAI Service (OpenRouter) | Generare inteligentă - 300+ modele AI |
 | **UI Components** | shadcn/ui + Tailwind | Componente vizuale |
 | **Validation** | Ajv + Zod | Schema validation |
 
@@ -81,13 +81,15 @@ Sistem EAV (Entity-Attribute-Value) care permite crearea de tabele la runtime f�
 - Soft delete și versionare
 
 #### 2. AI Generation Layer
-Integrare Claude SDK pentru generare conversațională.
+Integrare AskAI Service (OpenRouter) pentru generare inteligentă cu acces la 300+ modele AI.
 
 **Capabilități:**
 - Generare scheme din descrieri text
 - Generare formulare din scheme existente
 - Generare rapoarte din cerințe
 - Conversații cu refinement iterativ
+- Suport multi-provider (Anthropic, OpenAI, Google, Meta, Mistral, etc.)
+- Tracking automat al utilizării și costurilor
 
 #### 3. Forms System
 Definire și randare dinamică de formulare.
@@ -122,7 +124,7 @@ Rapoarte band-based cu export multiplu.
 - FlexQueryNode (queries complexe)
 
 ### Faza 3: AI Integration (Săpt. 3-4)
-- Claude SDK client
+- AskAI Service integration (OpenRouter)
 - System prompts pentru generare
 - Conversation management
 
@@ -158,7 +160,7 @@ Rapoarte band-based cu export multiplu.
 ### Prerequisite
 - Bun 1.x instalat
 - MySQL 8.x running
-- API key Anthropic (Claude)
+- API key OpenRouter (OPENROUTER_API_KEY)
 
 ### Setup
 
@@ -171,7 +173,7 @@ bun install
 cp apps/api/.env.example apps/api/.env
 # Editează .env cu:
 # - DATABASE_URL
-# - ANTHROPIC_API_KEY
+# - OPENROUTER_API_KEY
 
 # Push schema
 cd apps/api && bun run db:push
@@ -259,8 +261,11 @@ workscript/
 │   │   │   ├── forms.schema.ts
 │   │   │   └── reports.schema.ts
 │   │   │
-│   │   ├── shared-services/ai/
-│   │   │   └── ClaudeClient.ts   # Claude SDK wrapper
+│   │   ├── shared-services/ask-ai/  # Existing AskAI Service (OpenRouter)
+│   │   │   ├── AskAIService.ts   # Main service facade
+│   │   │   ├── OpenRouterClient.ts # OpenRouter API client
+│   │   │   ├── ModelRegistry.ts  # Model caching & discovery
+│   │   │   └── UsageTracker.ts   # Usage analytics
 │   │   │
 │   │   └── plugins/rad/
 │   │       ├── routes/
@@ -290,7 +295,7 @@ workscript/
 - [ ] Indexed columns oferă performanță bună
 
 ### Milestone 2: AI Generation (Săpt. 5)
-- [ ] Claude generează scheme valide din descrieri
+- [ ] AskAI Service generează scheme valide din descrieri
 - [ ] Conversațiile de refinement funcționează
 - [ ] Accept/reject flow complet
 

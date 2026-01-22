@@ -2,11 +2,11 @@
 
 ## Introduction
 
-FoxPro 2.6 AI is a revolutionary Rapid Application Development (RAD) platform that recreates the paradigm of the classic FoxPro 2.6 development environment on modern Workscript infrastructure, enhanced with AI capabilities powered by Claude SDK.
+FoxPro 2.6 AI is a revolutionary Rapid Application Development (RAD) platform that recreates the paradigm of the classic FoxPro 2.6 development environment on modern Workscript infrastructure, enhanced with AI capabilities powered by the AskAI shared service (OpenRouter integration).
 
 The platform addresses the need for a low-code/no-code development environment where users can describe what they want in natural language, and AI generates the necessary database schemas, forms, reports, and workflows automatically. This eliminates the traditional barrier between business requirements and technical implementation, allowing domain experts to build applications without deep programming knowledge.
 
-FoxPro 2.6 AI integrates with the existing Workscript monorepo architecture (Bun + Hono + Vite + React), leveraging the powerful workflow engine with 45+ nodes, Drizzle ORM for database operations, and shadcn/ui for the frontend components. The key innovation is the FlexDB system - an Entity-Attribute-Value (EAV) pattern that enables runtime table creation without traditional database migrations, combined with Claude SDK for intelligent component generation.
+FoxPro 2.6 AI integrates with the existing Workscript monorepo architecture (Bun + Hono + Vite + React), leveraging the powerful workflow engine with 45+ nodes, Drizzle ORM for database operations, and shadcn/ui for the frontend components. The key innovation is the FlexDB system - an Entity-Attribute-Value (EAV) pattern that enables runtime table creation without traditional database migrations, combined with the AskAI shared service (OpenRouter) for intelligent component generation.
 
 ---
 
@@ -132,7 +132,7 @@ FoxPro 2.6 AI integrates with the existing Workscript monorepo architecture (Bun
 
 #### Acceptance Criteria
 
-1. WHEN user sends a description to `/api/ai/generate/schema` THEN Claude SDK generates a FlexTable definition
+1. WHEN user sends a description to `/api/ai/generate/schema` THEN AskAI service generates a FlexTable definition
 2. WHEN generating schema THEN AI receives context about existing tables in the application
 3. WHEN generating schema THEN AI receives the application's terminology dictionary
 4. WHEN generating schema THEN AI automatically adds audit fields (created_at, updated_at)
@@ -312,22 +312,24 @@ FoxPro 2.6 AI integrates with the existing Workscript monorepo architecture (Bun
 9. WHEN menu items are defined THEN navigation structure is established
 10. WHEN dashboard widgets are defined THEN application home page is configured
 
-### Requirement 17: Claude SDK Integration
+### Requirement 17: AskAI Service Integration (OpenRouter)
 
-**User Story:** As a developer, I want the system to use Claude SDK natively, so that AI features are powered by the latest capabilities.
+**User Story:** As a developer, I want the system to use the existing AskAI shared service, so that AI features leverage the multi-provider OpenRouter integration with 300+ models.
 
 #### Acceptance Criteria
 
-1. WHEN ClaudeClient is initialized THEN it uses @anthropic-ai/sdk
-2. WHEN making an API call THEN model, max_tokens, and system prompt are specified
-3. WHEN structured output is needed THEN tool use with JSON schema is employed
-4. WHEN streaming is requested THEN Server-Sent Events deliver chunks
-5. WHEN conversation context is provided THEN previous messages are included
-6. WHEN temperature is specified THEN it affects response creativity
-7. WHEN API call succeeds THEN response is parsed and typed
-8. WHEN API call fails THEN error is caught and handled gracefully
-9. WHEN rate limit is hit THEN request is retried with exponential backoff
-10. WHEN token usage is tracked THEN input/output tokens are recorded
+1. WHEN AIGenerationService is initialized THEN it uses `getAskAIService()` from `@workscript/api/shared-services/ask-ai`
+2. WHEN making an AI request THEN `askAI.complete()` is called with model, messages, and pluginId
+3. WHEN structured output is needed THEN system prompts guide JSON generation with validation
+4. WHEN streaming is requested THEN the service supports SSE through OpenRouter
+5. WHEN conversation context is provided THEN messages array includes conversation history
+6. WHEN temperature is specified THEN it is passed to the CompletionRequest
+7. WHEN API call succeeds THEN CompletionResult contains content, usage, and cost
+8. WHEN API call fails THEN AIServiceError is thrown with appropriate error code
+9. WHEN rate limit is hit THEN OpenRouter handles retries automatically
+10. WHEN token usage is tracked THEN UsageTracker records promptTokens, completionTokens, and cost
+11. WHEN listing available models THEN `askAI.listModels()` returns AIModel[] with pricing
+12. WHEN selecting a model THEN provider-agnostic model IDs (e.g., 'anthropic/claude-3.5-sonnet') are used
 
 ### Requirement 18: AI Rate Limiting and Cost Control
 

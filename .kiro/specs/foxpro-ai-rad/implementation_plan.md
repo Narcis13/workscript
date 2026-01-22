@@ -512,52 +512,54 @@ This document provides a concrete, actionable implementation plan for the FoxPro
 
 ---
 
-## PHASE 4: AI INTEGRATION - CLAUDE SDK
+## PHASE 4: AI INTEGRATION - ASKAI SERVICE (OPENROUTER)
 
-### 4.1 Claude Client Setup
+### 4.1 AskAI Service Integration
 
-- [ ] **Task 4.1.1: Install Anthropic SDK**
-  - Run `bun add @anthropic-ai/sdk` in apps/api
+- [ ] **Task 4.1.1: Verify AskAI shared service availability**
+  - Confirm `/apps/api/src/shared-services/ask-ai/` exists with AskAIService, OpenRouterClient, ModelRegistry, UsageTracker
+  - Verify OPENROUTER_API_KEY is in environment variables
+  - Test `getAskAIService()` returns singleton instance
   - _Requirements: 17_
 
-- [ ] **Task 4.1.2: Create ClaudeClient class**
-  - Create `/apps/api/src/shared-services/ai/ClaudeClient.ts`
-  - Import Anthropic from @anthropic-ai/sdk
-  - Define ClaudeClientConfig interface
+- [ ] **Task 4.1.2: Create AIClient wrapper for RAD plugin**
+  - Create `/apps/api/src/plugins/rad/services/AIClient.ts`
+  - Import `{ getAskAIService, type CompletionRequest, type CompletionResult }` from `../../shared-services/ask-ai`
+  - Define RAD-specific default model (e.g., 'anthropic/claude-3.5-sonnet')
   - _Requirements: 17_
 
-- [ ] **Task 4.1.3: Implement constructor**
-  - Accept config with apiKey, model, maxTokens
-  - Initialize Anthropic client
-  - _Requirements: 17_
-
-- [ ] **Task 4.1.4: Implement generate method**
+- [ ] **Task 4.1.3: Implement generate method wrapper**
   - Accept systemPrompt, userMessage, options
-  - Build messages array with conversation history
-  - Make API call with model, max_tokens, system, messages
-  - Support tool use for structured output
-  - Parse and return response
+  - Build ChatMessage[] array from conversation history
+  - Call `askAI.complete({ model, messages, pluginId: 'rad', ...options })`
+  - Return CompletionResult with content, usage, cost
   - _Requirements: 17_
 
-- [ ] **Task 4.1.5: Implement stream method**
-  - Accept systemPrompt, userMessage, onChunk callback
-  - Create streaming message request
-  - Iterate chunks and call onChunk with text delta
+- [ ] **Task 4.1.4: Implement generateWithJSON method**
+  - Add JSON schema instruction to system prompt
+  - Parse response content as JSON
+  - Validate against expected schema using Ajv
+  - Auto-retry with error context if parsing fails
   - _Requirements: 17_
 
-- [ ] **Task 4.1.6: Implement parseResponse helper**
-  - Handle text content blocks
-  - Handle tool use content blocks
-  - Extract generated component from tool call
-  - Return typed response
+- [ ] **Task 4.1.5: Implement model selection helper**
+  - Use `askAI.listModels({ provider: 'anthropic' })` to get available models
+  - Allow configuration of preferred model per generation type (schema, form, report)
+  - Support fallback models if primary unavailable
   - _Requirements: 17_
 
-- [ ] **Task 4.1.7: Add error handling**
-  - Catch API errors
-  - Handle rate limits with retry logic
-  - Handle authentication errors
-  - Return meaningful error messages
+- [ ] **Task 4.1.6: Add error handling**
+  - Catch AIServiceError and handle by error code
+  - Handle RATE_LIMITED with configurable delay
+  - Handle MODEL_NOT_FOUND with fallback
+  - Log errors with context for debugging
   - _Requirements: 17_
+
+- [ ] **Task 4.1.7: Integrate usage tracking**
+  - Usage is automatically tracked by AskAIService
+  - Add RAD-specific metadata to requests (applicationId, generationType)
+  - Query usage via `askAI.getUsage({ pluginId: 'rad' })`
+  - _Requirements: 17, 18_
 
 ### 4.2 AI Generation Prompts
 
@@ -623,7 +625,8 @@ This document provides a concrete, actionable implementation plan for the FoxPro
 
 - [ ] **Task 4.4.1: Create AIGenerationService class**
   - Create `/apps/api/src/plugins/rad/services/AIGenerationService.ts`
-  - Inject ClaudeClient, FlexDBService, ConversationRepository
+  - Inject AIClient (from 4.1.2), FlexDBService, ConversationRepository
+  - Use `getAskAIService()` for AI completions
   - _Requirements: 7_
 
 - [ ] **Task 4.4.2: Implement buildContext method**
@@ -641,9 +644,9 @@ This document provides a concrete, actionable implementation plan for the FoxPro
   - Load or create conversation
   - Build context and system prompt
   - Build user message (description or feedback)
-  - Call Claude with tool use
+  - Call `aiClient.generateWithJSON()` with FlexTable schema
   - Validate generated schema
-  - Auto-fix invalid schemas by asking Claude to correct
+  - Auto-fix invalid schemas by asking AI to correct
   - Save conversation messages
   - Generate suggestions
   - Return schema, explanation, suggestions, conversationId
@@ -652,7 +655,7 @@ This document provides a concrete, actionable implementation plan for the FoxPro
 - [ ] **Task 4.4.5: Implement generateForm method**
   - Fetch table schema
   - Build form generation prompt with table schema
-  - Call Claude
+  - Call `aiClient.generateWithJSON()` with FormDefinition schema
   - Validate form definition
   - Return form definition
   - _Requirements: 9_
@@ -660,7 +663,7 @@ This document provides a concrete, actionable implementation plan for the FoxPro
 - [ ] **Task 4.4.6: Implement generateReport method**
   - Fetch table schema
   - Build report generation prompt
-  - Call Claude
+  - Call `aiClient.generateWithJSON()` with ReportDefinition schema
   - Validate report definition
   - Return report definition
   - _Requirements: 10_
@@ -699,27 +702,30 @@ This document provides a concrete, actionable implementation plan for the FoxPro
   - Return validation result
   - _Requirements: 7_
 
-### 4.5 AI Usage Tracking
+### 4.5 AI Usage Tracking (Leveraging Existing AskAI Service)
 
-- [ ] **Task 4.5.1: Create AI usage schema**
-  - Create `/apps/api/src/db/schema/ai-usage.schema.ts`
-  - Define ai_usage table: id, application_id, request_type, input_tokens, output_tokens, model, created_at
+- [ ] **Task 4.5.1: Verify existing AI usage schema**
+  - Confirm `/apps/api/src/db/schema/ai.schema.ts` exists with usage tracking tables
+  - AskAI service already tracks: pluginId, userId, tenantId, modelId, promptTokens, completionTokens, cost
+  - No new schema needed - reuse existing infrastructure
   - _Requirements: 18_
 
-- [ ] **Task 4.5.2: Create AIUsageTracker service**
-  - Create `/apps/api/src/plugins/rad/services/AIUsageTracker.ts`
-  - Implement: trackUsage, checkQuota, getUsageReport
+- [ ] **Task 4.5.2: Create RAD-specific usage wrapper**
+  - Create `/apps/api/src/plugins/rad/services/RADUsageService.ts`
+  - Query usage via `askAI.getUsage({ pluginId: 'rad' })`
+  - Add application-level aggregation (group by applicationId from metadata)
   - _Requirements: 18_
 
-- [ ] **Task 4.5.3: Implement rate limiting**
-  - Define limits per tier (free, pro, enterprise)
-  - Check quota before AI requests
-  - Block requests exceeding limits
+- [ ] **Task 4.5.3: Implement RAD quota management**
+  - Define limits per tier (free, pro, enterprise) in RAD plugin config
+  - Check quota before AI requests by querying `askAI.getUsage()`
+  - Block requests exceeding limits with informative error
   - _Requirements: 18_
 
-- [ ] **Task 4.5.4: Integrate tracking in AIGenerationService**
-  - Track tokens after each API call
-  - Check quota before generating
+- [ ] **Task 4.5.4: Integrate quota checking in AIGenerationService**
+  - Check quota before calling `aiClient.generateWithJSON()`
+  - Include `metadata: { applicationId, generationType }` in completion requests
+  - Usage is automatically tracked by AskAIService
   - _Requirements: 18_
 
 ---
@@ -1218,8 +1224,8 @@ This document provides a concrete, actionable implementation plan for the FoxPro
 ### 11.2 AI Generation Tests
 
 - [ ] **Task 11.2.1: Create AI service tests**
-  - Mock Claude SDK
-  - Test schema generation
+  - Mock AskAIService using `AskAIService.resetInstance()` for test isolation
+  - Test schema generation with mocked completions
   - Test conversation management
   - _Requirements: 7, 8_
 
