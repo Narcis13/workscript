@@ -248,33 +248,153 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FLEX-01 to FLEX-06 | Phase 1 | Pending |
-| TYPE-01 to TYPE-10 | Phase 1 | Pending |
-| REC-01 to REC-08 | Phase 2 | Pending |
-| QRY-01 to QRY-09 | Phase 2 | Pending |
-| REL-01 to REL-05 | Phase 2 | Pending |
-| VER-01 to VER-04 | Phase 1 | Pending |
-| API-01 to API-11 | Phase 3 | Pending |
-| AIINT-01 to AIINT-05 | Phase 4 | Pending |
-| AISCH-01 to AISCH-07 | Phase 4 | Pending |
-| CONV-01 to CONV-07 | Phase 5 | Pending |
-| AIFORM-01 to AIFORM-08 | Phase 5 | Pending |
-| AIRPT-01 to AIRPT-07 | Phase 5 | Pending |
-| FDEF-01 to FDEF-07 | Phase 6 | Pending |
-| FRND-01 to FRND-08 | Phase 7 | Pending |
-| FWFL-01 to FWFL-05 | Phase 6 | Pending |
-| RDEF-01 to RDEF-06 | Phase 8 | Pending |
-| RGEN-01 to RGEN-08 | Phase 9 | Pending |
-| APP-01 to APP-08 | Phase 10-12 | Pending |
-| AIAPI-01 to AIAPI-07 | Phase 4-5 | Pending |
-| RATE-01 to RATE-04 | Phase 5 | Pending |
+| FLEX-01 | Phase 1 | Pending |
+| FLEX-02 | Phase 1 | Pending |
+| FLEX-03 | Phase 1 | Pending |
+| FLEX-04 | Phase 1 | Pending |
+| FLEX-05 | Phase 1 | Pending |
+| FLEX-06 | Phase 1 | Pending |
+| TYPE-01 | Phase 1 | Pending |
+| TYPE-02 | Phase 1 | Pending |
+| TYPE-03 | Phase 1 | Pending |
+| TYPE-04 | Phase 1 | Pending |
+| TYPE-05 | Phase 1 | Pending |
+| TYPE-06 | Phase 1 | Pending |
+| TYPE-07 | Phase 1 | Pending |
+| TYPE-08 | Phase 1 | Pending |
+| TYPE-09 | Phase 1 | Pending |
+| TYPE-10 | Phase 1 | Pending |
+| VER-01 | Phase 1 | Pending |
+| VER-02 | Phase 1 | Pending |
+| VER-03 | Phase 1 | Pending |
+| VER-04 | Phase 1 | Pending |
+| REC-01 | Phase 2 | Pending |
+| REC-02 | Phase 2 | Pending |
+| REC-03 | Phase 2 | Pending |
+| REC-04 | Phase 2 | Pending |
+| REC-05 | Phase 2 | Pending |
+| REC-06 | Phase 2 | Pending |
+| REC-07 | Phase 2 | Pending |
+| REC-08 | Phase 2 | Pending |
+| QRY-01 | Phase 2 | Pending |
+| QRY-02 | Phase 2 | Pending |
+| QRY-03 | Phase 2 | Pending |
+| QRY-04 | Phase 2 | Pending |
+| QRY-05 | Phase 2 | Pending |
+| QRY-06 | Phase 2 | Pending |
+| QRY-07 | Phase 2 | Pending |
+| QRY-08 | Phase 2 | Pending |
+| QRY-09 | Phase 2 | Pending |
+| REL-01 | Phase 2 | Pending |
+| REL-02 | Phase 2 | Pending |
+| REL-03 | Phase 2 | Pending |
+| REL-04 | Phase 2 | Pending |
+| REL-05 | Phase 2 | Pending |
+| API-01 | Phase 3 | Pending |
+| API-02 | Phase 3 | Pending |
+| API-03 | Phase 3 | Pending |
+| API-04 | Phase 3 | Pending |
+| API-05 | Phase 3 | Pending |
+| API-06 | Phase 3 | Pending |
+| API-07 | Phase 3 | Pending |
+| API-08 | Phase 3 | Pending |
+| API-09 | Phase 3 | Pending |
+| API-10 | Phase 3 | Pending |
+| API-11 | Phase 3 | Pending |
+| AIINT-01 | Phase 4 | Pending |
+| AIINT-02 | Phase 4 | Pending |
+| AIINT-03 | Phase 4 | Pending |
+| AIINT-04 | Phase 4 | Pending |
+| AIINT-05 | Phase 4 | Pending |
+| AISCH-01 | Phase 4 | Pending |
+| AISCH-02 | Phase 4 | Pending |
+| AISCH-03 | Phase 4 | Pending |
+| AISCH-04 | Phase 4 | Pending |
+| AISCH-05 | Phase 4 | Pending |
+| AISCH-06 | Phase 4 | Pending |
+| AISCH-07 | Phase 4 | Pending |
+| CONV-01 | Phase 4 | Pending |
+| CONV-02 | Phase 4 | Pending |
+| CONV-03 | Phase 4 | Pending |
+| CONV-04 | Phase 4 | Pending |
+| CONV-05 | Phase 4 | Pending |
+| CONV-06 | Phase 4 | Pending |
+| CONV-07 | Phase 4 | Pending |
+| RATE-01 | Phase 4 | Pending |
+| RATE-02 | Phase 4 | Pending |
+| RATE-03 | Phase 4 | Pending |
+| RATE-04 | Phase 4 | Pending |
+| AIFORM-01 | Phase 5 | Pending |
+| AIFORM-02 | Phase 5 | Pending |
+| AIFORM-03 | Phase 5 | Pending |
+| AIFORM-04 | Phase 5 | Pending |
+| AIFORM-05 | Phase 5 | Pending |
+| AIFORM-06 | Phase 5 | Pending |
+| AIFORM-07 | Phase 5 | Pending |
+| AIFORM-08 | Phase 5 | Pending |
+| AIRPT-01 | Phase 5 | Pending |
+| AIRPT-02 | Phase 5 | Pending |
+| AIRPT-03 | Phase 5 | Pending |
+| AIRPT-04 | Phase 5 | Pending |
+| AIRPT-05 | Phase 5 | Pending |
+| AIRPT-06 | Phase 5 | Pending |
+| AIRPT-07 | Phase 5 | Pending |
+| AIAPI-01 | Phase 6 | Pending |
+| AIAPI-02 | Phase 6 | Pending |
+| AIAPI-03 | Phase 6 | Pending |
+| AIAPI-04 | Phase 6 | Pending |
+| AIAPI-05 | Phase 6 | Pending |
+| AIAPI-06 | Phase 6 | Pending |
+| AIAPI-07 | Phase 6 | Pending |
+| FDEF-01 | Phase 7 | Pending |
+| FDEF-02 | Phase 7 | Pending |
+| FDEF-03 | Phase 7 | Pending |
+| FDEF-04 | Phase 7 | Pending |
+| FDEF-05 | Phase 7 | Pending |
+| FDEF-06 | Phase 7 | Pending |
+| FDEF-07 | Phase 7 | Pending |
+| FWFL-01 | Phase 7 | Pending |
+| FWFL-02 | Phase 7 | Pending |
+| FWFL-03 | Phase 7 | Pending |
+| FWFL-04 | Phase 7 | Pending |
+| FWFL-05 | Phase 7 | Pending |
+| FRND-01 | Phase 8 | Pending |
+| FRND-02 | Phase 8 | Pending |
+| FRND-03 | Phase 8 | Pending |
+| FRND-04 | Phase 8 | Pending |
+| FRND-05 | Phase 8 | Pending |
+| FRND-06 | Phase 8 | Pending |
+| FRND-07 | Phase 8 | Pending |
+| FRND-08 | Phase 8 | Pending |
+| RDEF-01 | Phase 9 | Pending |
+| RDEF-02 | Phase 9 | Pending |
+| RDEF-03 | Phase 9 | Pending |
+| RDEF-04 | Phase 9 | Pending |
+| RDEF-05 | Phase 9 | Pending |
+| RDEF-06 | Phase 9 | Pending |
+| RGEN-01 | Phase 9 | Pending |
+| RGEN-02 | Phase 9 | Pending |
+| RGEN-03 | Phase 9 | Pending |
+| RGEN-04 | Phase 9 | Pending |
+| RGEN-05 | Phase 9 | Pending |
+| RGEN-06 | Phase 9 | Pending |
+| RGEN-07 | Phase 9 | Pending |
+| RGEN-08 | Phase 9 | Pending |
+| APP-01 | Phase 10 | Pending |
+| APP-02 | Phase 10 | Pending |
+| APP-03 | Phase 10 | Pending |
+| APP-04 | Phase 10 | Pending |
+| APP-05 | Phase 10 | Pending |
+| APP-06 | Phase 10 | Pending |
+| APP-07 | Phase 10 | Pending |
+| APP-08 | Phase 10 | Pending |
 
 **Coverage:**
 - v1 requirements: 109 total
 - Mapped to phases: 109
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-23*
 *Source: .kiro/specs/foxpro-ai-rad/requirements.md*
-*Last updated: 2026-01-23 after initial definition*
+*Last updated: 2026-01-23 after roadmap creation*
