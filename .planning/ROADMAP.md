@@ -31,18 +31,18 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Users can create database tables at runtime with typed columns and validation rules
 **Depends on**: Nothing (first phase)
 **Requirements**: FLEX-01 to FLEX-06, TYPE-01 to TYPE-10, VER-01 to VER-04
+**Plans**: 3 plans in 2 waves
 **Success Criteria** (what must be TRUE):
   1. User can create a FlexDB table with columns via workflow node
   2. System enforces table name uniqueness within application
   3. System supports all 9 data types (string, text, integer, decimal, boolean, date, datetime, json, reference)
   4. System assigns indexed columns to appropriate slots (3 string, 2 numeric, 2 date)
   5. System creates version history entry when schema changes
-**Plans**: TBD
 
 Plans:
-- [ ] 01-01: Database schema and TypeScript types
-- [ ] 01-02: FlexDB service layer and validation
-- [ ] 01-03: Query builder and version tracking
+- [ ] 01-01-PLAN.md — Database schema and TypeScript types (Wave 1)
+- [ ] 01-02-PLAN.md — FlexDB service layer and validation (Wave 2)
+- [ ] 01-03-PLAN.md — Version tracking and workflow node (Wave 2)
 
 ### Phase 2: FlexDB Record Operations
 **Goal**: Users can perform full CRUD operations on records with queries and relationships
@@ -221,7 +221,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> ... -> 12
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. FlexDB Schema Foundation | 0/3 | Not started | - |
+| 1. FlexDB Schema Foundation | 0/3 | Planned | - |
 | 2. FlexDB Record Operations | 0/2 | Not started | - |
 | 3. FlexDB REST API | 0/1 | Not started | - |
 | 4. AI Service Integration | 0/3 | Not started | - |
