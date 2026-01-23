@@ -248,26 +248,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FLEX-01 | Phase 1 | Pending |
-| FLEX-02 | Phase 1 | Pending |
-| FLEX-03 | Phase 1 | Pending |
-| FLEX-04 | Phase 1 | Pending |
-| FLEX-05 | Phase 1 | Pending |
-| FLEX-06 | Phase 1 | Pending |
-| TYPE-01 | Phase 1 | Pending |
-| TYPE-02 | Phase 1 | Pending |
-| TYPE-03 | Phase 1 | Pending |
-| TYPE-04 | Phase 1 | Pending |
-| TYPE-05 | Phase 1 | Pending |
-| TYPE-06 | Phase 1 | Pending |
-| TYPE-07 | Phase 1 | Pending |
-| TYPE-08 | Phase 1 | Pending |
-| TYPE-09 | Phase 1 | Pending |
-| TYPE-10 | Phase 1 | Pending |
-| VER-01 | Phase 1 | Pending |
-| VER-02 | Phase 1 | Pending |
-| VER-03 | Phase 1 | Pending |
-| VER-04 | Phase 1 | Pending |
+| FLEX-01 | Phase 1 | Complete |
+| FLEX-02 | Phase 1 | Complete |
+| FLEX-03 | Phase 1 | Complete |
+| FLEX-04 | Phase 1 | Complete |
+| FLEX-05 | Phase 1 | Complete |
+| FLEX-06 | Phase 1 | Complete |
+| TYPE-01 | Phase 1 | Complete |
+| TYPE-02 | Phase 1 | Complete |
+| TYPE-03 | Phase 1 | Complete |
+| TYPE-04 | Phase 1 | Complete |
+| TYPE-05 | Phase 1 | Complete |
+| TYPE-06 | Phase 1 | Complete |
+| TYPE-07 | Phase 1 | Complete |
+| TYPE-08 | Phase 1 | Complete |
+| TYPE-09 | Phase 1 | Complete |
+| TYPE-10 | Phase 1 | Complete |
+| VER-01 | Phase 1 | Complete |
+| VER-02 | Phase 1 | Complete |
+| VER-03 | Phase 1 | Complete |
+| VER-04 | Phase 1 | Complete |
 | REC-01 | Phase 2 | Pending |
 | REC-02 | Phase 2 | Pending |
 | REC-03 | Phase 2 | Pending |
