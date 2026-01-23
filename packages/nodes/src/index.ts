@@ -94,6 +94,11 @@ export { DatabaseNode } from './DatabaseNode.js';
 export { AuthNode } from './AuthNode.js';
 
 // ============================================================================
+// FLEXDB NODES - Dynamic table management
+// ============================================================================
+export { FlexTableNode } from './flexdb/FlexTableNode.js';
+
+// ============================================================================
 // CUSTOM INTEGRATIONS - Third-party service integrations
 // ============================================================================
 
@@ -161,6 +166,9 @@ import { FileSystemNode } from './FileSystemNode.js';
 import { DatabaseNode } from './DatabaseNode.js';
 import { AuthNode } from './AuthNode.js';
 
+// FlexDB nodes
+import { FlexTableNode } from './flexdb/FlexTableNode.js';
+
 // Custom integrations - Gmail
 import { GoogleConnectNode } from './custom/google/gmail/googleConnect.js';
 import { SendEmailNode } from './custom/google/gmail/sendEmail.js';
@@ -185,9 +193,10 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * - Workflow orchestration nodes (1): RunWorkflow
  * - Data manipulation nodes (28): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, While, FetchApi, Resource (4), etc.
  * - Server nodes (3): FileSystem, Database, Auth
+ * - FlexDB nodes (1): FlexTable
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 45 nodes
+ * Total: 46 nodes
  *
  * @example
  * ```typescript
@@ -280,6 +289,11 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   AuthNode,
 
   // ============================================================================
+  // FLEXDB NODES (1)
+  // ============================================================================
+  FlexTableNode,
+
+  // ============================================================================
   // CUSTOM INTEGRATIONS (6)
   // ============================================================================
 
@@ -313,6 +327,7 @@ export function getNodeCount() {
     workflowOrchestration: 1,
     dataManipulation: 28,  // Includes 4 Resource nodes and While loop
     server: 3,
+    flexdb: 1,
     customIntegrations: 6,
     total: ALL_NODES.length,
   };
