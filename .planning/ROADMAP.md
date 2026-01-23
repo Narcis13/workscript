@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Users can create database tables at runtime with typed columns and validation rules
 **Depends on**: Nothing (first phase)
 **Requirements**: FLEX-01 to FLEX-06, TYPE-01 to TYPE-10, VER-01 to VER-04
-**Plans**: 3 plans in 2 waves
+**Plans**: 3 plans in 3 waves
 **Success Criteria** (what must be TRUE):
   1. User can create a FlexDB table with columns via workflow node
   2. System enforces table name uniqueness within application
@@ -48,17 +48,17 @@ Plans:
 **Goal**: Users can perform full CRUD operations on records with queries and relationships
 **Depends on**: Phase 1
 **Requirements**: REC-01 to REC-08, QRY-01 to QRY-09, REL-01 to REL-05
+**Plans**: 2 plans in 2 waves
 **Success Criteria** (what must be TRUE):
   1. User can insert, read, update, and delete records via workflow node
   2. System extracts indexed values and populates search_text automatically
   3. User can query records with filters (eq, gt, contains, between, AND/OR/NOT)
   4. User can include related records in query results
   5. System enforces referential integrity on relationships
-**Plans**: TBD
 
 Plans:
-- [ ] 02-01: FlexTable and FlexRecord workflow nodes
-- [ ] 02-02: Query execution and relationship handling
+- [ ] 02-01-PLAN.md — Record infrastructure: flex_records table, FlexRecordService, FlexQueryBuilder (Wave 1)
+- [ ] 02-02-PLAN.md — FlexRecordNode workflow node and relationship handling (Wave 2)
 
 ### Phase 3: FlexDB REST API
 **Goal**: External systems can interact with FlexDB through REST endpoints
@@ -221,8 +221,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> ... -> 12
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. FlexDB Schema Foundation | 3/3 | Complete ✓ | 2026-01-23 |
-| 2. FlexDB Record Operations | 0/2 | Not started | - |
+| 1. FlexDB Schema Foundation | 3/3 | Complete | 2026-01-23 |
+| 2. FlexDB Record Operations | 0/2 | Planned | - |
 | 3. FlexDB REST API | 0/1 | Not started | - |
 | 4. AI Service Integration | 0/3 | Not started | - |
 | 5. AI Workflow Nodes | 0/1 | Not started | - |
