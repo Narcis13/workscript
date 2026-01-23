@@ -8,6 +8,7 @@ export default defineConfig({
     './src/db/schema/ai.schema.ts',
     './src/plugins/workscript/schema/workscript.schema.ts',
     './src/plugins/workscript/schema/resources.schema.ts',
+    './src/plugins/workscript/schema/flexdb.schema.ts',
   ],
   out: './drizzle',
   dialect: 'mysql',

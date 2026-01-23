@@ -5,6 +5,7 @@ import * as authSchema from './schema/auth.schema';
 import * as integrationsSchema from './schema/integrations.schema';
 import * as aiSchema from './schema/ai.schema';
 import * as resourcesSchema from '../plugins/workscript/schema/resources.schema';
+import * as flexdbSchema from '../plugins/workscript/schema/flexdb.schema';
 
 // Combine all schemas
 const schema = {
@@ -13,6 +14,7 @@ const schema = {
   ...integrationsSchema,
   ...aiSchema,
   ...resourcesSchema,
+  ...flexdbSchema,
 };
 
 // Database connection configuration
@@ -36,3 +38,4 @@ export * from './schema/auth.schema';
 export * from './schema/integrations.schema';
 export * from './schema/ai.schema';
 export * from '../plugins/workscript/schema/resources.schema';
+export * from '../plugins/workscript/schema/flexdb.schema';
