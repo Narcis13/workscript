@@ -116,6 +116,8 @@ export interface FlexColumnDefinition {
   defaultValue?: unknown;
   /** Validation rules for this column */
   validation?: FlexColumnValidation;
+  /** Whether this is a system-managed column (id, created_at, etc.) */
+  system?: boolean;
 }
 
 /**
