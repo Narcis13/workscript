@@ -7,8 +7,9 @@
  *
  * ## Service Injection Pattern
  *
- * FlexTableNode expects the FlexDBService to be injected via `context.services.flexDB`.
- * The API's workflow executor is responsible for setting this before running workflows.
+ * FlexTableNode expects the FlexDBService to be injected via `context.state._services.flexDB`.
+ * The API's WorkflowService injects services into initialState._services before running workflows.
+ * This pattern works because initialState flows into context.state during execution.
  *
  * ## Operations
  *
@@ -173,7 +174,7 @@ interface FlexDBServiceInterface {
  * FlexTableNode - Workflow node for FlexDB table operations
  *
  * Provides create, get, and list operations for FlexDB tables.
- * Uses context.services.flexDB for service injection.
+ * Uses context.state._services.flexDB for service injection.
  */
 export class FlexTableNode extends WorkflowNode {
   /**
@@ -240,12 +241,9 @@ export class FlexTableNode extends WorkflowNode {
       displayName,
     } = config || {};
 
-    // Get service from context (injected by API)
-    const flexDBService = (
-      context as ExecutionContext & {
-        services?: { flexDB?: FlexDBServiceInterface };
-      }
-    ).services?.flexDB;
+    // Services are injected via initialState._services by WorkflowService
+    // They flow into context.state during workflow execution
+    const flexDBService = (context.state._services as { flexDB?: FlexDBServiceInterface })?.flexDB;
 
     if (!flexDBService) {
       return {

@@ -97,6 +97,7 @@ export { AuthNode } from './AuthNode.js';
 // FLEXDB NODES - Dynamic table management
 // ============================================================================
 export { FlexTableNode } from './flexdb/FlexTableNode.js';
+export { FlexRecordNode } from './flexdb/FlexRecordNode.js';
 
 // ============================================================================
 // CUSTOM INTEGRATIONS - Third-party service integrations
@@ -168,6 +169,7 @@ import { AuthNode } from './AuthNode.js';
 
 // FlexDB nodes
 import { FlexTableNode } from './flexdb/FlexTableNode.js';
+import { FlexRecordNode } from './flexdb/FlexRecordNode.js';
 
 // Custom integrations - Gmail
 import { GoogleConnectNode } from './custom/google/gmail/googleConnect.js';
@@ -193,10 +195,10 @@ import { AplicaFiltreNode } from './custom/zoca/aplicaFiltre.js';
  * - Workflow orchestration nodes (1): RunWorkflow
  * - Data manipulation nodes (28): Filter, Sort, Aggregate, Transform, EveryArrayItem, Range, While, FetchApi, Resource (4), etc.
  * - Server nodes (3): FileSystem, Database, Auth
- * - FlexDB nodes (1): FlexTable
+ * - FlexDB nodes (2): FlexTable, FlexRecord
  * - Custom integrations (6): Gmail (3), Zoca (3)
  *
- * Total: 46 nodes
+ * Total: 47 nodes
  *
  * @example
  * ```typescript
@@ -289,9 +291,10 @@ export const ALL_NODES: Array<typeof WorkflowNode> = [
   AuthNode,
 
   // ============================================================================
-  // FLEXDB NODES (1)
+  // FLEXDB NODES (2)
   // ============================================================================
   FlexTableNode,
+  FlexRecordNode,
 
   // ============================================================================
   // CUSTOM INTEGRATIONS (6)
@@ -327,7 +330,7 @@ export function getNodeCount() {
     workflowOrchestration: 1,
     dataManipulation: 28,  // Includes 4 Resource nodes and While loop
     server: 3,
-    flexdb: 1,
+    flexdb: 2,  // FlexTableNode, FlexRecordNode
     customIntegrations: 6,
     total: ALL_NODES.length,
   };

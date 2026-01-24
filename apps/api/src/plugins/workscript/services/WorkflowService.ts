@@ -3,6 +3,8 @@ import type { WorkflowDefinition, ParsedWorkflow, ValidationResult } from '@work
 import { ALL_NODES } from '@workscript/nodes';
 import { BunWebSocketManager } from '../../../shared-services/websocket';
 import { JWTManager } from '../../../shared-services/auth';
+import { flexDBService } from './FlexDBService';
+import { flexRecordService } from './FlexRecordService';
 
 /**
  * Workscript Plugin - Workflow Service
@@ -221,6 +223,10 @@ export class WorkflowService {
 
   /**
    * Execute a workflow definition
+   *
+   * Services are injected via `initialState._services` so nodes can access them from `context.state._services`.
+   * This pattern works because initialState flows into context.state during workflow execution.
+   *
    * @param workflowDefinition - The workflow to execute
    * @param initialState - Optional initial state to inject into workflow
    * @returns The execution result
@@ -235,12 +241,17 @@ export class WorkflowService {
     const jwtManager = JWTManager.getInstance();
     const serviceToken = await jwtManager.generateServiceToken();
 
-    // Build initial state with service token (overrides any user JWT)
+    // Build initial state with service token AND services
+    // Services are injected via _services so nodes can access them from context.state
     const stateToUse = {
       ...(initialState || {}),
-      JWT_token: serviceToken
+      JWT_token: serviceToken,
+      _services: {
+        flexDB: flexDBService,
+        flexRecord: flexRecordService,
+      }
     };
-    console.log('🔑 Injected service token for workflow execution');
+    console.log('🔑 Injected service token and FlexDB services for workflow execution');
 
     // Inject initial state into parsed workflow
     (parsedWorkflow as any).initialState = stateToUse;
