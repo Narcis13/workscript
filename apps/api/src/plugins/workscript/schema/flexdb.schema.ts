@@ -31,6 +31,9 @@ import {
   json,
   index,
   unique,
+  decimal,
+  date,
+  text,
 } from 'drizzle-orm/mysql-core';
 import { createId } from '@paralleldrive/cuid2';
 
@@ -361,6 +364,137 @@ export const flexTableVersions = mysqlTable(
 );
 
 // =============================================================================
+// FLEX_RECORDS TABLE
+// =============================================================================
+
+/**
+ * FlexDB Records Storage
+ *
+ * Stores all record data for FlexDB tables. Uses a JSON data column for
+ * schema flexibility combined with indexed virtual columns for query performance.
+ *
+ * **Key Concepts:**
+ * - data: JSON column containing all record fields
+ * - idxStr1-3, idxNum1-2, idxDate1-2: Indexed slots populated from data
+ * - searchText: Concatenated text fields for full-text search
+ * - version: Optimistic locking counter for concurrent update safety
+ *
+ * **Index Slot Mapping:**
+ * When a table has indexed columns, the indexedColumns mapping in flex_tables
+ * defines which record fields populate which index slots. For example:
+ * { 'str_1': 'email', 'num_1': 'age' } means the 'email' field populates
+ * idxStr1 and 'age' populates idxNum1.
+ *
+ * **Full-Text Search:**
+ * The searchText column is populated with concatenated string/text fields
+ * from the record. FULLTEXT index must be created via raw SQL migration
+ * since Drizzle doesn't support it natively:
+ * CREATE FULLTEXT INDEX flex_records_search_idx ON flex_records(search_text);
+ *
+ * @example
+ * // Inserting a record
+ * await db.insert(flexRecords).values({
+ *   tableId: 'tbl_123',
+ *   applicationId: 'app_456',
+ *   data: { name: 'John', email: 'john@example.com', age: 30 },
+ *   idxStr1: 'john@example.com',  // email is indexed
+ *   idxNum1: '30.0000',           // age is indexed
+ *   searchText: 'John john@example.com',
+ *   version: 1,
+ * });
+ */
+export const flexRecords = mysqlTable(
+  'flex_records',
+  {
+    // Primary identifier
+    id: varchar('id', { length: 128 })
+      .primaryKey()
+      .$defaultFn(() => createId()),
+
+    // Foreign key to flex_tables
+    tableId: varchar('table_id', { length: 128 }).notNull(),
+    // References: flexTables.id
+    // Identifies which FlexDB table this record belongs to
+
+    // Application scope for multi-tenancy
+    applicationId: varchar('application_id', { length: 128 }).notNull(),
+    // Enables filtering records by application
+    // Must match the applicationId of the parent table
+
+    // JSON data column - stores all record fields
+    data: json('data').notNull().$type<Record<string, unknown>>(),
+    // Contains: All user-defined fields plus system fields (id, created_at, etc.)
+    // Schema is defined by the parent table's schema.columns
+
+    // Indexed string slots (populated based on table's indexedColumns mapping)
+    idxStr1: varchar('idx_str_1', { length: 255 }),
+    // First indexed string slot - mapped to a specific column via indexedColumns
+    idxStr2: varchar('idx_str_2', { length: 255 }),
+    // Second indexed string slot
+    idxStr3: varchar('idx_str_3', { length: 255 }),
+    // Third indexed string slot
+
+    // Indexed numeric slots
+    idxNum1: decimal('idx_num_1', { precision: 18, scale: 4 }),
+    // First indexed numeric slot - supports integers and decimals
+    idxNum2: decimal('idx_num_2', { precision: 18, scale: 4 }),
+    // Second indexed numeric slot
+
+    // Indexed date slots
+    idxDate1: date('idx_date_1'),
+    // First indexed date slot - DATE only, no time component
+    idxDate2: date('idx_date_2'),
+    // Second indexed date slot
+
+    // Full-text search column
+    searchText: text('search_text'),
+    // Concatenated string/text fields for full-text search
+    // Populated automatically on insert/update
+    // FULLTEXT index required for MATCH AGAINST queries
+
+    // Version for optimistic locking
+    version: int('version').notNull().default(1),
+    // Incremented on each update
+    // Clients include version in updates to detect conflicts
+    // Prevents lost updates in concurrent modifications
+
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+
+    updatedAt: timestamp('updated_at').defaultNow().onUpdateNow().notNull(),
+
+    deletedAt: timestamp('deleted_at'),
+    // Set when record is soft-deleted
+    // Null = active record
+    // Queries filter on deletedAt IS NULL by default
+  },
+  (table) => ({
+    // **Table lookup** - Find all records for a specific FlexDB table
+    tableIdx: index('flex_records_table_idx').on(table.tableId),
+
+    // **Application lookup** - Find all records for an application
+    appIdx: index('flex_records_app_idx').on(table.applicationId),
+
+    // **String index slots** - Fast queries on indexed string fields
+    str1Idx: index('flex_records_str_1_idx').on(table.idxStr1),
+    str2Idx: index('flex_records_str_2_idx').on(table.idxStr2),
+    str3Idx: index('flex_records_str_3_idx').on(table.idxStr3),
+
+    // **Numeric index slots** - Fast queries on indexed numeric fields
+    num1Idx: index('flex_records_num_1_idx').on(table.idxNum1),
+    num2Idx: index('flex_records_num_2_idx').on(table.idxNum2),
+
+    // **Date index slots** - Fast queries on indexed date fields
+    date1Idx: index('flex_records_date_1_idx').on(table.idxDate1),
+    date2Idx: index('flex_records_date_2_idx').on(table.idxDate2),
+
+    // NOTE: FULLTEXT index on search_text requires raw SQL migration:
+    // CREATE FULLTEXT INDEX flex_records_search_idx ON flex_records(search_text);
+    // Drizzle doesn't support FULLTEXT indexes natively.
+  })
+);
+
+// =============================================================================
 // TYPE EXPORTS
 // =============================================================================
 
@@ -379,3 +513,7 @@ export type NewFlexTable = typeof flexTables.$inferInsert;
 // FlexTableVersion types
 export type FlexTableVersion = typeof flexTableVersions.$inferSelect;
 export type NewFlexTableVersion = typeof flexTableVersions.$inferInsert;
+
+// FlexRecord types
+export type FlexRecord = typeof flexRecords.$inferSelect;
+export type NewFlexRecord = typeof flexRecords.$inferInsert;
