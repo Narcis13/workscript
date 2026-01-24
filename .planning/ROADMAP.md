@@ -48,7 +48,7 @@ Plans:
 **Goal**: Users can perform full CRUD operations on records with queries and relationships
 **Depends on**: Phase 1
 **Requirements**: REC-01 to REC-08, QRY-01 to QRY-09, REL-01 to REL-05
-**Plans**: 2 plans in 2 waves
+**Plans**: 3 plans in 2 waves
 **Success Criteria** (what must be TRUE):
   1. User can insert, read, update, and delete records via workflow node
   2. System extracts indexed values and populates search_text automatically
@@ -57,8 +57,9 @@ Plans:
   5. System enforces referential integrity on relationships
 
 Plans:
-- [ ] 02-01-PLAN.md — Record infrastructure: flex_records table, FlexRecordService, FlexQueryBuilder (Wave 1)
-- [ ] 02-02-PLAN.md — FlexRecordNode workflow node and relationship handling (Wave 2)
+- [x] 02-01-PLAN.md — Record infrastructure: flex_records table, FlexRecordService, FlexQueryBuilder (Wave 1)
+- [x] 02-02-PLAN.md — FlexRecordNode workflow node and relationship handling (Wave 2)
+- [ ] 02-03-PLAN.md — Gap closure: FULLTEXT index migration for full-text search (Wave 1, gap_closure)
 
 ### Phase 3: FlexDB REST API
 **Goal**: External systems can interact with FlexDB through REST endpoints
@@ -222,7 +223,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> ... -> 12
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. FlexDB Schema Foundation | 3/3 | Complete | 2026-01-23 |
-| 2. FlexDB Record Operations | 0/2 | Planned | - |
+| 2. FlexDB Record Operations | 2/3 | Gap closure pending | - |
 | 3. FlexDB REST API | 0/1 | Not started | - |
 | 4. AI Service Integration | 0/3 | Not started | - |
 | 5. AI Workflow Nodes | 0/1 | Not started | - |
@@ -236,4 +237,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> ... -> 12
 
 ---
 *Created: 2026-01-23*
-*Total phases: 12 | Total plans: 23*
+*Updated: 2026-01-24 (gap closure plan added)*
+*Total phases: 12 | Total plans: 24*
