@@ -105,6 +105,8 @@ export interface FlexQueryParams {
   offset?: number;
   /** Include soft-deleted records */
   includeDeleted?: boolean;
+  /** Include related records for reference columns */
+  include?: Array<{ relation: string }>;
 }
 
 // =============================================================================
