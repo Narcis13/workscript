@@ -40,6 +40,24 @@ DATABASE_NAME=workscript
 PORT=3013
 ```
 
+## Manual Migrations
+
+Some database features require raw SQL migrations that Drizzle doesn't support natively.
+
+### FULLTEXT Index for Full-Text Search
+
+After running `bun run db:push` or `bun run db:migrate`, execute the FULLTEXT index migration:
+
+```bash
+# Using mysql CLI
+mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME < drizzle/0008_fulltext_search_index.sql
+
+# Or via Drizzle Studio / database GUI
+# Execute: CREATE FULLTEXT INDEX flex_records_search_idx ON flex_records(search_text);
+```
+
+This enables performant full-text search on FlexDB records via the `{ field: { search: "query" } }` filter syntax.
+
 ## Available Endpoints
 
 - `GET /health` - Server health check
